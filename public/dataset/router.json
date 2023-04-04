@@ -1,0 +1,45 @@
+[
+  {
+    "path": "/",
+    "name": "onebodym",
+    "component": "Layout",
+    "redirect": "/hardmoni",
+    "meta": {
+      "title": "一体化监控",
+      "hidden": false,
+      "alwaysShow": false,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yitihuajiankong"
+      }
+    },
+    "children": [
+      {
+        "path": "hardmoni",
+        "name": "hardmoni",
+        "component": "HardMoni/Index.vue",
+        "meta": {
+          "title": "硬件监控",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        }
+      },
+      {
+        "path": "anowarn",
+        "name": "anowarn",
+        "component": "AnoWarn/Index.vue",
+        "meta": {
+          "title": "异常告警",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        }
+      }
+    ]
+  }
+]
