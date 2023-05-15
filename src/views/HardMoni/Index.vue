@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { debounce } from '@/utils/tools'
 import { genDoughnutData, genServerBlockData } from './test/test-data'
+import ScreenShot from '@/components/ScreenShot/index.vue'
 // import HardDoughnut from '@/components/hardmoni/HardDoughnut.vue'
 // import ServerBlock from '@/components/hardmoni/ServerBlock.vue'
 
@@ -94,6 +95,7 @@ function autoUpdate() {
         </div>
       </el-scrollbar>
     </section>
+    <ScreenShot />
   </div>
 </template>
 

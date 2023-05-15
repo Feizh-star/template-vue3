@@ -40,6 +40,9 @@ declare module '@vue/runtime-core' {
     RightDrawer: typeof import('./src/components/ImageByGeoJson/RightDrawer.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScreenShot: typeof import('./src/components/ScreenShot/index.vue')['default']
     ServerBlock: typeof import('./src/components/hardmoni/ServerBlock.vue')['default']
+    TimeLine: typeof import('./src/components/company/TimeLine.vue')['default']
+    Toolbar: typeof import('./src/components/ScreenShot/Toolbar/index.vue')['default']
   }
 }
