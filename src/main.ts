@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import './router/permission'
 
 import 'reset-css' // 重置样式
 import '@/assets/iconfont/iconfont.css'

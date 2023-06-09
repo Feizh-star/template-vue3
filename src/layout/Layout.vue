@@ -19,7 +19,7 @@
         </div>
       </div>
     </div>
-      
+
   </div>
 </template>
 
@@ -47,7 +47,7 @@ export default defineComponent({
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
-import { useMenu } from '@/stores/menu'
+import { useMenu } from '@/store/menu'
 const menu = useMenu()
 const menuList = menu.getMenuList
 </script>

@@ -19,5 +19,4 @@ declare module "vue-router" {
       value: string
     }
   }
-  
 }

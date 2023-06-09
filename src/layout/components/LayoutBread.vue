@@ -8,8 +8,8 @@
     </div>
     <div class="bread-breadcrumb">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item 
-          v-for="(item, index) in currentMenuPath" 
+        <el-breadcrumb-item
+          v-for="(item, index) in currentMenuPath"
           :key="index"
           :class="{lastone: index === currentMenuPath.length - 1}"
           @click="(event: Event) => breadcrumbClick(item, event)"
@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMenu } from '@/stores/menu'
+import { useMenu } from '@/store/menu'
 import {
   computed
 } from 'vue'
@@ -61,7 +61,7 @@ $text-color: #666666;
     }
   }
   .bread-text {
-    
+
   }
 }
 :deep(.el-breadcrumb) {

@@ -62,7 +62,7 @@ export default defineConfig(({ command, mode }) => {
       open: true,
       proxy: {
         '/api': {
-          target: 'http://221.122.67.139:8888/',
+          target: 'http://localhost:10080/',
           changeOrigin: true,
           rewrite: path => path.replace(/^\/api/, '')
         }

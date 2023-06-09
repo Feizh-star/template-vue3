@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RouteRecordRaw } from 'vue-router'
 import { ref, watch, onMounted } from 'vue'
-import { useMenu } from '@/stores/menu'
+import { useMenu } from '@/store/menu'
 import MenuItem from '@/layout/components/MenuItem.vue'
 const props = defineProps<{
   menuList: RouteRecordRaw[]

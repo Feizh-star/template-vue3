@@ -25,11 +25,11 @@ export function filterTreeNode(data: any, id: any, keys: any, compare: any, stac
       result = filterTreeNode(node[childrenKey], id, keys, compare, stack)
       if (result) break
     } else {
-      continue 
+      continue
     }
   }
   if (!result) stack.pop()
-  else result._stack = stack 
+  else result._stack = stack
   return result
 }
 
@@ -61,7 +61,7 @@ export function download(filename: string, file: string | Blob) {
  * 防抖
  * @param fn 回调函数
  * @param delay 延时
- * @returns 
+ * @returns
  */
 export function debounce(fn: (...args: any[]) => any, delay: number) {
   let timer: NodeJS.Timeout | null = null
@@ -72,4 +72,36 @@ export function debounce(fn: (...args: any[]) => any, delay: number) {
       fn.call(this, ...args)
     }, delay)
   }
+}
+
+
+// 验证是否为blob格式
+export function blobValidate(data: any) {
+  return data.type !== 'application/json'
+}
+
+/**
+* 参数处理
+* @param {*} params  参数
+*/
+export function tansParams(params: {[p: string]: any}) {
+  let result = ''
+  for (const propName of Object.keys(params)) {
+    const value = params[propName]
+    const part = encodeURIComponent(propName) + "="
+    if (value !== null && value !== "" && typeof (value) !== "undefined") {
+      if (typeof value === 'object') {
+        for (const key of Object.keys(value)) {
+          if (value[key] !== null && value[key] !== "" && typeof (value[key]) !== 'undefined') {
+            const params = propName + '[' + key + ']'
+            const subPart = encodeURIComponent(params) + "="
+            result += subPart + encodeURIComponent(value[key]) + "&"
+          }
+        }
+      } else {
+        result += part + encodeURIComponent(value) + "&"
+      }
+    }
+  }
+  return result
 }
