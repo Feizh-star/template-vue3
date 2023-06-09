@@ -27,16 +27,13 @@ export const routes: Array<RouteRecordRaw> = [
   //     }
   //   ]
   // },
+  // 没匹配到的路由都会匹配这个，进入错误页面
   {
-    path: '/404',
-    component: {
-      render() {
-        return h('div', ['404'])
-      }
-    },
+    path: '/:pathMatch(.*)*',
     meta: {
       hidden: true,
     },
+    component: () => import('@/views/Error/Index.vue')
   },
 ]
 
@@ -51,7 +48,7 @@ router.beforeEach((to, from, next) => {
   const menu = useMenu()
   if (menu.getMenuList.length === 0) {
     menu.fetchMenuList().then(() => {
-      next({ path: to.path, replace: true })
+      next({ ...to, replace: true })
     })
   } else {
     next()
@@ -69,8 +66,8 @@ function setCurrentMenu(to: RouteLocationNormalized) {
     const currentFullPath = pathModule.join(...paths)
     return currentFullPath === fPath
   })
-  menu.setRoutePath([...currentRoute._stack, currentRoute])
-  menu.setCurrentMenu(currentRoute)
+  menu.setRoutePath(currentRoute ? [...currentRoute._stack, currentRoute] : [])
+  menu.setCurrentMenu(currentRoute || {})
 }
 
 export default router

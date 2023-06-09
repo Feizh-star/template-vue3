@@ -35,12 +35,12 @@ export const useMenu = defineStore({
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes)
         this.menuList = [...constants, ...parsedRoute]
-        router.addRoute('', {
-          path: '/:pathMatch(.*)*',
-          name: "NotFound",
-          redirect: '/404',
-          meta: { hidden: true, }
-        })
+        // router.addRoute('', {
+        //   path: '/:pathMatch(.*)*',
+        //   name: "NotFound",
+        //   redirect: '/404',
+        //   meta: { hidden: true, }
+        // })
         // console.log(this.menuList)
       } catch (error) {
         console.error(error)

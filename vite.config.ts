@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-
+import { visualizer } from "rollup-plugin-visualizer"
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
@@ -15,7 +15,7 @@ export default defineConfig(({ command, mode }) => {
   return {
     base: env.VITE_NODE_ENV === 'production' ? '/' : './',
     plugins: [
-      vue(), 
+      vue(),
       vueJsx(),
       AutoImport({
         dts: "auto-imports.d.ts", // 自动导入生成的声明文件名称，要写在tsconfig[.app].json的include包含进去
@@ -31,6 +31,10 @@ export default defineConfig(({ command, mode }) => {
       Components({
         // 解析的 UI 组件库
         resolvers: [ElementPlusResolver()],
+      }),
+      visualizer({
+        gzipSize: true,
+        open: true //如果存在本地服务端口，将在打包后自动展示
       }),
     ],
     resolve: {

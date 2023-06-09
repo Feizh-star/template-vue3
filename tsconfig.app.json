@@ -1,11 +1,10 @@
 {
   "extends": "@vue/tsconfig/tsconfig.web.json",
   "include": [
-    "env.d.ts", 
-    "src/**/*", 
+    "env.d.ts",
+    "src/**/*",
     "src/**/*.vue",
     "auto-imports.d.ts",
-    "src/types/global/global.d.ts",
     "build/*.ts",
   ],
   "exclude": ["src/**/__tests__/*", "node_modules", "dist"],

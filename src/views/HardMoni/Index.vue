@@ -49,6 +49,10 @@ function autoUpdate() {
     serverBlockData.value = genServerBlockData(8)
   }, 2000)
 }
+// function test() {
+//   console.log(a)
+// }
+console.log(import.meta.url, new URL('./test/test-data.ts', import.meta.url))
 </script>
 
 <template>
@@ -81,8 +85,8 @@ function autoUpdate() {
     </section>
     <section class="hard-detail">
       <el-scrollbar ref="scrollbarRef">
-        <div 
-          class="hard-detail-block" 
+        <div
+          class="hard-detail-block"
           :style="{ height: height }"
           v-for="(item, index) in serverBlockData"
           :key="index"
