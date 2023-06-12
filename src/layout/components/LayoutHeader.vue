@@ -18,8 +18,11 @@
         </div>
       </div>
       <div class="header-icons">
-        <!-- <span class="iconfont icon-kaiguan"></span> -->
-        <img src="@/assets/images/exit2x.png" style="width: 66%;">
+        <el-popconfirm title="确定退出登录吗？" @confirm="logout" width="160">
+          <template #reference>
+            <span class="iconfont icon-kaiguan"></span>
+          </template>
+        </el-popconfirm>
       </div>
     </div>
   </header>
@@ -27,6 +30,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useUserStore } from '@/store/user'
+
 const weekMap: any = {
   1: '一',
   2: '二',
@@ -66,6 +71,12 @@ onUnmounted(() => {
   interval && clearInterval(interval)
 })
 
+const userStore = useUserStore()
+function logout() {
+  userStore.logOut().then(() => {
+    location.href = '/index'
+  })
+}
 </script>
 
 <style lang="scss" scoped>

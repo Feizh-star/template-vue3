@@ -2,6 +2,7 @@
 import { debounce } from '@/utils/tools'
 import { genDoughnutData, genServerBlockData } from './test/test-data'
 import ScreenShot from '@/components/ScreenShot/index.vue'
+import { treeselect } from '@/api/test'
 // import HardDoughnut from '@/components/hardmoni/HardDoughnut.vue'
 // import ServerBlock from '@/components/hardmoni/ServerBlock.vue'
 
@@ -49,10 +50,13 @@ function autoUpdate() {
     serverBlockData.value = genServerBlockData(8)
   }, 2000)
 }
-// function test() {
-//   console.log(a)
-// }
+
 console.log(import.meta.url, new URL('./test/test-data.ts', import.meta.url))
+onMounted(() => {
+  treeselect().then(res => {
+    console.log(res)
+  })
+})
 </script>
 
 <template>

@@ -125,6 +125,8 @@
 
 <script setup lang="ts">
 import { defaultStyle } from '@/style/variables'
+import { treeselect } from '@/api/test'
+
 const formInline = reactive({
   recordMarker: '',
   warningLevel: 'all'
@@ -234,6 +236,11 @@ function getStatusColor(status: string) {
   }
   return color
 }
+onMounted(() => {
+  treeselect().then(res => {
+    console.log(res)
+  })
+})
 </script>
 
 <style lang="scss" scoped>
@@ -247,7 +254,7 @@ $pagination-height: 48px; // 分页器高度
   padding: 16px 24px;
 
   .warning-search {
-    
+
   }
   .warning-table {
     flex: 1;

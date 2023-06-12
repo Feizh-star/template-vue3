@@ -3,6 +3,12 @@ declare global {
   declare interface ImportMetaEnv {
     VITE_BASE_URL: string;
   }
+  declare interface Window {
+    UserConfig: {
+      verificationCode: boolean;
+      clientId: string;
+    }
+  }
 }
 
 export {}

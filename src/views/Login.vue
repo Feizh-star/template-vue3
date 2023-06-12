@@ -5,13 +5,17 @@ import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { getValidImage } from '@/api/user'
 
+import type { IAnyObject } from '@/types/global/common'
+
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
+const UserConfig = window.UserConfig
 
 // 获取验证码
 const validImage = ref('')
 async function getCode() {
+  if (!UserConfig.verificationCode) return
   try {
     const res: any = await getValidImage()
     if (res.code === 200) {
@@ -39,7 +43,7 @@ const rules = reactive({
     { required: true, message: '请输入用户密码', trigger: 'change' }
   ],
   code: [
-    { required: true, message: '请输入验证码', trigger: 'change' }
+    { required: UserConfig.verificationCode, message: '请输入验证码', trigger: 'change' }
   ]
 })
 const agree = ref(true)
@@ -69,8 +73,15 @@ function submitForm() {
   })
 }
 function login() {
-  const userInfo = {
+  const userInfo: IAnyObject & typeof formData = {
     ...formData,
+  }
+  if (!UserConfig.verificationCode) {
+    Reflect.deleteProperty(userInfo, 'code')
+    Reflect.deleteProperty(userInfo, 'uuid')
+  }
+  if (UserConfig.clientId) {
+    userInfo.clientid = UserConfig.clientId
   }
   userStore.login(userInfo).then(() => {
     const redirect = route.query?.redirect || '/'
@@ -121,7 +132,7 @@ function login() {
                 @keyup.enter="submitForm"
               ></el-input>
             </el-form-item>
-            <el-form-item prop="code" label-width="0" class="valid-code">
+            <el-form-item prop="code" label-width="0" class="valid-code" v-if="UserConfig.verificationCode">
               <div class="valid-input">
                 <el-input
                   type="text"

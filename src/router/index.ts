@@ -47,7 +47,7 @@ export const routes: Array<RouteRecordRaw> = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/convert/'),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   sensitive: true,
 })

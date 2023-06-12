@@ -13,7 +13,7 @@ import { useEnv } from './build/index'
 export default defineConfig(({ command, mode }) => {
   const env = useEnv(loadEnv(mode, process.cwd()))
   return {
-    base: env.VITE_NODE_ENV === 'production' ? '/' : './',
+    base: env.VITE_NODE_ENV === 'production' ? '/basepath/' : './',
     plugins: [
       vue(),
       vueJsx(),

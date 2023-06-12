@@ -7,9 +7,7 @@ if (props.redirect) router.push(props.redirect)
 </script>
 
 <template>
-  <div class="">
-    首页
-  </div>
+  <div class=""></div>
 </template>
 
 <style scoped lang="scss">
