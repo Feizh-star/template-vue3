@@ -35,7 +35,6 @@ export const useMenu = defineStore({
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes)
         this.menuList = [...constants, ...parsedRoute]
-        console.log(this.menuList)
         // router.addRoute('', {
         //   path: '/:pathMatch(.*)*',
         //   name: "NotFound",
@@ -107,7 +106,7 @@ function addLayoutForSingleRoute(routes: Router.MyRawRoute[]): Router.MyRawRoute
         name: 'Layout',
         component: 'Layout',
         meta: {
-          title: 'Layout',
+          title: '',
           hidden: false,
         },
         children: [r]
