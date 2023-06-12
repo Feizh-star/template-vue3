@@ -42,6 +42,7 @@ $text-color: #666666;
   max-height: $max-height;
   color: $text-color;
   padding-left: 20px;
+  background-color: #fff;
   .bread-icon,
   .bread-text,
   .bread-breadcrumb {

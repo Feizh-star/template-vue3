@@ -5,7 +5,6 @@ import { watchEffect } from 'vue'
 import { ref, computed, watch } from 'vue'
 import AppLink from './AppLink.vue'
 import path from 'path-browserify'
-import { icon } from 'leaflet'
 
 const resolvePath = (m: RouteRecordRaw): string => path.resolve('/', props.parentPath, m?.path || '')
 const getMenuTitle = (m: RouteRecordRaw): string => (m?.meta?.title || '') as string
@@ -14,12 +13,14 @@ const getShowingChildren = (ms: RouteRecordRaw[] | undefined): RouteRecordRaw[] 
 const props = defineProps<{
   menuItem: RouteRecordRaw;
   parentPath: string;
+  submenuPopperClass: string;
 }>()
 
 const showingItem = ref<RouteRecordRaw | null>()
 const renderMenuItem: ComputedRef<boolean> = computed(() => !!showingItem.value)
 const isHidden: ComputedRef<boolean> = computed(() => !!(props.menuItem.meta && props.menuItem.meta.hidden))
-const currentPath: ComputedRef<string> = computed(() => resolvePath(props.menuItem as RouteRecordRaw))
+const currentPath: ComputedRef<string> = computed(() => resolvePath(showingItem.value as RouteRecordRaw))
+const currentSubMenuPath: ComputedRef<string> = computed(() => resolvePath(props.menuItem as RouteRecordRaw))
 watchEffect(() => hasNextLevelMenu(props.menuItem))
 
 function hasNextLevelMenu(m: RouteRecordRaw): void {
@@ -67,12 +68,17 @@ export default {
       {{ getMenuTitle(showingItem as RouteRecordRaw) }}
     </el-menu-item>
   </AppLink>
-  <el-sub-menu v-if="!isHidden && !renderMenuItem" :index="currentPath">
+  <el-sub-menu v-if="!isHidden && !renderMenuItem" :index="currentSubMenuPath" :popper-class="submenuPopperClass">
     <template #title>
       <span class="menu-icon" v-html="setIcon(menuItem)"></span>
       {{ getMenuTitle(menuItem) }}
     </template>
-    <MenuItem v-for="(item, index) in menuItem.children" :key="index" :menu-item="item"
-      :parent-path="resolvePath(menuItem)" />
+    <MenuItem
+      v-for="(item, index) in menuItem.children"
+      :key="index"
+      :menu-item="item"
+      :parent-path="resolvePath(menuItem)"
+      :submenu-popper-class="submenuPopperClass"
+    />
   </el-sub-menu>
 </template>

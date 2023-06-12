@@ -8,6 +8,17 @@
         {{ currentTime }}
       </div>
     </div>
+    <div class="header-menu">
+      <LayoutMenu
+        v-if="showMenu"
+        :menu-list="menuList"
+        mode="horizontal"
+        background-color="transparent"
+        text-color="#ffffff"
+        active-text-color="#ffd04b"
+        popper-class="header-menu-popper"
+      ></LayoutMenu>
+    </div>
     <div class="header-right">
       <div class="user-info">
         <div class="user-icon">
@@ -30,7 +41,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import LayoutMenu from './LayoutMenu.vue'
 import { useUserStore } from '@/store/user'
+import { useMenu } from '@/store/menu'
+
+const props = defineProps<{
+  showMenu: boolean
+}>()
+
+const menu = useMenu()
+const menuList = menu.getMenuList
 
 const weekMap: any = {
   1: '一',
@@ -98,7 +118,7 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
   max-height: $max-height;
   height: 100%;
   display: flex;
-  justify-content: space-between;
+  // justify-content: space-between;
   background-color: $header-bgc;
   // background-image: url("@/assets/images/headerbg-copy2x.png");
   background-repeat: no-repeat;
@@ -111,6 +131,8 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
     font-size: $title-fs;
     font-weight: bold;
     display: flex;
+    width: 445px;
+    min-width: 445px;
     padding-left: $header-pl;
     padding-right: $header-pr;
     background: $header-left-bgc;
@@ -126,6 +148,49 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
     }
     .header-time {
       padding-left: $default-space;
+    }
+  }
+  .header-menu {
+    flex: 1;
+    min-width: 0;
+    padding: 0 30px;
+    :deep(.sidebar-menu) {
+      .el-scrollbar__bar.is-horizontal .el-scrollbar__thumb {
+        background-color: #fff;
+        &:hover {
+          opacity: 0.3;
+        }
+      }
+      .el-menu.el-menu--horizontal {
+        background-color: transparent;
+        border-bottom: none;
+        .el-menu-item,
+        .el-sub-menu__title,
+        >.el-sub-menu.is-active .el-sub-menu__title {
+          border-bottom: none;
+        }
+        .el-menu-item:not(.is-disabled):focus {
+          color: #ffffff;
+          background-color: transparent;
+        }
+        .el-menu-item.is-active:not(.is-disabled):focus {
+          color: #ffd04b;
+          background-color: transparent;
+        }
+        .el-menu-item:not(.is-disabled):hover {
+          color: #ffffff;
+          background-color: #00000033;
+        }
+        .el-menu-item.is-active:not(.is-disabled):hover {
+          color: #ffffff;
+          background-color: #00000033;
+        }
+        .menu-icon {
+          .icon-yitihuajiankong {
+            margin-right: 10px;
+          }
+        }
+      }
     }
   }
   .header-right {
@@ -170,6 +235,17 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
           white-space: nowrap;
         }
       }
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+.header-menu-popper {
+  background-color: #3b7abd;
+  .menu-icon {
+    .icon-yitihuajiankong {
+      margin-right: 10px;
     }
   }
 }

@@ -2,16 +2,16 @@
 <template>
   <div class="layout">
     <div class="ly-header">
-      <LayoutHeader></LayoutHeader>
+      <LayoutHeader :show-menu="!UserConfig.useSideBar"></LayoutHeader>
     </div>
     <div class="ly-main">
-      <div class="ly-main-menu">
+      <div class="ly-main-menu" v-if="UserConfig.useSideBar">
         <LayoutMenu :menu-list="menuList"></LayoutMenu>
       </div>
-      <div class="ly-main-body">
+      <div class="ly-main-body" :class="{ 'no-sidebar': !UserConfig.useSideBar }">
         <div class="ly-main-body-inner">
-          <div class="ly-main-body-breadcrumb">
-            <LayoutBread></LayoutBread>
+          <div class="ly-main-body-breadcrumb" :class="{ 'no-breadcrumb': !UserConfig.showBreadcrumb }">
+            <LayoutBread v-if="UserConfig.showBreadcrumb"></LayoutBread>
           </div>
           <div class="ly-main-body-view">
             <RouterView></RouterView>
@@ -28,6 +28,9 @@ import { defineComponent } from 'vue'
 interface Components {
   [propName: string]: any;
 }
+
+const UserConfig = window.UserConfig
+
 const modules = import.meta.glob('@/layout/components/*.vue', { eager: true, import: 'default', })
 const components: Components = {}
 Object.keys(modules).forEach(key => {
@@ -46,7 +49,7 @@ export default defineComponent({
 </script>
 
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
+import { RouterView } from 'vue-router'
 import { useMenu } from '@/store/menu'
 const menu = useMenu()
 const menuList = menu.getMenuList
@@ -57,8 +60,9 @@ $header-height: 60px; // 头部高度
 $menu-width: 240px; // 菜单宽度
 $main-pt: 0px; // 头部与主体之间的空隙高度
 $body-pl: 16px; // 菜单与右侧主体之间的宽度
-$body-inner-p: 15px; // 主体左右两侧的padding
-$breamcrumb-height: 47px; // 面包屑的高度
+$body-inner-p: 0px 15px 15px 0; // 主体左右两侧的padding
+$breamcrumb-height: 62px; // 面包屑的高度
+$breadcrumb-pb: 15px; // 面包屑的底部padding
 $border-radius: 3px; // 默认的圆角
 
 $main-border-color: #dadde1;
@@ -89,6 +93,15 @@ $main-bgc: #f7f7f7; // 浅灰背景色
       min-width: 0;
       padding-left: $body-pl;
       background-color: $main-bgc;
+      &.no-sidebar {
+        padding-left: 0;
+        .ly-main-body-inner {
+          .ly-main-body-view {
+            padding-right: 0;
+            padding-bottom: 0;
+          }
+        }
+      }
       .ly-main-body-inner {
         width: 100%;
         height: 100%;
@@ -96,14 +109,15 @@ $main-bgc: #f7f7f7; // 浅灰背景色
         flex-direction: column;
         .ly-main-body-breadcrumb {
           height: $breamcrumb-height;
-          // margin-left: -15px;
-          background-color: #ffffff;
+          padding-bottom: $breadcrumb-pb;
+          &.no-breadcrumb {
+            height: $breadcrumb-pb;
+          }
         }
         .ly-main-body-view {
           flex: 1;
           min-height: 0;
           padding: $body-inner-p;
-          padding-left: 0;
         }
       }
     }

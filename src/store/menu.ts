@@ -35,6 +35,7 @@ export const useMenu = defineStore({
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes)
         this.menuList = [...constants, ...parsedRoute]
+        console.log(this.menuList)
         // router.addRoute('', {
         //   path: '/:pathMatch(.*)*',
         //   name: "NotFound",

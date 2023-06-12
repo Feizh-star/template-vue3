@@ -7,6 +7,8 @@ declare global {
     UserConfig: {
       verificationCode: boolean;
       clientId: string;
+      useSideBar: boolean;
+      showBreadcrumb: boolean;
     }
   }
 }
