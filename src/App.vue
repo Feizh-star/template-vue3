@@ -9,15 +9,12 @@ import zhCn from 'element-plus/lib/locale/lang/zh-cn'
   </el-config-provider>
 </template>
 
-<style scoped>
-
-</style>
-<style lang="scss">
+<style lang="less">
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: $text-color;
+  color: @text-color;
 }
 
 html,

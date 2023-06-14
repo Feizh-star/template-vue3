@@ -306,7 +306,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .screen-shot {
   position: absolute;
   .mask {

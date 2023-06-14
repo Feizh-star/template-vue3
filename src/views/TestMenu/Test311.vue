@@ -8,7 +8,7 @@
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped lang="less">
 .test-menu {
   width: 100%;
   height: 100%;

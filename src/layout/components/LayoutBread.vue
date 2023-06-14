@@ -31,16 +31,16 @@ function breadcrumbClick(menu: any, event: Event) {
 }
 </script>
 
-<style lang="scss" scoped>
-$max-height: 47px;
+<style lang="less" scoped>
+@max-height: 47px;
 
-$text-color: #666666;
+@text-color: #666666;
 
 .layout-bread {
   display: flex;
   height: 100%;
-  max-height: $max-height;
-  color: $text-color;
+  max-height: @max-height;
+  color: @text-color;
   padding-left: 20px;
   background-color: #fff;
   .bread-icon,
@@ -67,16 +67,16 @@ $text-color: #666666;
 }
 :deep(.el-breadcrumb) {
   .el-breadcrumb__separator {
-    color: $text-color;
+    color: @text-color;
   }
   .el-breadcrumb__item {
     .el-breadcrumb__inner {
-      color: $text-color;
+      color: @text-color;
       font-size: 16px;
       cursor: pointer !important;;
     }
     &.lastone .el-breadcrumb__inner {
-      color: $text-hcolor;
+      color: @text-hcolor;
     }
   }
 }

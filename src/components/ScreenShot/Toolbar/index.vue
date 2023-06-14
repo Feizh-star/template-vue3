@@ -153,7 +153,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .toolbar {
   background-color: #fff;
   border-radius: 4px;

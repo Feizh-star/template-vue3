@@ -49,7 +49,7 @@ const handleSelect = (key: string, keyPath: string[]) => {
     </el-scrollbar>
   </div>
 </template>
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .sidebar-menu {
   width: 100%;
   height: 100%;

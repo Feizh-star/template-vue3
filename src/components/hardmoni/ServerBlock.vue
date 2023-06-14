@@ -173,8 +173,8 @@ function initLineChart() {
         }
       },
       data: [
-        { name: '内存', y: 100 }, 
-        { name: 'cpu', y: 100 }, 
+        { name: '内存', y: 100 },
+        { name: 'cpu', y: 100 },
         { name: '容量', y: 100 }
       ]
     }, {
@@ -217,29 +217,29 @@ function updateChart() {
 }
 </script>
 
-<style lang="scss" scoped>
-$header-height: 46px; // 头部高度
-$header-padding: 5px; // 头部内边距
-$content-padding: 10px; // 内容边距
-$status-text-width: 200px; // 状态文本宽度
+<style lang="less" scoped>
+@header-height: 46px; // 头部高度
+@header-padding: 5px; // 头部内边距
+@content-padding: 10px; // 内容边距
+@status-text-width: 200px; // 状态文本宽度
 
-$border-color: #f4f4f4;
-$image-bgc: #F5F7F9;
-$point-color: #4FA3FC;
-$header-color: $text-hcolor;
+@border-color: #f4f4f4;
+@image-bgc: #F5F7F9;
+@point-color: #4FA3FC;
+@header-color: @text-hcolor;
 
 .server-block {
   width: 100%;
   height: 100%;
-  border: 1px solid $border-color;
+  border: 1px solid @border-color;
   display: flex;
   flex-direction: column;
   .block-header {
-    height: $header-height;
+    height: @header-height;
     padding: 0 10px;
     display: flex;
     justify-content: space-between;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid @border-color;
     background-color: #edf6fd;
     .block-header-title,
     .text-btn {
@@ -247,25 +247,25 @@ $header-color: $text-hcolor;
       align-items: center;
     }
     .block-header-title {
-      color: $header-color;
+      color: @header-color;
       font-size: 20px;
       font-weight: bold;
     }
     .text-btn span {
-      color: $header-color
+      color: @header-color;
     }
   }
   .block-info {
     flex: 1;
     min-height: 0;
     display: flex;
-    padding: $content-padding;
+    padding: @content-padding;
     padding-bottom: 0;
     .block-info-image {
       flex: 1;
       min-width: 0;
       text-align: center;
-      background-color: $image-bgc;
+      background-color: @image-bgc;
       background-image: url("@/assets/images/server2x.png");
       background-size: contain;
       background-position: center;
@@ -276,17 +276,17 @@ $header-color: $text-hcolor;
         height: 100%;
       }
       .status-icon {
-        $size: 18px;
-        $edge: 6px;
-        width: $size;
-        height: $size;
+        @size: 18px;
+        @edge: 6px;
+        width: @size;
+        height: @size;
         position: absolute;
-        bottom: $edge;
-        right: $edge;
+        bottom: @edge;
+        right: @edge;
       }
     }
     .block-info-status {
-      width: $status-text-width;
+      width: @status-text-width;
       padding: 0 10px;
       display: flex;
       flex-direction: column;
@@ -296,15 +296,15 @@ $header-color: $text-hcolor;
         align-items: center;
         line-height: 24px;
         font-size: 14px;
-        color: $text-color;
+        color: @text-color;
         .icon-yuandianxiao-copy {
           font-size: 24px;
           position: relative;
           top: 1px;
-          color: $point-color;
+          color: @point-color;
         }
       }
-      
+
       @media screen and (max-width: 1360px) {
         width: 180px;
         .status-line {
@@ -317,16 +317,14 @@ $header-color: $text-hcolor;
   .block-line {
     flex: 1;
     min-height: 0;
-    padding: $content-padding;
+    padding: @content-padding;
     .block-line-chart {
       width: 100%;
       height: 100%;
     }
   }
 }
-:deep() {
-  .highcharts-credits {
-    display: none;
-  }
+:deep(.highcharts-credits) {
+  display: none;
 }
 </style>

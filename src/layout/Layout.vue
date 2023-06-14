@@ -55,18 +55,18 @@ const menu = useMenu()
 const menuList = menu.getMenuList
 </script>
 
-<style lang="scss" scoped>
-$header-height: 60px; // 头部高度
-$menu-width: 240px; // 菜单宽度
-$main-pt: 0px; // 头部与主体之间的空隙高度
-$body-pl: 16px; // 菜单与右侧主体之间的宽度
-$body-inner-p: 0px 15px 15px 0; // 主体左右两侧的padding
-$breamcrumb-height: 62px; // 面包屑的高度
-$breadcrumb-pb: 15px; // 面包屑的底部padding
-$border-radius: 3px; // 默认的圆角
+<style lang="less" scoped>
+@header-height: 60px; // 头部高度
+@menu-width: 240px; // 菜单宽度
+@main-pt: 0px; // 头部与主体之间的空隙高度
+@body-pl: 16px; // 菜单与右侧主体之间的宽度
+@body-inner-p: 0px 15px 15px 0; // 主体左右两侧的padding
+@breamcrumb-height: 62px; // 面包屑的高度
+@breadcrumb-pb: 15px; // 面包屑的底部padding
+@border-radius: 3px; // 默认的圆角
 
-$main-border-color: #dadde1;
-$main-bgc: #f7f7f7; // 浅灰背景色
+@main-border-color: #dadde1;
+@main-bgc: #f7f7f7; // 浅灰背景色
 
 .layout {
   width: 100%;
@@ -74,25 +74,25 @@ $main-bgc: #f7f7f7; // 浅灰背景色
   display: flex;
   flex-direction: column;
   .ly-header {
-    height: $header-height;
+    height: @header-height;
   }
   .ly-main {
     flex: 1;
     min-height: 0;
-    padding: $main-pt 0;
+    padding: @main-pt 0;
     display: flex;
     .ly-main-menu {
-      width: $menu-width;
-      border: 1px solid $main-border-color;
-      border-radius: $border-radius;
+      width: @menu-width;
+      border: 1px solid @main-border-color;
+      border-radius: @border-radius;
       position: relative;
       box-shadow: 0px 3px 10px 1px rgba(51,51,51,0.2);
     }
     .ly-main-body {
       flex: 1;
       min-width: 0;
-      padding-left: $body-pl;
-      background-color: $main-bgc;
+      padding-left: @body-pl;
+      background-color: @main-bgc;
       &.no-sidebar {
         padding-left: 0;
         .ly-main-body-inner {
@@ -108,16 +108,16 @@ $main-bgc: #f7f7f7; // 浅灰背景色
         display: flex;
         flex-direction: column;
         .ly-main-body-breadcrumb {
-          height: $breamcrumb-height;
-          padding-bottom: $breadcrumb-pb;
+          height: @breamcrumb-height;
+          padding-bottom: @breadcrumb-pb;
           &.no-breadcrumb {
-            height: $breadcrumb-pb;
+            height: @breadcrumb-pb;
           }
         }
         .ly-main-body-view {
           flex: 1;
           min-height: 0;
-          padding: $body-inner-p;
+          padding: @body-inner-p;
         }
       }
     }

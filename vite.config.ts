@@ -51,9 +51,13 @@ export default defineConfig(({ command, mode }) => {
     },
     css: {
       preprocessorOptions: {
-        scss: {
+        // scss: {
+        //   // 导入sass:math模块，可使用math.div()代替/进行除法计算，避免scss报警告
+        //   additionalData: '@use "sass:math"; @import "./src/style/main.scss";'
+        // },
+        less: {
           // 导入sass:math模块，可使用math.div()代替/进行除法计算，避免scss报警告
-          additionalData: '@use "sass:math"; @import "./src/style/main.scss";'
+          additionalData: '@import "./src/style/main.less";'
         }
       }
     },

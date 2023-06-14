@@ -142,7 +142,7 @@ function login() {
                   @keyup.enter="submitForm"
                 ></el-input>
               </div>
-              <div class="valid-image" @click="getCode">
+              <div class="valid-image" click="getCode">
                 <img :src="validImage" alt="验证码">
               </div>
             </el-form-item>
@@ -162,7 +162,7 @@ function login() {
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .login-page {
   height: 100%;
   // background: url('@/assets/imgs/loginbg@2x.png') no-repeat;

@@ -99,55 +99,55 @@ function logout() {
 }
 </script>
 
-<style lang="scss" scoped>
-$max-height: 68px; // header最大高度
-$header-pl: 34px; // header padding-left
-$header-pr: 70px; // header padding-right
-$userinfo-width: 140px; // 用户信息宽度
-$title-fs: 20px; // 标题字体大小
-$icon-fs: 28px; // 右侧大icon大小
-$default-space: 5px; // 默认小间距
-$left-skew: 40deg; // 倾斜角度
+<style lang="less" scoped>
+@max-height: 68px; // header最大高度
+@header-pl: 34px; // header padding-left
+@header-pr: 70px; // header padding-right
+@userinfo-width: 140px; // 用户信息宽度
+@title-fs: 20px; // 标题字体大小
+@icon-fs: 28px; // 右侧大icon大小
+@default-space: 5px; // 默认小间距
+@left-skew: 40deg; // 倾斜角度
 
-$header-left-bgc: linear-gradient(90deg, #276bb4, #2b93ff); // header左侧背景色
-$header-bgc: #3b7abd; // 头部背景色
-$text-color: #ffffff; // 文本颜色
-$left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
+@header-left-bgc: linear-gradient(90deg, #276bb4, #2b93ff); // header左侧背景色
+@header-bgc: #3b7abd; // 头部背景色
+@text-color: #ffffff; // 文本颜色
+@left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
 
 .layout-header {
-  max-height: $max-height;
+  max-height: @max-height;
   height: 100%;
   display: flex;
   // justify-content: space-between;
-  background-color: $header-bgc;
+  background-color: @header-bgc;
   // background-image: url("@/assets/images/headerbg-copy2x.png");
   background-repeat: no-repeat;
   background-size: 101% 101%;
   background-position: -1px -1px;
   background-origin: padding-box;
-  color: $text-color;
+  color: @text-color;
   overflow: hidden;
   .header-left {
-    font-size: $title-fs;
+    font-size: @title-fs;
     font-weight: bold;
     display: flex;
     width: 445px;
     min-width: 445px;
-    padding-left: $header-pl;
-    padding-right: $header-pr;
-    background: $header-left-bgc;
+    padding-left: @header-pl;
+    padding-right: @header-pr;
+    background: @header-left-bgc;
     transform-origin: 0px 0px;
-    transform: skew(#{-$left-skew}, 0deg);
-    box-shadow: $left-shadow;
+    transform: skew(-@left-skew, 0deg);
+    box-shadow: @left-shadow;
     .header-title,
     .header-time {
       display: inline-flex;
       align-items: center;
       transform-origin: 0px 0px;
-      transform: skew($left-skew, 0deg);
+      transform: skew(@left-skew, 0deg);
     }
     .header-time {
-      padding-left: $default-space;
+      padding-left: @default-space;
     }
   }
   .header-menu {
@@ -195,20 +195,20 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
   }
   .header-right {
     display: flex;
-    padding-right: $header-pl;
+    padding-right: @header-pl;
     .header-icons {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding-right: $default-space;
+      padding-right: @default-space;
       cursor: pointer;
       .icon-kaiguan {
-        font-size: $icon-fs;
+        font-size: @icon-fs;
         color: #ffffff;
       }
     }
     .user-info {
-      max-width: $userinfo-width;
+      max-width: @userinfo-width;
       padding-right: 16px;
       display: flex;
       cursor: pointer;
@@ -219,7 +219,7 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
         justify-content: center;
         align-items: center;
         .icon-yonghu-copy {
-          font-size: $icon-fs;
+          font-size: @icon-fs;
         }
       }
       .user-name {
@@ -240,7 +240,7 @@ $left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
 }
 </style>
 
-<style lang="scss">
+<style lang="less">
 .header-menu-popper {
   background-color: #3b7abd;
   .menu-icon {

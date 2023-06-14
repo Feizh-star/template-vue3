@@ -28,8 +28,8 @@ const props = withDefaults(defineProps<IProps>(), {
     const all = data.reduce((sum, item) => {
       return sum + item.y
     }, 0)
-    return all > 0 ? 
-      (online.y / all * 100).toFixed(0) + '%' : 
+    return all > 0 ?
+      (online.y / all * 100).toFixed(0) + '%' :
       '0%'
   },
   count: 0,
@@ -167,10 +167,10 @@ function setChartTitle() {
   </div>
 </template>
 
-<style lang="scss" scoped>
-$content-width: 120px;
-$content-fs: 14px;
-$text-space: 5px;
+<style lang="less" scoped>
+@content-width: 120px;
+@content-fs: 14px;
+@text-space: 5px;
 .hard-doughnut {
   width: 100%;
   height: 100%;
@@ -181,22 +181,22 @@ $text-space: 5px;
     min-width: 0;
   }
   .content {
-    width: $content-width;
+    width: @content-width;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: $content-fs;
+    font-size: @content-fs;
     @media screen and (max-width: 1360px) {
       font-size: 12px;
     }
     font-weight: bold;
     .chart-title,
     .chart-number {
-      padding: $text-space 0;
+      padding: @text-space 0;
     }
     .split-line {
-      padding: 0 $text-space;
+      padding: 0 @text-space;
     }
     .chart-title {
       display: flex;
@@ -206,16 +206,14 @@ $text-space: 5px;
       font-size: 24px;
       position: relative;
       top: 1px;
-      color: $text-hcolor;
+      color: @text-hcolor;
       @media screen and (max-width: 1360px) {
         font-size: 18px;
       }
     }
   }
 }
-:deep() {
-  .highcharts-credits {
-    display: none;
-  }
+:deep(.highcharts-credits) {
+  display: none;
 }
 </style>

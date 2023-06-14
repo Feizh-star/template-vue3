@@ -543,15 +543,15 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
-$lineColor: #0095ff; //线条颜色
-$backColor: #ffffff; //背景颜色
-$grayColor: #243a5e; //线条颜色
-$agingColor: #1d5096; //刻度颜色
-$inputHeight: 25px;
-$lineHeigth: 65px;
-$infoHeight: 20px;
-$backColor2: #fff;
+<style lang="less" scoped>
+@lineColor: #0095ff; //线条颜色
+@backColor: #ffffff; //背景颜色
+@grayColor: #243a5e; //线条颜色
+@agingColor: #1d5096; //刻度颜色
+@inputHeight: 25px;
+@lineHeigth: 65px;
+@infoHeight: 20px;
+@backColor2: #fff;
 @font-face {
   font-family: "iconfont"; /* Project id 4007758 */
   src: url('data:application/x-font-woff2;charset=utf-8;base64,d09GMgABAAAAAATgAAsAAAAACpgAAASUAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHFQGYACDVgqHTIYgATYCJAMcCxAABCAFhGcHdBsaCcieBXbjSxGIxktOeG7+bcKCJ35/35l75+EvmawKRZgRYEjKG9KmzuQSdvj3tNemHpQMzE4YMtDduXzJsvLS9CAGJ+iPYAIEmDXVq+y/vz9WutFURfVoPwBsVV40R5Tf+M0CXXTwCaQvkN9jOMX1E1cRj0GAIIplk9YXVzYC7wUDawehZOBSAa+jLNCUAagkN5rBEHybW/RQRW6BA+ZMegYAbqyflz9ApAKDY8GztFxkBseeIS9+IqP+jwL7AowlCLC5ARzAAvkD88p2dngV4pTzIQQlPURGA0AIPgb9RJ55PdM/r3nx8/8ESDo9hoUQhg1rDYqDafAfzwVxoeYQIPZUXPhENASFTy8EBz51CAY+9QgWvmoQBL5/WlhUvLd1GJACSAEAskCI5WZhX7Ykkkb4+XXpIpFhJd3LSwJwG9UNUljDcUB3eX5qECWOdpHCFG4UBs26JuS0kZASpqDmhDvxU8XROj4o6HTT1SaeRxu5+as7msSFgVphzarAWwVOCVyTfK34WumVWg7l1vefgqIntNe0ghDULC5Yg+q5eVgTv3otqb8Hj61Oulp0teJ6gygRNwTqfEBYpwYEd2tjGfmK5zxA0PiZLnigu5zG+1yQyPdEDw8JOj8kiQ97+FwcdR7Rx2IkyjwYhnj5mhk1o1avlUwsxTVpRom9cZo0e8iDQlXftcxv4f8Ck+/zmapJqhkv/Nj/6i/agZ+8Oweg71BqKXZZR2Lv0IFb95kBcLNNQKEYqdgmA7buJDEy5rMHou8w8Dq81hj3rRTRIQ6irgsWXZBmDkbUJRf39h76u6xzSVl0YeooxJcOLQj4VC59XBE0uIfauzwtQ1mXV4Ken47uUmbu9ElDXFxbPuxPWqdiwi9KUeOizvkBn3cbQnl4pV8Ay+WHiEPz03Nxqpijz8Px2OgeNYXzifm2+GgiWnVQFa5ZC63mbYg2EZMiwsFSCE2eVGjeaYrBjBpDCnz7bCdCvGfM8Na8Ye/OqkMSVGzQdhd3OojdQ1O7gP9s1G5s0uoRMAKua6ulTwD4z0psq0UzD+XAHklfsmakr6OYp6e2PjzaHo/T+WR+VXkoAB+9LIGQ/k9B9aiPuSpmnlHLQMFh9ZsBT5N61tS0rccdSAQu8UoEEQQ8lvEo95qzRhcuguAHNCIYPJLB4pOKVWIuOARTCi4+FRBEnqKjg4nmhCAaADKNJSBEWA+GMJ7BEuE4VonXwSHOc3CJ8BeC6MrrdMFkZipgoIGFZtw4GKdNDjup2lir1npIua0GJq6ghYyLhhweHxMXbiiBdsjUsYdrAEWwLImTjMOGFwtXg1arA3cyjlZoYmNaWNaZHhtLJn1IjMlhAwUYkAELMsMZDYajmTjYkcbwbPDv1YMoblYGTEGsNshwcSpaOy5ejLgC2BKzvVC3A1nbZQAKgcUiua1IDAcbXPE3CFlZ2QHnTN6oFWTCitFSoeiULpYORxY1x3Rvte3kZUAQ+BaeGLGi4ogrnvj4K1bDYJK2Wn0G0QY7NdjhbrUMLK8Jcoa4HWso6yHJQFeLumyt1u/O0FZa7jS4XRAA') format('woff2'),
@@ -647,7 +647,7 @@ $backColor2: #fff;
     width: calc(100% - 0px);
     display: flex;
     padding: 8px 34px 4px;
-    background: $backColor;
+    background: @backColor;
     box-shadow: 0px 2px 8px 0px rgba(0, 23, 67, 0.3);
     position: relative;
     .timeInter {
@@ -694,8 +694,8 @@ $backColor2: #fff;
         height: 10px;
         width: 10px;
         position: absolute;
-        top: math.div($inputHeight - 15, 2); 
-        background: $lineColor;
+        top: math.div(@inputHeight - 15, 2);
+        background: @lineColor;
         border-radius: 50%;
         border: solid 2px white;
         z-index: 5;
@@ -705,7 +705,7 @@ $backColor2: #fff;
         width: 100%;
         height: 10px;
         position: absolute;
-        top: math.div($inputHeight - 13, 2);
+        top: math.div(@inputHeight - 13, 2);
         background: #d6d8da;
         border-radius: 10px;
         pointer-events: none;
@@ -715,7 +715,7 @@ $backColor2: #fff;
         height: 10px;
         width: 100%;
         position: absolute;
-        top: math.div($inputHeight - 13, 2);
+        top: math.div(@inputHeight - 13, 2);
         border-radius: 10px 0px 0px 10px;
         pointer-events: none;
         z-index: 3;
@@ -742,7 +742,7 @@ $backColor2: #fff;
       }
       ul {
         width: 100%;
-        margin-top: math.div($inputHeight - 2, 2);
+        margin-top: math.div(@inputHeight - 2, 2);
         position: relative;
         z-index: 2;
         vertical-align: top;
@@ -803,7 +803,7 @@ $backColor2: #fff;
           .timeInfo {
             position: absolute;
             top: -30px;
-            background: $grayColor;
+            background: @grayColor;
             color: #fff;
             width: 120px;
             min-width: 120px;
@@ -816,7 +816,7 @@ $backColor2: #fff;
             cursor: default;
           }
           .timeInfo.active {
-            background: $lineColor;
+            background: @lineColor;
           }
         }
       }
@@ -843,7 +843,7 @@ $backColor2: #fff;
   opacity: 0;
 }
 </style>
-<style lang="scss">
+<style lang="less">
 .timeBox {
   .mx-input {
     border-radius: 0;

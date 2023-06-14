@@ -10,6 +10,6 @@ if (props.redirect) router.push(props.redirect)
   <div class=""></div>
 </template>
 
-<style scoped lang="scss">
+<style scoped lang="less">
 
 </style>

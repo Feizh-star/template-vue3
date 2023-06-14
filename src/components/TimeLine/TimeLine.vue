@@ -5,10 +5,10 @@ import { ref } from 'vue';
 
 <template>
   <div class="">
-    
+
   </div>
 </template>
 
-<style lang='scss' scoped>
+<style lang='less' scoped>
 
 </style>

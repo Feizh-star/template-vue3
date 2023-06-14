@@ -243,8 +243,8 @@ onMounted(() => {
 })
 </script>
 
-<style lang="scss" scoped>
-$pagination-height: 48px; // 分页器高度
+<style lang="less" scoped>
+@pagination-height: 48px; // 分页器高度
 .ano-warn {
   width: 100%;
   height: 100%;
@@ -263,7 +263,7 @@ $pagination-height: 48px; // 分页器高度
       font-size: 16px;
       display: inline-block;
       padding-left: 5px;
-      color: $text-color;
+      color: @text-color;
     }
     .custom-icon-advice,
     .custom-icon-task {
@@ -281,7 +281,7 @@ $pagination-height: 48px; // 分页器高度
     }
   }
   .warning-pagination {
-    height: $pagination-height;
+    height: @pagination-height;
     display: flex;
     justify-content: flex-end;
     align-items: center;

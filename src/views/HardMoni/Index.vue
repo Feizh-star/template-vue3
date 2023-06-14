@@ -107,15 +107,15 @@ onMounted(() => {
   </div>
 </template>
 
-<style lang="scss" scoped>
-$overview-height: 180px;
-$overview-pb: 15px;
-$refresh-width: 86px;
-$content-fs: 18px;
-$refresh-space: 10px;
-$border-radius: 3px;
-$section-padding: 16px 24px;
-$section-server-padding: 16px 8px 0 24px;
+<style lang="less" scoped>
+@overview-height: 180px;
+@overview-pb: 15px;
+@refresh-width: 86px;
+@content-fs: 18px;
+@refresh-space: 10px;
+@border-radius: 3px;
+@section-padding: 16px 24px;
+@section-server-padding: 16px 8px 0 24px;
 
 .hard-moni {
   width: 100%;
@@ -123,15 +123,15 @@ $section-server-padding: 16px 8px 0 24px;
   display: flex;
   flex-direction: column;
   .hard-overview {
-    padding-bottom: $overview-pb;
-    height: $overview-height;
+    padding-bottom: @overview-pb;
+    height: @overview-height;
     .overview-container {
       width: 100%;
       height: 100%;
       display: flex;
-      padding: $section-padding;
+      padding: @section-padding;
       padding-left: 14px;
-      border-radius: $border-radius;
+      border-radius: @border-radius;
       background-color: #fff;
       .charts {
         width: 100%;
@@ -149,18 +149,18 @@ $section-server-padding: 16px 8px 0 24px;
         }
       }
       .auto-refresh {
-        width: $refresh-width;
+        width: @refresh-width;
         padding-left: 10px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        font-size: $content-fs;
+        font-size: @content-fs;
         font-weight: bold;
         white-space: nowrap;
         .refresh-title,
         .refresh-number {
-          padding: $refresh-space 0;
+          padding: @refresh-space 0;
         }
       }
       @media screen and (max-width: 1360px) {
@@ -173,14 +173,14 @@ $section-server-padding: 16px 8px 0 24px;
       }
     }
     @media screen and (max-width: 1360px) {
-      height: $overview-height - 20px;
+      height: @overview-height - 20px;
     }
   }
   .hard-detail {
     flex: 1;
     min-height: 0;
     background-color: #ffffff;
-    padding: $section-server-padding;
+    padding: @section-server-padding;
     :deep(.el-scrollbar__view) {
       display: flex;
       flex-wrap: wrap;
@@ -225,12 +225,12 @@ $section-server-padding: 16px 8px 0 24px;
     &::after {
       width: 18px;
       height: 18px;
-      background-color: $text-hcolor;
+      background-color: @text-hcolor;
     }
   }
   &.is-checked .el-switch__core::after {
     margin-left: -19px;
-    background-color: $text-hcolor;
+    background-color: @text-hcolor;
 }
 }
 </style>
