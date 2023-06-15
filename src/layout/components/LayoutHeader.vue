@@ -9,7 +9,7 @@
       </div>
     </div>
     <div class="header-menu">
-      <HorScroll item-selector="ul.el-menu--horizontal > li" height="100%">
+      <HorScroll item-selector="ul.el-menu--horizontal > *" height="100%">
         <LayoutMenu
           v-if="showMenu"
           :menu-list="menuList"
