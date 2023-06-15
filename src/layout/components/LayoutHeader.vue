@@ -9,15 +9,27 @@
       </div>
     </div>
     <div class="header-menu">
-      <LayoutMenu
-        v-if="showMenu"
-        :menu-list="menuList"
-        mode="horizontal"
-        background-color="transparent"
-        text-color="#ffffff"
-        active-text-color="#ffd04b"
-        popper-class="header-menu-popper"
-      ></LayoutMenu>
+      <HorScroll item-selector="ul.el-menu--horizontal > li" height="100%">
+        <LayoutMenu
+          v-if="showMenu"
+          :menu-list="menuList"
+          mode="horizontal"
+          background-color="transparent"
+          text-color="#ffffff"
+          active-text-color="#ffd04b"
+          popper-class="header-menu-popper"
+        ></LayoutMenu>
+        <template #larrow>
+          <el-icon color="#ffffff">
+            <arrow-left-bold />
+          </el-icon>
+        </template>
+        <template #rarrow>
+          <el-icon color="#ffffff">
+            <arrow-right-bold />
+          </el-icon>
+        </template>
+      </HorScroll>
     </div>
     <div class="header-right">
       <div class="user-info">
@@ -42,6 +54,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import LayoutMenu from './LayoutMenu.vue'
+import HorScroll from '@/components/HorScroll/Index.vue'
+import { ArrowLeftBold, ArrowRightBold } from '@element-plus/icons'
 import { useUserStore } from '@/store/user'
 import { useMenu } from '@/store/menu'
 

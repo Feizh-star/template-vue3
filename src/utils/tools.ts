@@ -1,8 +1,8 @@
 /**
- * 遍历树，查找指定的节
+ * 遍历树，查找指定的节点
  * @param {Array} data 树的根
  * @param {String} id 要查找的标识
- * @param {Object} keys 配置对象：children：指明使用哪个属性作为子级测表；id：指明哪个属性作为id（可以族套，例如：'data.id'）
+ * @param {Object} keys 配置对象：children：指明使用哪个属性作为子级测表；id：指明哪个属性作为id（可以嵌套，例如：'data.id'）
  * @param {Function} compare 自定义比较函数，接收四个参数；树中节点的id值，要查找的id值，当前节点对象，当前节点对象的祖先列表；
  *                   compare 需返回1个boolean值，如果为true，则代表找到了目标
  * @return {Object | null} node：找到的节点对象，其上会多1个’_stack'属性，是1个数组，代表了当前节点在树中的路径（即所有根先）
@@ -33,6 +33,11 @@ export function filterTreeNode(data: any, id: any, keys: any, compare: any, stac
   return result
 }
 
+/**
+ * 下载url或blob
+ * @param filename
+ * @param file
+ */
 export function download(filename: string, file: string | Blob) {
   const a = document.createElement('a')
   // blob.type = "application/octet-stream";
@@ -104,4 +109,15 @@ export function tansParams(params: {[p: string]: any}) {
     }
   }
   return result
+}
+
+/**
+ * 返回a和b的差集
+ * @param a
+ * @param b
+ * @returns
+ */
+export function differenceSet(a: any[], b: any[]) {
+  const bs = new Set([...b])
+  return [...new Set([...a].filter(x => !bs.has(x)))]
 }
