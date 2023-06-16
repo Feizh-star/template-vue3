@@ -222,7 +222,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
       thisData.timer = setInterval(() => {
         (thisData.times as number)++
         scrollHandler(type)
-      }, props.interval)
+      }, props.interval) as any as number
     }, 180)
   }
   if (mouseType === 'up') {
