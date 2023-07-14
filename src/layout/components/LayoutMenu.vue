@@ -37,7 +37,13 @@ const handleSelect = (key: string, keyPath: string[]) => {
 <template>
   <div class="sidebar-menu">
     <el-scrollbar>
-      <el-menu :default-active="defaultActive" v-bind="attrs" @open="handleOpen" @close="handleClose" @select="handleSelect">
+      <el-menu
+        :default-active="defaultActive"
+        v-bind="attrs"
+        @open="handleOpen"
+        @close="handleClose"
+        @select="handleSelect"
+      >
         <MenuItem
           v-for="(item, index) in menuList"
           :key="index"

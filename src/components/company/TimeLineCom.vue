@@ -1,4 +1,4 @@
-<template >
+<template>
   <div class="timeBox">
     <div class="timeTop">
       <div class="timeInput">
@@ -17,20 +17,20 @@
           @confirm="confirm"
         ></date-picker>
       </div>
-      <el-tooltip
-        content="获取最新时次"
-        popper-class="atooltip"
-        placement="top"
-      >
+      <el-tooltip content="获取最新时次" popper-class="atooltip" placement="top">
         <div class="refresh flex" @click="refresh">
           <span class="iconfont icon-Refresh">
-            <span style="position: relative; bottom: 1px; padding-left: 3px;">自动刷新</span>
+            <span style="position: relative; bottom: 1px; padding-left: 3px">自动刷新</span>
           </span>
         </div>
       </el-tooltip>
       <div class="playBtn">
         <span @click="preTick" class="iconfont icon-xiangzuojiantou"></span>
-        <span @click="play = !play" class="iconfont" :class="play ? 'icon-pause' : 'icon-playfill'"></span>
+        <span
+          @click="play = !play"
+          class="iconfont"
+          :class="play ? 'icon-pause' : 'icon-playfill'"
+        ></span>
         <span @click="nextTick" class="iconfont icon-xiangyoujiantou"></span>
         <span class="auto-play-text">自动播放</span>
       </div>
@@ -51,10 +51,7 @@
         <div class="backLine"></div>
         <div class="innerLine" v-if="half">
           <span class="innerLineLeft" :style="'width:' + activeWidth"></span>
-          <span
-            class="innerLineRight"
-            :style="'width:' + activeRightWidth"
-          ></span>
+          <span class="innerLineRight" :style="'width:' + activeRightWidth"></span>
         </div>
         <div
           class="innerLine"
@@ -77,11 +74,7 @@
             @mouseleave="liover(item)"
           >
             <transition name="slide-fade">
-              <div
-                class="timeInfo"
-                :class="{ active: selectTick == item.id }"
-                v-if="item.show"
-              >
+              <div class="timeInfo" :class="{ active: selectTick == item.id }" v-if="item.show">
                 {{ item.lable }}
               </div>
             </transition>
@@ -106,11 +99,7 @@
             >
             <span
               class="hour"
-              v-if="
-                timeDura == '1' &&
-                item.hour.substr(3, 5) !== '00' &&
-                index !== 0
-              "
+              v-if="timeDura == '1' && item.hour.substr(3, 5) !== '00' && index !== 0"
               >{{ item.hour.substr(3, 5) }}</span
             >
           </li>
@@ -128,29 +117,29 @@
 </template>
 
 <script>
-import DatePicker from "vue-datepicker-next"
-import "vue-datepicker-next/index.css"
-import "vue-datepicker-next/locale/zh-cn.es"
-import moment from "moment";
+import DatePicker from 'vue-datepicker-next'
+import 'vue-datepicker-next/index.css'
+import 'vue-datepicker-next/locale/zh-cn.es'
+import moment from 'moment'
 export default {
   props: [
-    "minuteStep",
-    "hourStep",
-    "startTime",
-    "timeArray",
-    "tick",
-    "select",
-    "half",
-    "bound",
-    "timer",
-    "hoptions",
-    "isAutoo",
-    "obsTimeRange",
-    "fcstTimeRange",
-    "showDura",
-    "showSpeed",
-    "dValueType",
-    "dFormat",
+    'minuteStep',
+    'hourStep',
+    'startTime',
+    'timeArray',
+    'tick',
+    'select',
+    'half',
+    'bound',
+    'timer',
+    'hoptions',
+    'isAutoo',
+    'obsTimeRange',
+    'fcstTimeRange',
+    'showDura',
+    'showSpeed',
+    'dValueType',
+    'dFormat',
   ],
   components: { DatePicker },
   data() {
@@ -159,122 +148,116 @@ export default {
       selRef: false,
       play: false,
       timeList: [],
-      obsWidth: "",
-      fcstWidth: "",
-      time: "",
-      selectTick: "",
-      run: "",
-      backWidth: "",
+      obsWidth: '',
+      fcstWidth: '',
+      time: '',
+      selectTick: '',
+      run: '',
+      backWidth: '',
       tdlen: 0,
-      speed: "1x",
+      speed: '1x',
       speedActive: [
         {
-          name: "0.5x",
+          name: '0.5x',
           active: false,
         },
         {
-          name: "1x",
+          name: '1x',
           active: true,
         },
         {
-          name: "2x",
+          name: '2x',
           active: false,
         },
       ],
       timeInfo: [
         {
-          id: "1",
-          name: "1h",
+          id: '1',
+          name: '1h',
           value: true,
         },
         {
-          id: "6",
-          name: "6h",
+          id: '6',
+          name: '6h',
           value: false,
         },
         {
-          id: "12",
-          name: "12h",
+          id: '12',
+          name: '12h',
           value: false,
         },
       ],
-      timeDura: "1",
-      firstLeftWidth: "",
-    };
+      timeDura: '1',
+      firstLeftWidth: '',
+    }
   },
   filters: {},
   computed: {
     mstep() {
       // 日期选择框的分钟间隔
       if (this.minuteStep) {
-        return this.minuteStep;
+        return this.minuteStep
       }
-      return 1;
+      return 1
     },
     hstep() {
       // 日期选择框的小时间隔
       if (this.hourStep) {
-        return this.hourStep;
+        return this.hourStep
       }
-      return 1;
+      return 1
     },
     activeWidth() {
       var w =
         100 /
         (this.bound +
-          (this.timeList.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange));
+          (this.timeList.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange))
       if (this.selectTick == this.timeList.length) {
-        return "calc(100%)";
+        return 'calc(100%)'
       } else {
-        var oko;
+        var oko
         if (this.fcstTimeRange / this.obsTimeRange == 1) {
-          oko = this.selectTick + 0.5;
+          oko = this.selectTick + 0.5
         } else {
           oko =
             this.bound +
-            (this.selectTick - this.bound) *
-              (this.fcstTimeRange / this.obsTimeRange) +
-            0.5 * (this.fcstTimeRange / this.obsTimeRange);
+            (this.selectTick - this.bound) * (this.fcstTimeRange / this.obsTimeRange) +
+            0.5 * (this.fcstTimeRange / this.obsTimeRange)
         }
-        var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko;
-        let leftWidth;
+        var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko
+        let leftWidth
         if (this.half) {
-          leftWidth =
-            w * len > this.firstLeftWidth ? this.firstLeftWidth : w * len;
+          leftWidth = w * len > this.firstLeftWidth ? this.firstLeftWidth : w * len
         } else {
-          leftWidth = w * len;
+          leftWidth = w * len
         }
-        return "calc(" + leftWidth + "%)";
+        return 'calc(' + leftWidth + '%)'
       }
     },
     activeRightWidth() {
       var w =
         100 /
         (this.bound +
-          (this.timeList.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange));
-      var oko;
+          (this.timeList.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange))
+      var oko
       if (this.fcstTimeRange / this.obsTimeRange == 1) {
-        oko = this.selectTick + 0.5;
+        oko = this.selectTick + 0.5
       } else {
         oko =
           this.bound +
-          (this.selectTick - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange) +
-          0.5 * (this.fcstTimeRange / this.obsTimeRange);
+          (this.selectTick - this.bound) * (this.fcstTimeRange / this.obsTimeRange) +
+          0.5 * (this.fcstTimeRange / this.obsTimeRange)
       }
-      var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko;
-      let rightWidth =
-        w * len > this.firstLeftWidth ? w * len - this.firstLeftWidth : 0;
-      return "calc(" + rightWidth + "%)";
+      var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko
+      let rightWidth = w * len > this.firstLeftWidth ? w * len - this.firstLeftWidth : 0
+      return 'calc(' + rightWidth + '%)'
     },
     activeProp() {
       if (this.selectTick < this.bound - 1) {
-        return 100;
+        return 100
       } else {
         if (this.fcstTimeRange / this.obsTimeRange == 1) {
-          return ((this.bound - 1 + 0.5) / (this.selectTick + 0.5)) * 100;
+          return ((this.bound - 1 + 0.5) / (this.selectTick + 0.5)) * 100
         } else {
           return (
             ((this.bound - 1 + 0.5) /
@@ -284,7 +267,7 @@ export default {
                 (this.selectTick - (this.bound - 1) - 0.5) *
                   (this.fcstTimeRange / this.obsTimeRange))) *
             100
-          );
+          )
         }
       }
     },
@@ -292,23 +275,21 @@ export default {
       var w =
         100 /
         (this.bound +
-          (this.timeList.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange));
+          (this.timeList.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange))
       if (this.selectTick == this.timeList.length) {
-        return "calc(100% - 6px)";
+        return 'calc(100% - 6px)'
       } else {
-        var oko;
+        var oko
         if (this.fcstTimeRange / this.obsTimeRange == 1) {
-          oko = this.selectTick + 0.5;
+          oko = this.selectTick + 0.5
         } else {
           oko =
             this.bound +
-            (this.selectTick - this.bound) *
-              (this.fcstTimeRange / this.obsTimeRange) +
-            0.5 * (this.fcstTimeRange / this.obsTimeRange);
+            (this.selectTick - this.bound) * (this.fcstTimeRange / this.obsTimeRange) +
+            0.5 * (this.fcstTimeRange / this.obsTimeRange)
         }
-        var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko;
-        return "calc(" + w * len + "% - 6px)";
+        var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko
+        return 'calc(' + w * len + '% - 6px)'
       }
     },
     // eslint-disable-next-line
@@ -316,134 +297,125 @@ export default {
   },
   watch: {
     startTime(val) {
-      this.time = this.startTime;
+      this.time = this.startTime
     },
     select() {
-      this.selectTick = this.select;
+      this.selectTick = this.select
     },
     timeArray() {
-      this.tdlen = this.timeArray.length;
-      this.calcBack();
-      this.init();
+      this.tdlen = this.timeArray.length
+      this.calcBack()
+      this.init()
     },
     play() {
       // 监听播放按钮改变
       if (this.play) {
-        var interval;
+        var interval
         switch (this.speed) {
-          case "0.5x":
-            interval = 1500;
-            break;
-          case "1x":
-            interval = 1000;
-            break;
-          case "2x":
-            interval = 500;
-            break;
+          case '0.5x':
+            interval = 1500
+            break
+          case '1x':
+            interval = 1000
+            break
+          case '2x':
+            interval = 500
+            break
           default:
-            break;
+            break
         }
         this.run = setInterval(() => {
-          this.selectTick =
-            this.selectTick < this.timeArray.length - 1
-              ? this.selectTick + 1
-              : 0;
-          this.$emit(
-            "itemClick",
-            this.selectTick,
-            this.timeList[this.selectTick]
-          );
-        }, interval);
-        this.$emit("timerRun", this.run);
+          this.selectTick = this.selectTick < this.timeArray.length - 1 ? this.selectTick + 1 : 0
+          this.$emit('itemClick', this.selectTick, this.timeList[this.selectTick])
+        }, interval)
+        this.$emit('timerRun', this.run)
       } else {
-        clearInterval(this.run);
+        clearInterval(this.run)
       }
     },
     selectTick(val) {
-      if (val === "") return;
+      if (val === '') return
       this.timeList.map(function (item) {
-        item.show = false;
-        return item;
-      });
+        item.show = false
+        return item
+      })
       if (this.timeList[val]) {
-        this.timeList[val].show = true;
+        this.timeList[val].show = true
       }
     },
     bound() {
-      this.calcBack();
+      this.calcBack()
     },
     timer() {
       if (this.timer == null) {
-        this.play = false;
+        this.play = false
       }
     },
   },
   mounted() {
-    this.time = this.startTime;
-    this.calcBack();
-    this.init();
-    this.selectTick = this.select;
+    this.time = this.startTime
+    this.calcBack()
+    this.init()
+    this.selectTick = this.select
   },
   methods: {
     refresh() {
-      this.$emit("autoFresh");
+      this.$emit('autoFresh')
     },
     // 获取播放速度
     handle(item) {
-      this.speed = item.name;
+      this.speed = item.name
       this.speedActive.forEach((itm) => {
-        itm.active = false;
-      });
-      item.active = true;
+        itm.active = false
+      })
+      item.active = true
     },
     init() {
-      this.creatList();
+      this.creatList()
       var w =
         100 /
         (this.bound +
-          (this.timeList.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange));
-      this.obsWidth = "width:" + w + "%";
-      this.fcstWidth =
-        "width:" + w * (this.fcstTimeRange / this.obsTimeRange) + "%";
+          (this.timeList.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange))
+      this.obsWidth = 'width:' + w + '%'
+      this.fcstWidth = 'width:' + w * (this.fcstTimeRange / this.obsTimeRange) + '%'
     },
     creatList() {
-      var arr = this.timeArray.slice();
-      var cout = 0;
-      this.timeList = [];
+      var arr = this.timeArray.slice()
+      var cout = 0
+      this.timeList = []
       if (this.select) {
-        this.selectTick = this.select;
+        this.selectTick = this.select
       } else {
-        this.selectTick = 0;
+        this.selectTick = 0
       }
       for (let i = 0; i < arr.length; i++) {
-        var time = moment(arr[i], "YYYYMMDDHHmm").format("HH:mm");
-        var lable = moment(arr[i], "YYYYMMDDHHmm").format("YYYY-MM-DD HH:mm");
-        var type = "";
-        if (time == "00:00" || i == 0) {
-          var day = moment(arr[i], "YYYYMMDDHHmm").format("YYYY-MM-DD");
+        var time = moment(arr[i], 'YYYYMMDDHHmm').format('HH:mm')
+        var lable = moment(arr[i], 'YYYYMMDDHHmm').format('YYYY-MM-DD HH:mm')
+        var type = ''
+        if (time == '00:00' || i == 0) {
+          var day = moment(arr[i], 'YYYYMMDDHHmm').format('YYYY-MM-DD')
         } else {
           // eslint-disable-next-line
           var day = "";
         }
-        if (this.tick != undefined && this.tick != null && this.tick != "") {
-          var t = this.tick.split("_")[0];
-          var f = this.tick.split("_")[1];
-          let minutes = moment(arr[i], "YYYYMMDDHHmm").format(f);
+        if (this.tick != undefined && this.tick != null && this.tick != '') {
+          var t = this.tick.split('_')[0]
+          var f = this.tick.split('_')[1]
+          let minutes = moment(arr[i], 'YYYYMMDDHHmm').format(f)
           if (minutes % t != 0) {
-            time = "";
-            type = "min";
-            day = "";
+            time = ''
+            type = 'min'
+            day = ''
           } else {
             if (cout == 0) {
               // eslint-disable-next-line
               var day = moment(arr[i], "YYYYMMDDHHmm").format("YYYY-MM-DD");
             }
-            cout++;
+            cout++
           }
         }
         if (i == this.selectTick) {
-          var show = true;
+          var show = true
         } else {
           // eslint-disable-next-line
           var show = false;
@@ -456,91 +428,74 @@ export default {
           type: type,
           lable: lable,
           show: show,
-        };
-        this.timeList.push(item);
+        }
+        this.timeList.push(item)
       }
-      this.computeLeftWidth();
+      this.computeLeftWidth()
     },
     confirm() {
-      this.$emit("inputTimeChange", this.time);
+      this.$emit('inputTimeChange', this.time)
     },
     itemClick(item) {
-      this.selectTick = item.id;
-      this.$emit("itemClick", this.selectTick, this.timeList[this.selectTick]);
-      this.play = false;
+      this.selectTick = item.id
+      this.$emit('itemClick', this.selectTick, this.timeList[this.selectTick])
+      this.play = false
     },
     calcBack() {
       if (this.half) {
         var len =
           this.bound +
-          (this.timeArray.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange);
-        this.backWidth = ((this.bound - 0.5) / len) * 100 + "%";
+          (this.timeArray.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange)
+        this.backWidth = ((this.bound - 0.5) / len) * 100 + '%'
       }
     },
     liover(item) {
       if (item.id == this.selectTick) {
-        item.show = true;
+        item.show = true
       } else {
-        item.show = false;
+        item.show = false
       }
     },
     // 修改展示时长
     changeTimeDura(itm, idx) {
-      this.timeDura = itm.id;
+      this.timeDura = itm.id
       this.timeInfo.forEach((item, index) => {
         if (index == idx) {
-          item.value = true;
+          item.value = true
         } else {
-          item.value = false;
+          item.value = false
         }
-      });
-      this.$emit("changeTimeDura", this.timeDura);
+      })
+      this.$emit('changeTimeDura', this.timeDura)
     },
     // 计算页面加载进来时间轴左侧宽度
     computeLeftWidth() {
       var w =
         100 /
         (this.bound +
-          (this.timeList.length - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange));
-      var oko;
+          (this.timeList.length - this.bound) * (this.fcstTimeRange / this.obsTimeRange))
+      var oko
       if (this.fcstTimeRange / this.obsTimeRange == 1) {
-        oko = this.selectTick + 0.5;
+        oko = this.selectTick + 0.5
       } else {
         oko =
           this.bound +
-          (this.selectTick - this.bound) *
-            (this.fcstTimeRange / this.obsTimeRange) +
-          0.5 * (this.fcstTimeRange / this.obsTimeRange);
+          (this.selectTick - this.bound) * (this.fcstTimeRange / this.obsTimeRange) +
+          0.5 * (this.fcstTimeRange / this.obsTimeRange)
       }
-      var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko;
-      this.firstLeftWidth = w * len;
+      var len = this.selectTick < this.bound ? this.selectTick + 0.5 : oko
+      this.firstLeftWidth = w * len
     },
     nextTick() {
-      this.selectTick =
-        this.selectTick < this.timeArray.length - 1
-          ? this.selectTick + 1
-          : 0;
-      this.$emit(
-        "itemClick",
-        this.selectTick,
-        this.timeList[this.selectTick]
-      );
+      this.selectTick = this.selectTick < this.timeArray.length - 1 ? this.selectTick + 1 : 0
+      this.$emit('itemClick', this.selectTick, this.timeList[this.selectTick])
     },
     preTick() {
-      this.selectTick =
-        this.selectTick > 0
-          ? this.selectTick - 1
-          : this.timeArray.length - 1;
-      this.$emit(
-        "itemClick",
-        this.selectTick,
-        this.timeList[this.selectTick]
-      );
-    }
+      this.selectTick = this.selectTick > 0 ? this.selectTick - 1 : this.timeArray.length - 1
+      this.$emit('itemClick', this.selectTick, this.timeList[this.selectTick])
+    },
   },
-};
+}
 </script>
 
 <style lang="less" scoped>
@@ -553,33 +508,34 @@ export default {
 @infoHeight: 20px;
 @backColor2: #fff;
 @font-face {
-  font-family: "iconfont"; /* Project id 4007758 */
-  src: url('data:application/x-font-woff2;charset=utf-8;base64,d09GMgABAAAAAATgAAsAAAAACpgAAASUAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHFQGYACDVgqHTIYgATYCJAMcCxAABCAFhGcHdBsaCcieBXbjSxGIxktOeG7+bcKCJ35/35l75+EvmawKRZgRYEjKG9KmzuQSdvj3tNemHpQMzE4YMtDduXzJsvLS9CAGJ+iPYAIEmDXVq+y/vz9WutFURfVoPwBsVV40R5Tf+M0CXXTwCaQvkN9jOMX1E1cRj0GAIIplk9YXVzYC7wUDawehZOBSAa+jLNCUAagkN5rBEHybW/RQRW6BA+ZMegYAbqyflz9ApAKDY8GztFxkBseeIS9+IqP+jwL7AowlCLC5ARzAAvkD88p2dngV4pTzIQQlPURGA0AIPgb9RJ55PdM/r3nx8/8ESDo9hoUQhg1rDYqDafAfzwVxoeYQIPZUXPhENASFTy8EBz51CAY+9QgWvmoQBL5/WlhUvLd1GJACSAEAskCI5WZhX7Ykkkb4+XXpIpFhJd3LSwJwG9UNUljDcUB3eX5qECWOdpHCFG4UBs26JuS0kZASpqDmhDvxU8XROj4o6HTT1SaeRxu5+as7msSFgVphzarAWwVOCVyTfK34WumVWg7l1vefgqIntNe0ghDULC5Yg+q5eVgTv3otqb8Hj61Oulp0teJ6gygRNwTqfEBYpwYEd2tjGfmK5zxA0PiZLnigu5zG+1yQyPdEDw8JOj8kiQ97+FwcdR7Rx2IkyjwYhnj5mhk1o1avlUwsxTVpRom9cZo0e8iDQlXftcxv4f8Ck+/zmapJqhkv/Nj/6i/agZ+8Oweg71BqKXZZR2Lv0IFb95kBcLNNQKEYqdgmA7buJDEy5rMHou8w8Dq81hj3rRTRIQ6irgsWXZBmDkbUJRf39h76u6xzSVl0YeooxJcOLQj4VC59XBE0uIfauzwtQ1mXV4Ken47uUmbu9ElDXFxbPuxPWqdiwi9KUeOizvkBn3cbQnl4pV8Ay+WHiEPz03Nxqpijz8Px2OgeNYXzifm2+GgiWnVQFa5ZC63mbYg2EZMiwsFSCE2eVGjeaYrBjBpDCnz7bCdCvGfM8Na8Ye/OqkMSVGzQdhd3OojdQ1O7gP9s1G5s0uoRMAKua6ulTwD4z0psq0UzD+XAHklfsmakr6OYp6e2PjzaHo/T+WR+VXkoAB+9LIGQ/k9B9aiPuSpmnlHLQMFh9ZsBT5N61tS0rccdSAQu8UoEEQQ8lvEo95qzRhcuguAHNCIYPJLB4pOKVWIuOARTCi4+FRBEnqKjg4nmhCAaADKNJSBEWA+GMJ7BEuE4VonXwSHOc3CJ8BeC6MrrdMFkZipgoIGFZtw4GKdNDjup2lir1npIua0GJq6ghYyLhhweHxMXbiiBdsjUsYdrAEWwLImTjMOGFwtXg1arA3cyjlZoYmNaWNaZHhtLJn1IjMlhAwUYkAELMsMZDYajmTjYkcbwbPDv1YMoblYGTEGsNshwcSpaOy5ejLgC2BKzvVC3A1nbZQAKgcUiua1IDAcbXPE3CFlZ2QHnTN6oFWTCitFSoeiULpYORxY1x3Rvte3kZUAQ+BaeGLGi4ogrnvj4K1bDYJK2Wn0G0QY7NdjhbrUMLK8Jcoa4HWso6yHJQFeLumyt1u/O0FZa7jS4XRAA') format('woff2'),
+  font-family: 'iconfont'; /* Project id 4007758 */
+  src: url('data:application/x-font-woff2;charset=utf-8;base64,d09GMgABAAAAAATgAAsAAAAACpgAAASUAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHFQGYACDVgqHTIYgATYCJAMcCxAABCAFhGcHdBsaCcieBXbjSxGIxktOeG7+bcKCJ35/35l75+EvmawKRZgRYEjKG9KmzuQSdvj3tNemHpQMzE4YMtDduXzJsvLS9CAGJ+iPYAIEmDXVq+y/vz9WutFURfVoPwBsVV40R5Tf+M0CXXTwCaQvkN9jOMX1E1cRj0GAIIplk9YXVzYC7wUDawehZOBSAa+jLNCUAagkN5rBEHybW/RQRW6BA+ZMegYAbqyflz9ApAKDY8GztFxkBseeIS9+IqP+jwL7AowlCLC5ARzAAvkD88p2dngV4pTzIQQlPURGA0AIPgb9RJ55PdM/r3nx8/8ESDo9hoUQhg1rDYqDafAfzwVxoeYQIPZUXPhENASFTy8EBz51CAY+9QgWvmoQBL5/WlhUvLd1GJACSAEAskCI5WZhX7Ykkkb4+XXpIpFhJd3LSwJwG9UNUljDcUB3eX5qECWOdpHCFG4UBs26JuS0kZASpqDmhDvxU8XROj4o6HTT1SaeRxu5+as7msSFgVphzarAWwVOCVyTfK34WumVWg7l1vefgqIntNe0ghDULC5Yg+q5eVgTv3otqb8Hj61Oulp0teJ6gygRNwTqfEBYpwYEd2tjGfmK5zxA0PiZLnigu5zG+1yQyPdEDw8JOj8kiQ97+FwcdR7Rx2IkyjwYhnj5mhk1o1avlUwsxTVpRom9cZo0e8iDQlXftcxv4f8Ck+/zmapJqhkv/Nj/6i/agZ+8Oweg71BqKXZZR2Lv0IFb95kBcLNNQKEYqdgmA7buJDEy5rMHou8w8Dq81hj3rRTRIQ6irgsWXZBmDkbUJRf39h76u6xzSVl0YeooxJcOLQj4VC59XBE0uIfauzwtQ1mXV4Ken47uUmbu9ElDXFxbPuxPWqdiwi9KUeOizvkBn3cbQnl4pV8Ay+WHiEPz03Nxqpijz8Px2OgeNYXzifm2+GgiWnVQFa5ZC63mbYg2EZMiwsFSCE2eVGjeaYrBjBpDCnz7bCdCvGfM8Na8Ye/OqkMSVGzQdhd3OojdQ1O7gP9s1G5s0uoRMAKua6ulTwD4z0psq0UzD+XAHklfsmakr6OYp6e2PjzaHo/T+WR+VXkoAB+9LIGQ/k9B9aiPuSpmnlHLQMFh9ZsBT5N61tS0rccdSAQu8UoEEQQ8lvEo95qzRhcuguAHNCIYPJLB4pOKVWIuOARTCi4+FRBEnqKjg4nmhCAaADKNJSBEWA+GMJ7BEuE4VonXwSHOc3CJ8BeC6MrrdMFkZipgoIGFZtw4GKdNDjup2lir1npIua0GJq6ghYyLhhweHxMXbiiBdsjUsYdrAEWwLImTjMOGFwtXg1arA3cyjlZoYmNaWNaZHhtLJn1IjMlhAwUYkAELMsMZDYajmTjYkcbwbPDv1YMoblYGTEGsNshwcSpaOy5ejLgC2BKzvVC3A1nbZQAKgcUiua1IDAcbXPE3CFlZ2QHnTN6oFWTCitFSoeiULpYORxY1x3Rvte3kZUAQ+BaeGLGi4ogrnvj4K1bDYJK2Wn0G0QY7NdjhbrUMLK8Jcoa4HWso6yHJQFeLumyt1u/O0FZa7jS4XRAA')
+    format('woff2');
 }
 .iconfont {
-  font-family: "iconfont" !important;
+  font-family: 'iconfont' !important;
   font-size: 16px;
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 .icon-playfill:before {
-  content: "\e74f";
+  content: '\e74f';
 }
 .icon-xiangyoujiantou:before {
-  content: "\e65f";
+  content: '\e65f';
 }
 .icon-xiangzuojiantou:before {
-  content: "\e660";
+  content: '\e660';
 }
 .icon-Refresh:before {
-  content: "\e603";
+  content: '\e603';
 }
 .icon-Icon-rili:before {
-  content: "\e60d";
+  content: '\e60d';
 }
 .icon-pause:before {
-  content: "\e8f9";
+  content: '\e8f9';
 }
 .timeBox {
   .timeTop {
@@ -609,7 +565,7 @@ export default {
         font-size: 14px;
         align-items: center;
         justify-content: center;
-        background-color: #1890FF;
+        background-color: #1890ff;
         cursor: pointer;
         color: #ffffff;
         vertical-align: top;
@@ -630,7 +586,7 @@ export default {
         height: 24px;
         align-items: center;
         justify-content: center;
-        background-color: #1890FF;
+        background-color: #1890ff;
         cursor: pointer;
         color: #ffffff;
         & + .iconfont {
@@ -778,9 +734,9 @@ export default {
             transform: translate(-50%);
           }
           .bar::after {
-            content: "";
+            content: '';
             height: 6px;
-            content: "";
+            content: '';
             width: 100%;
             display: inline-block;
             position: absolute;
@@ -790,9 +746,9 @@ export default {
             border-right: 1px solid #7ab6ff;
           }
           .bar.min::after {
-            content: "";
+            content: '';
             height: 10px;
-            content: "";
+            content: '';
             width: 100%;
             display: inline-block;
             position: absolute;
@@ -857,7 +813,7 @@ export default {
   }
   .mx-datepicker::after {
     display: inline-block;
-    content: "";
+    content: '';
     width: 30px;
     height: 30px;
     background: #edeff8;

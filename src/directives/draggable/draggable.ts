@@ -6,17 +6,17 @@ interface IDraggableInfo {
   transform: {
     offsetX: number
     offsetY: number
-  },
+  }
   originStyle: {
     cursor: string
-  },
+  }
   closeBack: boolean
   disabledBack: boolean
 }
 interface IBinding {
   value?: {
-    target?: string,
-    drag?: string,
+    target?: string
+    drag?: string
     draggable?: boolean
     visible?: boolean
     disabledBack?: boolean
@@ -36,8 +36,7 @@ function initDraggable(el: HTMLElement, draggable: boolean) {
     draggableInfo.dragEl && (draggableInfo.dragEl.style.cursor = 'move')
     draggableInfo.onDraggable()
   } else {
-    draggableInfo.dragEl &&
-    (draggableInfo.dragEl.style.cursor = draggableInfo.originStyle.cursor)
+    draggableInfo.dragEl && (draggableInfo.dragEl.style.cursor = draggableInfo.originStyle.cursor)
     draggableInfo.offDraggable()
   }
 }
@@ -97,7 +96,7 @@ export default {
         dragEl.removeEventListener('mousedown', onMousedown)
         if (draggableInfo.disabledBack) {
           draggableInfo.transform = { offsetX: 0, offsetY: 0 }
-          setTimeout(() => targetEl.style.transform = `translate(0px, 0px)`, 500)
+          setTimeout(() => (targetEl.style.transform = `translate(0px, 0px)`), 500)
         }
       }
     }
@@ -110,17 +109,18 @@ export default {
       closeBack: !!binding?.value?.closeBack,
       disabledBack: !!binding?.value?.disabledBack,
       originStyle: {
-        cursor: (dragEl && getComputedStyle(dragEl).cursor) || 'default'
-      }
+        cursor: (dragEl && getComputedStyle(dragEl).cursor) || 'default',
+      },
     })
     initDraggable(el, draggable)
   },
   updated(el: HTMLElement, binding?: IBinding) {
     const draggableInfo = draggableMap.get(el)
     if (!draggableInfo) return
-    if (binding?.value?.visible === false && draggableInfo.closeBack) { // 判断时必须保证visible是boolean
+    if (binding?.value?.visible === false && draggableInfo.closeBack) {
+      // 判断时必须保证visible是boolean
       draggableInfo.transform = { offsetX: 0, offsetY: 0 }
-      setTimeout(() => draggableInfo.targetEl.style.transform = `translate(0px, 0px)`, 500)
+      setTimeout(() => (draggableInfo.targetEl.style.transform = `translate(0px, 0px)`), 500)
     }
     initDraggable(el, !!binding?.value?.draggable)
   },
@@ -129,5 +129,5 @@ export default {
     if (!draggableInfo) return
     draggableInfo.offDraggable()
     draggableMap.delete(el)
-  }
+  },
 }

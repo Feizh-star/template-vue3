@@ -7,7 +7,13 @@
  *                   compare 需返回1个boolean值，如果为true，则代表找到了目标
  * @return {Object | null} node：找到的节点对象，其上会多1个’_stack'属性，是1个数组，代表了当前节点在树中的路径（即所有根先）
  */
-export function filterTreeNode(data: any, id: any, keys: any, compare: any, stack: any[] = []): any {
+export function filterTreeNode(
+  data: any,
+  id: any,
+  keys: any,
+  compare: any,
+  stack: any[] = []
+): any {
   const childrenKey = keys?.children || 'children'
   let idKey = keys?.id || 'id'
   idKey = idKey.split('.')
@@ -17,8 +23,8 @@ export function filterTreeNode(data: any, id: any, keys: any, compare: any, stac
     // 查找指定的键
     const nodeId = idKey.reduce((p: any, c: any) => p && p[c], node)
     const compareResult = compareFunc(nodeId, id, node, stack)
-    if(compareResult) {
-      result = {...node}
+    if (compareResult) {
+      result = { ...node }
       break
     } else if (node[childrenKey]) {
       stack.push(node)
@@ -79,32 +85,31 @@ export function debounce(fn: (...args: any[]) => any, delay: number) {
   }
 }
 
-
 // 验证是否为blob格式
 export function blobValidate(data: any) {
   return data.type !== 'application/json'
 }
 
 /**
-* 参数处理
-* @param {*} params  参数
-*/
-export function tansParams(params: {[p: string]: any}) {
+ * 参数处理
+ * @param {*} params  参数
+ */
+export function tansParams(params: { [p: string]: any }) {
   let result = ''
   for (const propName of Object.keys(params)) {
     const value = params[propName]
-    const part = encodeURIComponent(propName) + "="
-    if (value !== null && value !== "" && typeof (value) !== "undefined") {
+    const part = encodeURIComponent(propName) + '='
+    if (value !== null && value !== '' && typeof value !== 'undefined') {
       if (typeof value === 'object') {
         for (const key of Object.keys(value)) {
-          if (value[key] !== null && value[key] !== "" && typeof (value[key]) !== 'undefined') {
+          if (value[key] !== null && value[key] !== '' && typeof value[key] !== 'undefined') {
             const params = propName + '[' + key + ']'
-            const subPart = encodeURIComponent(params) + "="
-            result += subPart + encodeURIComponent(value[key]) + "&"
+            const subPart = encodeURIComponent(params) + '='
+            result += subPart + encodeURIComponent(value[key]) + '&'
           }
         }
       } else {
-        result += part + encodeURIComponent(value) + "&"
+        result += part + encodeURIComponent(value) + '&'
       }
     }
   }
@@ -119,5 +124,5 @@ export function tansParams(params: {[p: string]: any}) {
  */
 export function differenceSet(a: any[], b: any[]) {
   const bs = new Set([...b])
-  return [...new Set([...a].filter(x => !bs.has(x)))]
+  return [...new Set([...a].filter((x) => !bs.has(x)))]
 }

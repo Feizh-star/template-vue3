@@ -38,20 +38,19 @@ export function useElDialogDraggable({
             draggable: draggable.value,
             visible: dialogVisible.value,
             disabledBack,
-            closeBack
-          }
+            closeBack,
+          },
         })
         flag = true
       })
     }
   })
-  watch([
-    () => draggable.value,
-    () => dialogVisible.value,
-  ], ([newDraggable, newVisible]) => {
+  watch([() => draggable.value, () => dialogVisible.value], ([newDraggable, newVisible]) => {
     const rootEl = isRef(elRef) ? elRef.value : elRef
     if (!rootEl) return
-    Draggable.updated(rootEl, { value: { target: target, drag: drag, draggable: newDraggable, visible: newVisible || false } })
+    Draggable.updated(rootEl, {
+      value: { target: target, drag: drag, draggable: newDraggable, visible: newVisible || false },
+    })
   })
   onBeforeUnmount(() => {
     const rootEl = isRef(elRef) ? elRef.value : elRef

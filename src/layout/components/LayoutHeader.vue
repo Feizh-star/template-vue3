@@ -1,9 +1,7 @@
 <template>
   <header class="layout-header">
     <div class="header-left">
-      <div class="header-title">
-        项目模板
-      </div>
+      <div class="header-title">项目模板</div>
       <div class="header-time">
         {{ currentTime }}
       </div>
@@ -126,7 +124,7 @@ function logout() {
 @header-left-bgc: linear-gradient(90deg, #276bb4, #2b93ff); // header左侧背景色
 @header-bgc: #3b7abd; // 头部背景色
 @text-color: #ffffff; // 文本颜色
-@left-shadow: 2px 0 6px 1px rgba(0, 0, 0, .2); // 头部左侧阴影
+@left-shadow: 2px 0 6px 1px rgba(0, 0, 0, 0.2); // 头部左侧阴影
 
 .layout-header {
   max-height: @max-height;
@@ -180,7 +178,7 @@ function logout() {
         border-bottom: none;
         .el-menu-item,
         .el-sub-menu__title,
-        >.el-sub-menu.is-active .el-sub-menu__title {
+        > .el-sub-menu.is-active .el-sub-menu__title {
           border-bottom: none;
         }
         .el-menu-item:not(.is-disabled):focus {

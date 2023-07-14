@@ -17,7 +17,7 @@ export const useMenu = defineStore({
   state: () => ({
     menuList: [] as Array<RouteRecordRaw>,
     currentMenu: {} as RouteRecordRaw,
-    routePath: [] as any[]
+    routePath: [] as any[],
   }),
   getters: {
     getMenuList: (state) => state.menuList,
@@ -25,8 +25,8 @@ export const useMenu = defineStore({
     getRouteNodePath: (state) => state.routePath,
     getRoutePath() {
       // @ts-ignore
-      return pathModule.join(...this.getRouteNodePath.map(node => node.path))
-    }
+      return pathModule.join(...this.getRouteNodePath.map((node) => node.path))
+    },
   },
   actions: {
     async fetchMenuList() {
@@ -51,8 +51,8 @@ export const useMenu = defineStore({
     },
     setRoutePath(rPath: any[]) {
       this.routePath = rPath
-    }
-  }
+    },
+  },
 })
 
 /**
@@ -76,14 +76,14 @@ function parseRoutes(routes: Router.MyRawRoute[], parent: string = ''): RouteRec
       component = pages[raw.component]
     }
     // 避免1级目录类型的路由节点名称重复(path是'/'的1级路由的name都是Layout)
-    if (raw.name == "Layout") raw.name = raw.name.concat(String(socketIndex++))
+    if (raw.name == 'Layout') raw.name = raw.name.concat(String(socketIndex++))
     const parsedRoute: RouteRecordRaw = {
       path: raw.path,
       component: component,
       name: raw.name,
       meta: raw.meta,
       redirect: raw.redirect || '',
-      children: []
+      children: [],
     }
     router.addRoute(parent, parsedRoute)
     parsedRoutes.push(parsedRoute)
@@ -97,7 +97,7 @@ function parseRoutes(routes: Router.MyRawRoute[], parent: string = ''): RouteRec
  * @returns 处理后的路由表
  */
 function addLayoutForSingleRoute(routes: Router.MyRawRoute[]): Router.MyRawRoute[] {
-  return routes.map(r => {
+  return routes.map((r) => {
     let routeParse: Router.MyRawRoute = r
     if (r.name !== 'Layout' && (!r.children || r.children.length === 0)) {
       if (r.path.startsWith('/')) r.path = r.path.replace('/', '')
@@ -109,7 +109,7 @@ function addLayoutForSingleRoute(routes: Router.MyRawRoute[]): Router.MyRawRoute
           title: '',
           hidden: false,
         },
-        children: [r]
+        children: [r],
       }
     }
     return routeParse

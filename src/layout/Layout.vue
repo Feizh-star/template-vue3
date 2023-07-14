@@ -10,7 +10,10 @@
       </div>
       <div class="ly-main-body" :class="{ 'no-sidebar': !UserConfig.useSideBar }">
         <div class="ly-main-body-inner">
-          <div class="ly-main-body-breadcrumb" :class="{ 'no-breadcrumb': !UserConfig.showBreadcrumb }">
+          <div
+            class="ly-main-body-breadcrumb"
+            :class="{ 'no-breadcrumb': !UserConfig.showBreadcrumb }"
+          >
             <LayoutBread v-if="UserConfig.showBreadcrumb"></LayoutBread>
           </div>
           <div class="ly-main-body-view">
@@ -19,21 +22,20 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 interface Components {
-  [propName: string]: any;
+  [propName: string]: any
 }
 
 const UserConfig = window.UserConfig
 
-const modules = import.meta.glob('@/layout/components/*.vue', { eager: true, import: 'default', })
+const modules = import.meta.glob('@/layout/components/*.vue', { eager: true, import: 'default' })
 const components: Components = {}
-Object.keys(modules).forEach(key => {
+Object.keys(modules).forEach((key) => {
   const nameMatch = key.match(/(?<=\/)\w+(?=\.vue)/)
   const fileFullname = nameMatch && nameMatch[0]
   if (fileFullname) {
@@ -43,8 +45,8 @@ Object.keys(modules).forEach(key => {
 // console.log(components)
 export default defineComponent({
   components: {
-    ...components
-  }
+    ...components,
+  },
 })
 </script>
 
@@ -86,7 +88,7 @@ const menuList = menu.getMenuList
       border: 1px solid @main-border-color;
       border-radius: @border-radius;
       position: relative;
-      box-shadow: 0px 3px 10px 1px rgba(51,51,51,0.2);
+      box-shadow: 0px 3px 10px 1px rgba(51, 51, 51, 0.2);
     }
     .ly-main-body {
       flex: 1;

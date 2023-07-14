@@ -9,16 +9,20 @@ import vGetSize from '@/directives/getSize/get-size'
 const length = ref(1000)
 const list = ref<any[]>([])
 const vList = ref(false)
-watch(length, (newVal) => {
-  const newList = []
-  while (newList.length < newVal) {
-    newList.push({
-      id: newList.length,
-      height: Math.floor(Math.random() * 71 + 30)
-    })
-  }
-  list.value = newList
-}, { immediate: true })
+watch(
+  length,
+  (newVal) => {
+    const newList = []
+    while (newList.length < newVal) {
+      newList.push({
+        id: newList.length,
+        height: Math.floor(Math.random() * 71 + 30),
+      })
+    }
+    list.value = newList
+  },
+  { immediate: true }
+)
 
 // v-draggable="{ target: '.el-dialog', drag: '.el-dialog__header', draggable: true }"
 const dialogVisible = ref(false)
@@ -37,8 +41,8 @@ const boxDraggable = ref(true)
 const sizeReactive = reactive({
   boxSize: {
     width: 0,
-    height: 0
-  }
+    height: 0,
+  },
 })
 const boxHalfWidth = computed(() => sizeReactive.boxSize.width / 2 + 'px')
 const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
@@ -47,12 +51,7 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
 <template>
   <div class="test-menu" ref="testMenu">
     <header class="form-btn">
-      <el-input-number
-        v-model="length"
-        :min="1"
-        :max="1000000"
-        label="长度"
-      ></el-input-number>
+      <el-input-number v-model="length" :min="1" :max="1000000" label="长度"></el-input-number>
       &emsp;
       <el-switch v-model="vList"></el-switch>
       &emsp;
@@ -69,15 +68,16 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
       </VirtualList>
     </section>
     <section class="virtual-main" v-else>
-      <div class="virtual-listitem" :style="{ 'line-height': item.height + 'px' }" v-for="item in list" :key="item.id">
+      <div
+        class="virtual-listitem"
+        :style="{ 'line-height': item.height + 'px' }"
+        v-for="item in list"
+        :key="item.id"
+      >
         {{ item.id }}: {{ item.height }}px
       </div>
     </section>
-    <el-dialog
-      title="提示"
-      v-model="dialogVisible"
-      width="30%"
-    >
+    <el-dialog title="提示" v-model="dialogVisible" width="30%">
       <span>这是一段信息</span>
       <el-switch v-model="draggable"></el-switch>
       <template #footer>
@@ -99,12 +99,12 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
       }"
       v-get-size="{
         sizeReactive: sizeReactive,
-        key: 'boxSize'
+        key: 'boxSize',
       }"
     >
       <div class="dialog-header">
         <span>标题</span>
-        <span @click="boxVisible = false" style="cursor: pointer;">x</span>
+        <span @click="boxVisible = false" style="cursor: pointer">x</span>
       </div>
       <div class="dialog-body">
         <span>这是一段新的信息</span>
@@ -129,7 +129,7 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
       // height: 40px;
       text-align: center;
     }
-    >.virtual-listitem {
+    > .virtual-listitem {
       border-bottom: 1px solid #999999;
     }
   }
@@ -141,7 +141,7 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
   top: calc(50% - v-bind(boxHalfHeight));
   left: calc(50% - v-bind(boxHalfWidth));
   background-color: #fff;
-  box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04),0px 8px 20px rgba(0, 0, 0, 0.08);;
+  box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04), 0px 8px 20px rgba(0, 0, 0, 0.08);
   .dialog-header {
     display: flex;
     justify-content: space-between;

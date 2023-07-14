@@ -1,16 +1,15 @@
-
 /**
  * 获取浮点数精度
  * @param {*} num
  * @returns
  */
 function getPrecision(num: number) {
-  const str = num.toString();
-  const decimalIndex = str.indexOf('.');
+  const str = num.toString()
+  const decimalIndex = str.indexOf('.')
   if (decimalIndex === -1) {
-    return 0;
+    return 0
   }
-  return str.length - decimalIndex - 1;
+  return str.length - decimalIndex - 1
 }
 /**
  * 放大10的n次方倍
@@ -19,8 +18,8 @@ function getPrecision(num: number) {
  * @returns
  */
 function multiplyWithPrecision(num: number, precision: number) {
-  const factor = Math.pow(10, precision);
-  return num * factor;
+  const factor = Math.pow(10, precision)
+  return num * factor
 }
 /**
  * 获取小数第一位有效数字在小数点后的位置：1 => 0; 0.33 => 1; 0.033 => 2
@@ -33,7 +32,14 @@ function getSignificantDigitsPosition(num: number) {
   if (num === 0 || num >= 1) {
     return 0
   } else {
-    return num.toString().split('.')[1].split('').filter(c => c === '0').join('').length + 1
+    return (
+      num
+        .toString()
+        .split('.')[1]
+        .split('')
+        .filter((c) => c === '0')
+        .join('').length + 1
+    )
   }
 }
 /**
@@ -61,10 +67,10 @@ function significantDigitsRound(num: number, type: 'floor' | 'ceil' = 'floor') {
  * @returns
  */
 export function preciseAddition(num1: number, num2: number) {
-  const precision = Math.max(getPrecision(num1), getPrecision(num2)); // 获取两个数中较大的精度
-  const factor = Math.pow(10, precision); // 计算放大因子
-  const result = (num1 * factor + num2 * factor) / factor; // 使用放大因子进行计算
-  return parseFloat(result.toFixed(precision)); // 将结果保留指定的精度并返回
+  const precision = Math.max(getPrecision(num1), getPrecision(num2)) // 获取两个数中较大的精度
+  const factor = Math.pow(10, precision) // 计算放大因子
+  const result = (num1 * factor + num2 * factor) / factor // 使用放大因子进行计算
+  return parseFloat(result.toFixed(precision)) // 将结果保留指定的精度并返回
 }
 
 /**
@@ -74,12 +80,12 @@ export function preciseAddition(num1: number, num2: number) {
  * @returns
  */
 export function preciseSubtraction(num1: number, num2: number) {
-  const precision = Math.max(getPrecision(num1), getPrecision(num2)); // 获取两个数中较大的精度
-  const factor = Math.pow(10, precision); // 计算放大因子
-  const scaledNum1 = num1 * factor; // 将减数1放大
-  const scaledNum2 = num2 * factor; // 将减数2放大
-  const scaledResult = (scaledNum1 - scaledNum2) / factor; // 进行放大后的减法计算
-  return parseFloat(scaledResult.toFixed(precision)); // 将结果保留指定的精度并返回
+  const precision = Math.max(getPrecision(num1), getPrecision(num2)) // 获取两个数中较大的精度
+  const factor = Math.pow(10, precision) // 计算放大因子
+  const scaledNum1 = num1 * factor // 将减数1放大
+  const scaledNum2 = num2 * factor // 将减数2放大
+  const scaledResult = (scaledNum1 - scaledNum2) / factor // 进行放大后的减法计算
+  return parseFloat(scaledResult.toFixed(precision)) // 将结果保留指定的精度并返回
 }
 
 /**
@@ -89,11 +95,11 @@ export function preciseSubtraction(num1: number, num2: number) {
  * @returns
  */
 export function preciseDivision(dividend: number, divisor: number) {
-  const precision = Math.max(getPrecision(dividend), getPrecision(divisor)); // 获取两个数中较大的精度
-  const scaledDividend = multiplyWithPrecision(dividend, precision); // 将被除数放大
-  const scaledDivisor = multiplyWithPrecision(divisor, precision); // 将除数放大
-  const scaledResult = scaledDividend / scaledDivisor; // 进行放大后的除法计算
-  return parseFloat(scaledResult.toFixed(precision)); // 将结果保留指定的精度并返回
+  const precision = Math.max(getPrecision(dividend), getPrecision(divisor)) // 获取两个数中较大的精度
+  const scaledDividend = multiplyWithPrecision(dividend, precision) // 将被除数放大
+  const scaledDivisor = multiplyWithPrecision(divisor, precision) // 将除数放大
+  const scaledResult = scaledDividend / scaledDivisor // 进行放大后的除法计算
+  return parseFloat(scaledResult.toFixed(precision)) // 将结果保留指定的精度并返回
 }
 
 const colorsList = Object.freeze([
@@ -141,7 +147,14 @@ export function genColorIndicators(min: number, max: number, colors = colorsList
   const res = []
   while (res.length < colors.length) {
     const ltValue = preciseAddition(tick, tickStep)
-    res.push({gte: tick, lt: ltValue,  label: `${ltValue}`, color: colors[colors.length - 1 - preciseDivision(preciseSubtraction(tick, minNum), tickStep)], symbolSize: 6, })
+    res.push({
+      gte: tick,
+      lt: ltValue,
+      label: `${ltValue}`,
+      color:
+        colors[colors.length - 1 - preciseDivision(preciseSubtraction(tick, minNum), tickStep)],
+      symbolSize: 6,
+    })
     tick = preciseAddition(tick, tickStep)
   }
   return res.reverse()

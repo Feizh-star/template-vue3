@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import { visualizer } from "rollup-plugin-visualizer"
+import { visualizer } from 'rollup-plugin-visualizer'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
@@ -18,12 +18,12 @@ export default defineConfig(({ command, mode }) => {
       vue(),
       vueJsx(),
       AutoImport({
-        dts: "auto-imports.d.ts", // 自动导入生成的声明文件名称，要写在tsconfig[.app].json的include包含进去
+        dts: 'auto-imports.d.ts', // 自动导入生成的声明文件名称，要写在tsconfig[.app].json的include包含进去
         // eslint报错解决：根据自动导入的变量，自动生成eslintrc-auto-import.json避免eslint报“变量不存在”
         eslintrc: {
           enabled: true,
           filepath: '.eslintrc-auto-import.json',
-          globalsPropValue: true // 等同于'writable'，告诉eslint这些变量可写
+          globalsPropValue: true, // 等同于'writable'，告诉eslint这些变量可写
         },
         imports: ['vue', 'vue-router', 'pinia'],
         resolvers: [ElementPlusResolver()],
@@ -34,7 +34,7 @@ export default defineConfig(({ command, mode }) => {
       }),
       visualizer({
         gzipSize: true,
-        open: true //如果存在本地服务端口，将在打包后自动展示
+        open: true, //如果存在本地服务端口，将在打包后自动展示
       }),
     ],
     resolve: {
@@ -42,12 +42,12 @@ export default defineConfig(({ command, mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         '@build': fileURLToPath(new URL('./build', import.meta.url)),
         // 以下是为了在浏览器中支持node的crypto模块
-        process: "process/browser",
-        stream: "stream-browserify",
-        zlib: "browserify-zlib",
+        process: 'process/browser',
+        stream: 'stream-browserify',
+        zlib: 'browserify-zlib',
         util: 'util',
-        crypto: 'crypto-browserify'
-      }
+        crypto: 'crypto-browserify',
+      },
     },
     css: {
       preprocessorOptions: {
@@ -57,9 +57,9 @@ export default defineConfig(({ command, mode }) => {
         // },
         less: {
           // 导入sass:math模块，可使用math.div()代替/进行除法计算，避免scss报警告
-          additionalData: '@import "./src/style/main.less";'
-        }
-      }
+          additionalData: '@import "./src/style/main.less";',
+        },
+      },
     },
     server: {
       host: true,
@@ -68,9 +68,9 @@ export default defineConfig(({ command, mode }) => {
         '/api': {
           target: 'http://localhost:10080/',
           changeOrigin: true,
-          rewrite: path => path.replace(/^\/api/, '')
-        }
-      }
-    }
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+      },
+    },
   }
 })

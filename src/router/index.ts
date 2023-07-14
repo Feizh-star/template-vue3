@@ -21,20 +21,20 @@ export const routes: Array<RouteRecordRaw> = [
         path: 'index',
         name: 'index',
         meta: {
-          title: "首页",
+          title: '首页',
           hidden: false,
         },
         props: { redirect: '/testmenu' }, // 如果redirect被设置，则Index将立即跳转，没有redirect时views/Index.vue是默认首页
         component: () => import('@/views/Index.vue'),
       },
-    ]
+    ],
   },
   {
     path: '/login',
     meta: {
       hidden: true,
     },
-    component: () => import('@/views/Login.vue')
+    component: () => import('@/views/Login.vue'),
   },
   // 没匹配到的路由都会匹配这个，进入错误页面
   {
@@ -42,7 +42,7 @@ export const routes: Array<RouteRecordRaw> = [
     meta: {
       hidden: true,
     },
-    component: () => import('@/views/Error/Index.vue')
+    component: () => import('@/views/Error/Index.vue'),
   },
 ]
 
@@ -59,11 +59,16 @@ router.afterEach((to: RouteLocationNormalized) => {
 function setCurrentMenu(to: RouteLocationNormalized) {
   const menu = useMenu()
   const fullpath = to.fullPath
-  const currentRoute = filterTreeNode(menu.getMenuList, fullpath, { id: 'path' }, (path: any, fPath: any, node: any, parents: any) => {
-    const paths = [...parents.map((p: any) => p.path), path]
-    const currentFullPath = pathModule.join(...paths)
-    return currentFullPath === fPath
-  })
+  const currentRoute = filterTreeNode(
+    menu.getMenuList,
+    fullpath,
+    { id: 'path' },
+    (path: any, fPath: any, node: any, parents: any) => {
+      const paths = [...parents.map((p: any) => p.path), path]
+      const currentFullPath = pathModule.join(...paths)
+      return currentFullPath === fPath
+    }
+  )
   menu.setRoutePath(currentRoute ? [...currentRoute._stack, currentRoute] : [])
   menu.setCurrentMenu(currentRoute || {})
 }

@@ -1,7 +1,10 @@
 import { debounce } from '@/utils/tools'
 const elScaleSizeKey = Symbol('elScaleSizeKey')
 const setSize = Symbol('setSize')
-const reverseKey = new Map([['width', 'height'], ['height','width']])
+const reverseKey = new Map([
+  ['width', 'height'],
+  ['height', 'width'],
+])
 const elInfoMap = new WeakMap()
 
 type sizeKey = 'width' | 'height'
@@ -16,12 +19,12 @@ interface IBinding {
 function setWidth(el: HTMLElement) {
   const elInfo = elInfoMap.get(el)
   if (!elInfo) return
-  const elScaleSizeProps = elInfo[elScaleSizeKey] as IBinding["value"]
+  const elScaleSizeProps = elInfo[elScaleSizeKey] as IBinding['value']
   const computingSizeKey = elScaleSizeProps.computingSizeKey
   const knownSizeKey = reverseKey.get(computingSizeKey) as sizeKey
   const scale = elScaleSizeProps.scale
   const knownSize = getComputedStyle(el)[knownSizeKey]
-  const computedSize = ((parseFloat(knownSize) || 0) * scale) + 'px'
+  const computedSize = (parseFloat(knownSize) || 0) * scale + 'px'
   el.style[computingSizeKey] = computedSize
 }
 
@@ -32,7 +35,7 @@ export default {
       [elScaleSizeKey]: { ...bindingValue },
       [setSize]: debounce(function () {
         setWidth(el)
-      }, 300)
+      }, 300),
     }
     elInfoMap.set(el, elInfo)
   },
@@ -46,5 +49,5 @@ export default {
     const elInfo = elInfoMap.get(el)
     if (!elInfo) return
     window.removeEventListener('resize', elInfo[setSize])
-  }
+  },
 }

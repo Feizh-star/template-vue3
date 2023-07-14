@@ -5,21 +5,21 @@
  */
 const numReg = /^(-|\+)?\d+(\.\d+)?$/
 export const useEnv = (env: Recordable): ImportMetaEnv => {
-  const ret: any = {};
+  const ret: any = {}
 
   for (const envKey of Object.keys(env)) {
-    let envValue = env[envKey];
+    let envValue = env[envKey]
 
     // 转成正确的布尔类型
-    envValue = envValue === 'true' ? true : envValue === 'false' ? false : envValue;
+    envValue = envValue === 'true' ? true : envValue === 'false' ? false : envValue
 
     // 转换 number
     if (numReg.test(envValue)) {
-      envValue = Number(envValue);
+      envValue = Number(envValue)
     }
 
-    ret[envKey] = envValue;
+    ret[envKey] = envValue
   }
 
-  return ret;
-};
+  return ret
+}

@@ -1,4 +1,3 @@
-
 window.UserConfig = {
   verificationCode: true, // 是否需要登录验证码
   clientId: '', // 客户端id

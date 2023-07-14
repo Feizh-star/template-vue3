@@ -19,7 +19,7 @@ async function getCode() {
   try {
     const res: any = await getValidImage()
     if (res.code === 200) {
-      validImage.value = "data:image/gif;base64," + res.img
+      validImage.value = 'data:image/gif;base64,' + res.img
       formData.uuid = res.uuid
     }
   } catch (error) {
@@ -36,26 +36,20 @@ const formData = reactive({
   uuid: '',
 })
 const rules = reactive({
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'change' }
-  ],
-  password: [
-    { required: true, message: '请输入用户密码', trigger: 'change' }
-  ],
-  code: [
-    { required: UserConfig.verificationCode, message: '请输入验证码', trigger: 'change' }
-  ]
+  username: [{ required: true, message: '请输入用户名', trigger: 'change' }],
+  password: [{ required: true, message: '请输入用户密码', trigger: 'change' }],
+  code: [{ required: UserConfig.verificationCode, message: '请输入验证码', trigger: 'change' }],
 })
 const agree = ref(true)
 function submitForm() {
   const elForm = loginForm.value
   if (!agree.value) {
     ElMessage.error({
-      message: '请勾选同意服务协议和隐私政策'
+      message: '请勾选同意服务协议和隐私政策',
     })
     return
   }
-  elForm.validate((valid: boolean, object: {[p: string]: any}) => {
+  elForm.validate((valid: boolean, object: { [p: string]: any }) => {
     if (valid) {
       login()
     } else if (object) {
@@ -67,7 +61,7 @@ function submitForm() {
         msg = '请填写验证码'
       }
       ElMessage.error({
-        message: msg
+        message: msg,
       })
     }
   })
@@ -83,13 +77,16 @@ function login() {
   if (UserConfig.clientId) {
     userInfo.clientid = UserConfig.clientId
   }
-  userStore.login(userInfo).then(() => {
-    const redirect = route.query?.redirect || '/'
-    router.push({ path: redirect as string })
-  }).catch((error) => {
-    console.error(error)
-    getCode()
-  })
+  userStore
+    .login(userInfo)
+    .then(() => {
+      const redirect = route.query?.redirect || '/'
+      router.push({ path: redirect as string })
+    })
+    .catch((error) => {
+      console.error(error)
+      getCode()
+    })
 }
 </script>
 
@@ -132,7 +129,12 @@ function login() {
                 @keyup.enter="submitForm"
               ></el-input>
             </el-form-item>
-            <el-form-item prop="code" label-width="0" class="valid-code" v-if="UserConfig.verificationCode">
+            <el-form-item
+              prop="code"
+              label-width="0"
+              class="valid-code"
+              v-if="UserConfig.verificationCode"
+            >
               <div class="valid-input">
                 <el-input
                   type="text"
@@ -143,7 +145,7 @@ function login() {
                 ></el-input>
               </div>
               <div class="valid-image" click="getCode">
-                <img :src="validImage" alt="验证码">
+                <img :src="validImage" alt="验证码" />
               </div>
             </el-form-item>
             <div class="btns">
@@ -154,7 +156,10 @@ function login() {
         <div class="service-protocol">
           <el-checkbox v-model="agree"><span></span></el-checkbox>
           <span class="service-text">
-            登录即表示您已同意平台<span class="service-name">服务协议</span>和<span class="service-name">隐私政策</span>
+            登录即表示您已同意平台<span class="service-name">服务协议</span>和<span
+              class="service-name"
+              >隐私政策</span
+            >
           </span>
         </div>
       </div>
@@ -182,7 +187,7 @@ function login() {
     left: 50%;
     padding: 62px 52px;
     border-radius: 3px;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     overflow: hidden;
     .login-title {
       padding-bottom: 42px;
@@ -191,17 +196,17 @@ function login() {
       font-weight: 700;
     }
     .form-title {
-      color: #1890FF;
+      color: #1890ff;
       font-size: 16px;
       font-weight: 700;
       padding-bottom: 10px;
-      border-bottom: 2px solid #1890FF;
+      border-bottom: 2px solid #1890ff;
     }
     .form-content {
       padding: 30px 0 20px;
       :deep(.el-form) {
         .el-input__wrapper {
-          background-color: #F4F4F6;
+          background-color: #f4f4f6;
           border-radius: 0;
           box-shadow: none;
         }
@@ -220,9 +225,9 @@ function login() {
       align-items: center;
       .service-text {
         font-size: 12px;
-        color: #A9B0BB;
+        color: #a9b0bb;
         .service-name {
-          color: #4484FF;
+          color: #4484ff;
           vertical-align: middle;
           cursor: pointer;
         }

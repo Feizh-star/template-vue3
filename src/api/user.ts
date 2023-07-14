@@ -1,4 +1,4 @@
-import request from "@/utils/request"
+import request from '@/utils/request'
 
 // 获取验证码
 export function getValidImage() {
@@ -13,10 +13,10 @@ export function login(data: ILoginParams) {
   return request({
     url: '/login',
     headers: {
-      isToken: false
+      isToken: false,
     },
     method: 'post',
-    data: data
+    data: data,
   })
 }
 
@@ -24,7 +24,7 @@ export function login(data: ILoginParams) {
 export function logout() {
   return request({
     url: '/logout',
-    method: 'post'
+    method: 'post',
   })
 }
 
@@ -32,6 +32,6 @@ export function logout() {
 export function getInfo() {
   return request({
     url: '/getInfo',
-    method: 'get'
+    method: 'get',
   })
 }

@@ -11,9 +11,10 @@
         <el-breadcrumb-item
           v-for="(item, index) in currentMenuPath"
           :key="index"
-          :class="{lastone: index === currentMenuPath.length - 1}"
+          :class="{ lastone: index === currentMenuPath.length - 1 }"
           @click="(event: Event) => breadcrumbClick(item, event)"
-        >{{ item.meta?.title || '' }}</el-breadcrumb-item>
+          >{{ item.meta?.title || '' }}</el-breadcrumb-item
+        >
       </el-breadcrumb>
     </div>
   </div>
@@ -21,13 +22,11 @@
 
 <script setup lang="ts">
 import { useMenu } from '@/store/menu'
-import {
-  computed
-} from 'vue'
+import { computed } from 'vue'
 const menu = useMenu()
-const currentMenuPath = computed(() => menu.getRouteNodePath.filter(node => node?.meta?.title))
+const currentMenuPath = computed(() => menu.getRouteNodePath.filter((node) => node?.meta?.title))
 function breadcrumbClick(menu: any, event: Event) {
-  console.log(menu);
+  console.log(menu)
 }
 </script>
 
@@ -56,13 +55,12 @@ function breadcrumbClick(menu: any, event: Event) {
     .location-icon {
       width: 12px;
       height: 18px;
-      background-image: url("@/assets/images/position2x.png");
+      background-image: url('@/assets/images/position2x.png');
       background-size: cover;
       margin-right: 5px;
     }
   }
   .bread-text {
-
   }
 }
 :deep(.el-breadcrumb) {
@@ -73,7 +71,7 @@ function breadcrumbClick(menu: any, event: Event) {
     .el-breadcrumb__inner {
       color: @text-color;
       font-size: 16px;
-      cursor: pointer !important;;
+      cursor: pointer !important;
     }
     &.lastone .el-breadcrumb__inner {
       color: @text-hcolor;

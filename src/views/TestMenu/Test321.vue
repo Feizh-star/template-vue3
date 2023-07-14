@@ -1,11 +1,7 @@
-<script setup lang="ts">
-
-</script>
+<script setup lang="ts"></script>
 
 <template>
-  <div class="test-menu">
-    321
-  </div>
+  <div class="test-menu">321</div>
 </template>
 
 <style scoped lang="less">

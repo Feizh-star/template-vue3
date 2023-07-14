@@ -11,14 +11,18 @@ export interface IListItem {
 }
 const props = withDefaults(defineProps<Props>(), {
   height: '100%',
-  bufferScale: 1
+  bufferScale: 1,
 })
 
 // computed status
-const allList = computed<IListItem[]>(() => props.list.map((item, index) => ({index, item})))
+const allList = computed<IListItem[]>(() => props.list.map((item, index) => ({ index, item })))
 const visibleCount = computed<number>(() => Math.ceil(viewareaHeight.value / props.estimatedSize))
-const aboveCount = computed<number>(() => Math.min(startIndex.value, visibleCount.value * props.bufferScale))
-const belowCount = computed<number>(() => Math.min(allList.value.length - endIndex.value, visibleCount.value * props.bufferScale))
+const aboveCount = computed<number>(() =>
+  Math.min(startIndex.value, visibleCount.value * props.bufferScale)
+)
+const belowCount = computed<number>(() =>
+  Math.min(allList.value.length - endIndex.value, visibleCount.value * props.bufferScale)
+)
 // 实际渲染的列表
 const renderList = computed<IListItem[]>(() => {
   const start = startIndex.value - aboveCount.value
@@ -49,12 +53,15 @@ onMounted(() => {
   startIndex.value = 0
   endIndex.value = startIndex.value + visibleCount.value
 })
-watch(() => props.list, () => {
-  initPositions()
-  if (scrollContainer.value) scrollContainer.value.scrollTop = 0
-  startIndex.value = 0
-  endIndex.value = startIndex.value + visibleCount.value
-})
+watch(
+  () => props.list,
+  () => {
+    initPositions()
+    if (scrollContainer.value) scrollContainer.value.scrollTop = 0
+    startIndex.value = 0
+    endIndex.value = startIndex.value + visibleCount.value
+  }
+)
 onUpdated(() => {
   nextTick(() => {
     if (!itemRefs.value.length) return
@@ -106,7 +113,7 @@ function updateTransPosition(): void {
  */
 function initPositions(): void {
   positions = []
-  allList.value.forEach(item => {
+  allList.value.forEach((item) => {
     positions.push({
       index: item.index,
       top: item.index * props.estimatedSize,
@@ -145,7 +152,7 @@ function scrollHandler(event: Event): void {
 </script>
 
 <template>
-  <div class="virtualized-list" :style="{height}" ref="scrollContainer" @scroll="scrollHandler">
+  <div class="virtualized-list" :style="{ height }" ref="scrollContainer" @scroll="scrollHandler">
     <div class="virtualized-base" ref="base"></div>
     <div class="virtualized-content" ref="content">
       <div

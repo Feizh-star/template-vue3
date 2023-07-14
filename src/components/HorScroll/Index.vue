@@ -2,19 +2,23 @@
 const EaseInOutQuad = function (t: number, b: number, c: number, d: number) {
   t /= d / 2
   if (t < 1) {
-    return c / 2 * t * t + b
+    return (c / 2) * t * t + b
   }
   t--
-  return -c / 2 * (t * (t - 2) - 1) + b
+  return (-c / 2) * (t * (t - 2) - 1) + b
 }
 
 const requestAnimFrame = (function () {
-  return window.requestAnimationFrame ||
+  return (
+    window.requestAnimationFrame ||
     // @ts-ignore
     window.webkitRequestAnimationFrame ||
     // @ts-ignore
     window.mozRequestAnimationFrame ||
-    function (callback) { window.setTimeout(callback, 1000 / 60) }
+    function (callback) {
+      window.setTimeout(callback, 1000 / 60)
+    }
+  )
 })()
 
 function move(el: HTMLElement, key: string, amount: number) {
@@ -34,18 +38,18 @@ function scrollTo({
   to,
   duration,
   scrollKey,
-  callback
+  callback,
 }: {
-  el: HTMLElement,
-  to: number,
-  duration: number,
-  scrollKey: string,
+  el: HTMLElement
+  to: number
+  duration: number
+  scrollKey: string
   callback: (to: number) => void
 }) {
   if (!el) return null
   to = to || 0
   scrollKey = scrollKey || 'translateX'
-  duration = (typeof (duration) === 'undefined') ? 500 : duration
+  duration = typeof duration === 'undefined' ? 500 : duration
   const start = -position(el, scrollKey)
   const change = to - start
   const increment = 20
@@ -59,7 +63,7 @@ function scrollTo({
       requestAnimFrame(animateScroll)
     } else {
       move(el, scrollKey, to)
-      if (callback && typeof (callback) === 'function') {
+      if (callback && typeof callback === 'function') {
         callback(to)
       }
     }
@@ -93,7 +97,7 @@ const props = withDefaults(defineProps<Props>(), {
   duration: 200,
   interval: 300,
   itemSelector: '.scroll-items > .scroll-item',
-  align: 'left'
+  align: 'left',
 })
 const emits = defineEmits<{
   (e: 'arrived-edge', direction: 0 | 1): void
@@ -102,17 +106,17 @@ const emits = defineEmits<{
 const actived = ref(false)
 const isMoving = ref(false)
 const thisData = shallowReactive<{
-  itemWidths: number[],
-  scrollIndex: number,
-  times?: number,
-  readyToScroll: boolean,
+  itemWidths: number[]
+  scrollIndex: number
+  times?: number
+  readyToScroll: boolean
   timer?: number
 }>({
   itemWidths: [],
   scrollIndex: 0,
   times: undefined,
   readyToScroll: false,
-  timer: undefined
+  timer: undefined,
 })
 
 // 初始化和resize
@@ -141,7 +145,7 @@ function getScrollWidthArr() {
   const scrollDiv = scroll.value
   if (!scrollDiv?.scrollWidth) return null
   const list = scrollDiv.querySelectorAll(props.itemSelector)
-  const itemWidths = Array.prototype.map.call(list, item => item.offsetWidth) as number[]
+  const itemWidths = Array.prototype.map.call(list, (item) => item.offsetWidth) as number[]
   thisData.itemWidths = [0]
   for (let i = 1; i < itemWidths.length; i++) {
     let lastWidth = thisData.itemWidths[i - 1]
@@ -183,7 +187,7 @@ function scrollHandler(type: 0 | 1) {
           if (Math.abs(scrollLeft - maxScrollDis) < 1) {
             emits('arrived-edge', 1)
           }
-        }
+        },
       })
     }
   } else {
@@ -200,7 +204,7 @@ function scrollHandler(type: 0 | 1) {
           if (Math.abs(scrollLeft - 0) < 1) {
             emits('arrived-edge', 0)
           }
-        }
+        },
       })
     }
   }
@@ -220,7 +224,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
       clearInterval(thisData.timer)
       thisData.times = 0
       thisData.timer = setInterval(() => {
-        (thisData.times as number)++
+        ;(thisData.times as number)++
         scrollHandler(type)
       }, props.interval) as any as number
     }, 180)
@@ -244,7 +248,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
       @mouseup="longPress(0, 'up')"
     >
       <slot name="larrow">
-        <span style="color: #ffffff;">&lt;</span>
+        <span style="color: #ffffff">&lt;</span>
       </slot>
     </button>
     <div
@@ -266,7 +270,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
       @mouseup="longPress(1, 'up')"
     >
       <slot name="rarrow">
-        <span style="color: #ffffff;">&gt;</span>
+        <span style="color: #ffffff">&gt;</span>
       </slot>
     </button>
   </div>
