@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import VirtualList from '@/components/VirtualList/Index.vue'
 import { useElDialogDraggable } from '@/directives/draggable/el-dialog-drag'
+// @ts-ignore
 import vDraggable from '@/directives/draggable/draggable'
+// @ts-ignore
+import vGetSize from '@/directives/getSize/get-size'
 
 const length = ref(1000)
 const list = ref<any[]>([])
@@ -29,6 +32,16 @@ useElDialogDraggable({
 
 const boxVisible = ref(false)
 const boxDraggable = ref(true)
+
+// 测试获取宽高指令
+const sizeReactive = reactive({
+  boxSize: {
+    width: 0,
+    height: 0
+  }
+})
+const boxHalfWidth = computed(() => sizeReactive.boxSize.width / 2 + 'px')
+const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
 </script>
 
 <template>
@@ -84,6 +97,10 @@ const boxDraggable = ref(true)
         visible: boxVisible,
         closeBack: true,
       }"
+      v-get-size="{
+        sizeReactive: sizeReactive,
+        key: 'boxSize'
+      }"
     >
       <div class="dialog-header">
         <span>标题</span>
@@ -118,11 +135,11 @@ const boxDraggable = ref(true)
   }
 }
 .dialog-target {
-  width: 400px;
+  width: 40%;
   height: 300px;
   position: fixed;
-  top: calc(50% - 200px);
-  left: calc(50% - 150px);
+  top: calc(50% - v-bind(boxHalfHeight));
+  left: calc(50% - v-bind(boxHalfWidth));
   background-color: #fff;
   box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04),0px 8px 20px rgba(0, 0, 0, 0.08);;
   .dialog-header {

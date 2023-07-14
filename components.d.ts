@@ -26,6 +26,7 @@ declare module '@vue/runtime-core' {
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     HardDoughnut: typeof import('./src/components/hardmoni/HardDoughnut.vue')['default']
     Index: typeof import('./src/components/HorScroll/Index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

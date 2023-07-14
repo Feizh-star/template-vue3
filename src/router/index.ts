@@ -24,7 +24,7 @@ export const routes: Array<RouteRecordRaw> = [
           title: "首页",
           hidden: false,
         },
-        props: { redirect: '/onebodym/hardmoni' }, // 如果redirect被设置，则Index将立即跳转，没有redirect时views/Index.vue是默认首页
+        props: { redirect: '/testmenu' }, // 如果redirect被设置，则Index将立即跳转，没有redirect时views/Index.vue是默认首页
         component: () => import('@/views/Index.vue'),
       },
     ]
