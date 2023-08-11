@@ -83,6 +83,7 @@ function debounce(fn: (...arg: any[]) => void, delay: number) {
 </script>
 
 <script setup lang="ts">
+import { useResizeObserver } from '@vueuse/core'
 export interface Props {
   width?: string
   height?: string
@@ -101,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emits = defineEmits<{
   (e: 'arrived-edge', direction: 0 | 1): void
+  (e: 'scroll-to', index: number): void
 }>()
 
 const actived = ref(false)
@@ -124,9 +126,11 @@ let resizeHandler = debounce(init, 150)
 function init() {
   actived.value = isScroll()
   getScrollWidthArr()
+  emits('scroll-to', thisData.scrollIndex)
 }
 onMounted(() => {
   init()
+  resizeObserver()
   window.addEventListener('resize', resizeHandler)
 })
 onUnmounted(() => {
@@ -140,6 +144,22 @@ function isScroll() {
   const scrollWidth = scrollDiv.scrollWidth
   const clientWidth = scrollDiv.clientWidth
   return scrollWidth > clientWidth
+}
+function resizeObserver() {
+  if (!scrollItems.value) return
+  let oldWidth = ''
+  let oldHeight = ''
+  useResizeObserver(scrollItems.value, (entries) => {
+    const entry = entries[0]
+    const { width, height } = entry.contentRect
+    const widthStr = width.toFixed(0)
+    const heightStr = height.toFixed(0)
+    if (widthStr !== oldWidth || heightStr !== oldHeight) {
+      resizeHandler()
+    }
+    oldWidth = widthStr
+    oldHeight = heightStr
+  })
 }
 function getScrollWidthArr() {
   const scrollDiv = scroll.value
@@ -184,6 +204,7 @@ function scrollHandler(type: 0 | 1) {
         scrollKey: 'translateX',
         callback: (scrollLeft) => {
           isMoving.value = false
+          emits('scroll-to', thisData.scrollIndex)
           if (Math.abs(scrollLeft - maxScrollDis) < 1) {
             emits('arrived-edge', 1)
           }
@@ -201,6 +222,7 @@ function scrollHandler(type: 0 | 1) {
         scrollKey: 'translateX',
         callback: (scrollLeft) => {
           isMoving.value = false
+          emits('scroll-to', thisData.scrollIndex)
           if (Math.abs(scrollLeft - 0) < 1) {
             emits('arrived-edge', 0)
           }
@@ -251,6 +273,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
         <span style="color: #ffffff">&lt;</span>
       </slot>
     </button>
+    <slot name="prefix"></slot>
     <div
       class="legend-row"
       :class="{ 'is-scroll': actived }"
@@ -261,6 +284,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
         <slot></slot>
       </div>
     </div>
+    <slot name="suffix"></slot>
     <button
       class="btn"
       v-show="actived"
@@ -280,6 +304,7 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
 .horizontal-scroll-bar {
   @btn-width: 40px;
   overflow: hidden;
+  display: flex;
   .btn {
     width: @btn-width;
     display: inline-flex;
@@ -299,8 +324,8 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
     }
   }
   .legend-row {
-    width: 100%;
-    float: left;
+    flex: 1;
+    min-width: 0;
     display: flex;
     justify-content: left;
     overflow: hidden;
