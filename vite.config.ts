@@ -64,6 +64,7 @@ export default defineConfig(({ command, mode }) => {
     server: {
       host: true,
       open: true,
+      port: 3124,
       proxy: {
         '/api': {
           target: 'http://localhost:10080/',

@@ -62,7 +62,10 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
       <VirtualList :list="list" :estimatedSize="30">
         <template #item="{ item }">
           <div class="virtual-listitem" :style="{ 'line-height': item.height + 'px' }">
-            {{ item.id }}: {{ item.height }}px
+            <div class="col-item">{{ item.id }}: {{ item.height }}px</div>
+            <div class="col-item" v-for="n in 9" :key="n">
+              <span>col: {{ n + 1 }}</span>
+            </div>
           </div>
         </template>
       </VirtualList>
@@ -74,7 +77,10 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
         v-for="item in list"
         :key="item.id"
       >
-        {{ item.id }}: {{ item.height }}px
+        <div class="col-item">{{ item.id }}: {{ item.height }}px</div>
+        <div class="col-item" v-for="n in 9" :key="n">
+          <span>col: {{ n + 1 }}</span>
+        </div>
       </div>
     </section>
     <el-dialog title="提示" v-model="dialogVisible" width="30%">
@@ -128,6 +134,10 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
     .virtual-listitem {
       // height: 40px;
       text-align: center;
+      display: flex;
+      .col-item {
+        flex: 1;
+      }
     }
     > .virtual-listitem {
       border-bottom: 1px solid #999999;
