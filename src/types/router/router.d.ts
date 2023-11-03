@@ -1,6 +1,14 @@
 import { RouteMeta } from 'vue-router'
 
-declare namespace Router {
+declare module 'vue-router' {
+  interface RouteMeta {
+    icon?: {
+      type: 'img' | 'class'
+      value: string
+    }
+  }
+}
+declare global {
   interface MyRawRoute {
     path: string
     name: string
@@ -9,14 +17,5 @@ declare namespace Router {
     hidden?: boolean
     meta?: RouteMeta
     children?: Array<MyRawRoute> | null
-  }
-}
-
-declare module 'vue-router' {
-  interface RouteMeta {
-    icon?: {
-      type: 'img' | 'class'
-      value: string
-    }
   }
 }

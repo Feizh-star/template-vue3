@@ -16,6 +16,9 @@ module.exports = {
       extends: ['plugin:cypress/recommended'],
     },
   ],
+  globals: {
+    IAnyObject: 'readonly',
+  },
   parserOptions: {
     ecmaVersion: 'latest',
   },

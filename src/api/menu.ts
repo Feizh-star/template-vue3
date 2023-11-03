@@ -1,6 +1,4 @@
-import type { Router } from '@/types/router/router'
-
-export function getRoutes(): Promise<Router.MyRawRoute[]> {
+export function getRoutes(): Promise<MyRawRoute[]> {
   return new Promise((resolve, reject) => {
     fetch('/dataset/router.json')
       .then((res) => res.json())

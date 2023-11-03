@@ -1,7 +1,5 @@
 import type { RouteRecordRaw, RouteComponent } from 'vue-router'
-import type { Router } from '@/types/router/router'
 import { defineStore } from 'pinia'
-
 import router from '@/router'
 import { routes as constants } from '@/router'
 import { getRoutes } from '@/api/menu'
@@ -11,18 +9,24 @@ import pathModule from 'path-browserify'
 
 const pages = importPage()
 
+interface IState {
+  menuList: RouteRecordRaw[]
+  currentMenu: RouteRecordRaw
+  routePath: any[]
+}
+
 let socketIndex = 1
 export const useMenu = defineStore({
   id: 'menuTree',
   state: () => ({
-    menuList: [] as Array<RouteRecordRaw>,
+    menuList: [] as RouteRecordRaw[],
     currentMenu: {} as RouteRecordRaw,
     routePath: [] as any[],
   }),
   getters: {
-    getMenuList: (state) => state.menuList,
-    getCurrentMenu: (state) => state.currentMenu,
-    getRouteNodePath: (state) => state.routePath,
+    getMenuList: (state: IState) => state.menuList,
+    getCurrentMenu: (state: IState) => state.currentMenu,
+    getRouteNodePath: (state: IState) => state.routePath,
     getRoutePath() {
       // @ts-ignore
       return pathModule.join(...this.getRouteNodePath.map((node) => node.path))
@@ -61,7 +65,7 @@ export const useMenu = defineStore({
  * @param parent 父路由名称，用于添加路由
  * @returns 符合vue-router要求的路由表
  */
-function parseRoutes(routes: Router.MyRawRoute[], parent: string = ''): RouteRecordRaw[] {
+function parseRoutes(routes: MyRawRoute[], parent: string = ''): RouteRecordRaw[] {
   const parsedRoutes: RouteRecordRaw[] = []
   for (const raw of routes) {
     let component: RouteComponent | (() => Promise<RouteComponent>)
@@ -96,9 +100,9 @@ function parseRoutes(routes: Router.MyRawRoute[], parent: string = ''): RouteRec
  * @param routes 接口获取的路由表
  * @returns 处理后的路由表
  */
-function addLayoutForSingleRoute(routes: Router.MyRawRoute[]): Router.MyRawRoute[] {
+function addLayoutForSingleRoute(routes: MyRawRoute[]): MyRawRoute[] {
   return routes.map((r) => {
-    let routeParse: Router.MyRawRoute = r
+    let routeParse: MyRawRoute = r
     if (r.name !== 'Layout' && (!r.children || r.children.length === 0)) {
       if (r.path.startsWith('/')) r.path = r.path.replace('/', '')
       routeParse = {

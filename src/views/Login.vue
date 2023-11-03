@@ -5,8 +5,6 @@ import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { getValidImage } from '@/api/user'
 
-import type { IAnyObject } from '@/types/global/common'
-
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
