@@ -5,7 +5,11 @@ import zhCn from 'element-plus/lib/locale/lang/zh-cn'
 
 <template>
   <el-config-provider :locale="zhCn">
-    <RouterView />
+    <RouterView v-slot="{ Component }">
+      <KeepAlive>
+        <component :is="Component" />
+      </KeepAlive>
+    </RouterView>
   </el-config-provider>
 </template>
 

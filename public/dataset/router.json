@@ -16,6 +16,9 @@
     "path": "/test3",
     "name": "test3",
     "component": "Layout",
+    "props": {
+      "containerName": "test3"
+    },
     "meta": {
       "title": "Test3",
       "hidden": false,
@@ -30,6 +33,9 @@
         "path": "test31",
         "name": "test31",
         "component": "RouterSocket",
+        "props": {
+          "containerName": "test31"
+        },
         "meta": {
           "title": "Test31",
           "hidden": false,
@@ -59,6 +65,9 @@
         "path": "test32",
         "name": "test32",
         "component": "RouterSocket",
+        "props": {
+          "containerName": "test32"
+        },
         "meta": {
           "title": "Test32",
           "hidden": false,

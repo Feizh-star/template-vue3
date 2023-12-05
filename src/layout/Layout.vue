@@ -17,7 +17,11 @@
             <LayoutBread v-if="UserConfig.showBreadcrumb"></LayoutBread>
           </div>
           <div class="ly-main-body-view">
-            <RouterView></RouterView>
+            <RouterView v-slot="{ Component, route }">
+              <KeepAlive>
+                <component :is="renderComponent(Component, route)" />
+              </KeepAlive>
+            </RouterView>
           </div>
         </div>
       </div>
@@ -55,6 +59,17 @@ import { RouterView } from 'vue-router'
 import { useMenu } from '@/store/menu'
 const menu = useMenu()
 const menuList = menu.getMenuList
+
+const props = defineProps<{
+  containerName?: string
+}>()
+function renderComponent(Component: any, route: any) {
+  console.log(route.matched)
+  return !props.containerName ||
+    new Set(route.matched.map((item: any) => item.name)).has(props.containerName)
+    ? Component
+    : undefined
+}
 </script>
 
 <style lang="less" scoped>

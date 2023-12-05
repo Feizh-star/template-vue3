@@ -80,13 +80,17 @@ function parseRoutes(routes: MyRawRoute[], parent: string = ''): RouteRecordRaw[
       component = pages[raw.component]
     }
     // 避免1级目录类型的路由节点名称重复(path是'/'的1级路由的name都是Layout)
-    if (raw.name == 'Layout') raw.name = raw.name.concat(String(socketIndex++))
+    if (raw.name == 'Layout') {
+      raw.name = raw.name.concat(String(socketIndex++))
+      raw.props && (raw.props.containerName = raw.name)
+    }
     const parsedRoute: RouteRecordRaw = {
       path: raw.path,
       component: component,
       name: raw.name,
       meta: raw.meta,
       redirect: raw.redirect || '',
+      props: raw.props ? { ...raw.props } : {},
       children: [],
     }
     router.addRoute(parent, parsedRoute)
@@ -112,6 +116,9 @@ function addLayoutForSingleRoute(routes: MyRawRoute[]): MyRawRoute[] {
         meta: {
           title: '',
           hidden: false,
+        },
+        props: {
+          containerName: 'Layout',
         },
         children: [r],
       }
