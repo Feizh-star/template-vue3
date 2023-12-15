@@ -10,6 +10,7 @@ import pathModule from 'path-browserify'
 const pages = importPage()
 
 interface IState {
+  resolved: boolean
   menuList: RouteRecordRaw[]
   currentMenu: RouteRecordRaw
   routePath: any[]
@@ -19,11 +20,13 @@ let socketIndex = 1
 export const useMenu = defineStore({
   id: 'menuTree',
   state: () => ({
+    resolved: false,
     menuList: [] as RouteRecordRaw[],
     currentMenu: {} as RouteRecordRaw,
     routePath: [] as any[],
   }),
   getters: {
+    resolve: (state: IState) => state.resolved,
     getMenuList: (state: IState) => state.menuList,
     getCurrentMenu: (state: IState) => state.currentMenu,
     getRouteNodePath: (state: IState) => state.routePath,
@@ -39,6 +42,7 @@ export const useMenu = defineStore({
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes)
         this.menuList = [...constants, ...parsedRoute]
+        this.setResolve(true)
         // router.addRoute('', {
         //   path: '/:pathMatch(.*)*',
         //   name: "NotFound",
@@ -55,6 +59,9 @@ export const useMenu = defineStore({
     },
     setRoutePath(rPath: any[]) {
       this.routePath = rPath
+    },
+    setResolve(status: boolean) {
+      this.resolved = status
     },
   },
 })
@@ -90,7 +97,7 @@ function parseRoutes(routes: MyRawRoute[], parent: string = ''): RouteRecordRaw[
       name: raw.name,
       meta: raw.meta,
       redirect: raw.redirect || '',
-      props: raw.props ? { ...raw.props } : {},
+      props: raw.props ? raw.props : {},
       children: [],
     }
     router.addRoute(parent, parsedRoute)
