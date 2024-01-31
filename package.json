@@ -22,7 +22,7 @@
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",
     "dayjs": "^1.11.7",
-    "element-plus": "^2.2.32",
+    "element-plus": "^2.5.3",
     "events": "^3.3.0",
     "file-saver": "^2.0.5",
     "geobuf": "^3.0.2",

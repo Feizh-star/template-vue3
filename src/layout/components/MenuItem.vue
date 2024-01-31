@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { RouteRecordRaw } from 'vue-router'
-import type { Ref, ComputedRef } from 'vue'
+import type { ComputedRef } from 'vue'
 import { watchEffect } from 'vue'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import AppLink from './AppLink.vue'
 import path from 'path-browserify'
 
@@ -34,12 +34,13 @@ watchEffect(() => hasNextLevelMenu(props.menuItem))
 function hasNextLevelMenu(m: RouteRecordRaw): void {
   const children = m.children || []
   const showingChildren = children.filter((c) => !c.meta?.hidden)
-  if (showingChildren.length === 0) {
+  if (showingChildren.length === 0 || (m.meta?.isLeaf && m.component)) {
     showingItem.value = m
   } else if (
     showingChildren.length === 1 &&
     !m.meta?.alwaysShow &&
-    getShowingChildren(showingChildren[0].children).length === 0
+    (getShowingChildren(showingChildren[0].children).length === 0 ||
+      (showingChildren[0].meta?.isLeaf && showingChildren[0].component))
   ) {
     const onlyChildPath = showingChildren[0]?.path || '/'
     const path = onlyChildPath.startsWith('/') ? onlyChildPath : `${m.path}/${onlyChildPath}`

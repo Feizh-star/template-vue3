@@ -1,7 +1,6 @@
 [
   {
     "path": "/testmenu",
-    "name": "testmenu",
     "component": "TestMenu/Index.vue",
     "meta": {
       "title": "测试菜单",
@@ -13,12 +12,101 @@
     }
   },
   {
-    "path": "/test3",
-    "name": "test3",
-    "component": "Layout",
-    "props": {
-      "containerName": "test3"
+    "path": "/custommenu",
+    "component": "CustomMenu/Index.vue",
+    "meta": {
+      "title": "自定义首级子目录",
+      "hidden": false,
+      "alwaysShow": false,
+      "isLeaf": true,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yitihuajiankong"
+      }
     },
+    "children": [
+      {
+        "path": "cusmenupage1",
+        "component": "CustomMenu/subpage/Page1.vue",
+        "meta": {
+          "title": "自定义子级菜单1",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
+      },
+      {
+        "path": "cusmenupage2",
+        "component": "CustomMenu/subpage/Page2.vue",
+        "meta": {
+          "title": "自定义子级菜单2",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "Male"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "path": "/customsubmenu",
+    "meta": {
+      "title": "自定义非首级子目录",
+      "hidden": false,
+      "alwaysShow": true,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yitihuajiankong"
+      }
+    },
+    "children": [
+      {
+        "path": "submenu1",
+        "component": "CustomSubMenu/Index.vue",
+        "meta": {
+          "title": "非首级子目录1",
+          "hidden": false,
+          "alwaysShow": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yitihuajiankong"
+          }
+        },
+        "children": [
+          {
+            "path": "subpage1",
+            "component": "CustomSubMenu/subpage/Page1.vue",
+            "meta": {
+              "title": "自定义非首级子菜单1",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "Female"
+              }
+            }
+          },
+          {
+            "path": "subpage2",
+            "component": "CustomSubMenu/subpage/Page2.vue",
+            "meta": {
+              "title": "自定义非首级子菜单2",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "Male"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/test3",
     "meta": {
       "title": "Test3",
       "hidden": false,
@@ -31,11 +119,6 @@
     "children": [
       {
         "path": "test31",
-        "name": "test31",
-        "component": "RouterSocket",
-        "props": {
-          "containerName": "test31"
-        },
         "meta": {
           "title": "Test31",
           "hidden": false,
@@ -48,7 +131,6 @@
         "children": [
           {
             "path": "test311",
-            "name": "test311",
             "component": "TestMenu/Test311.vue",
             "meta": {
               "title": "Test311",
@@ -63,15 +145,10 @@
       },
       {
         "path": "test32",
-        "name": "test32",
-        "component": "RouterSocket",
-        "props": {
-          "containerName": "test32"
-        },
         "meta": {
           "title": "Test32",
           "hidden": false,
-          "alwaysShow": true,
+          "alwaysShow": false,
           "icon": {
             "type": "class",
             "value": "iconfont icon-yuandianxiao-copy"
@@ -80,7 +157,6 @@
         "children": [
           {
             "path": "test321",
-            "name": "test321",
             "component": "TestMenu/Test321.vue",
             "meta": {
               "title": "Test321",

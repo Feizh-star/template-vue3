@@ -1,4 +1,4 @@
-export function getRoutes(): Promise<MyRawRoute[]> {
+export function getRoutes(): Promise<IOriginRoute[]> {
   return new Promise((resolve, reject) => {
     fetch('/dataset/router.json')
       .then((res) => res.json())

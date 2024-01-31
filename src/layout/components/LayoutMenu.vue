@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RouteRecordRaw } from 'vue-router'
-import { ref, watch, onMounted, useAttrs } from 'vue'
+import { ref, useAttrs, watch } from 'vue'
 import { useMenu } from '@/store/menu'
 import MenuItem from '@/layout/components/MenuItem.vue'
 const props = defineProps<{
@@ -16,21 +16,29 @@ const attrs = useAttrs()
 const menu = useMenu()
 const defaultActive = ref('')
 
-onMounted(() => {
-  const routePath = menu.getRoutePath
-  defaultActive.value = routePath
-})
+watch(
+  () => menu.getRouteNodePath,
+  (newNodePath) => {
+    const pathArr: string[] = []
+    for (const routeNode of newNodePath) {
+      pathArr.push(routeNode.path.replace('/', ''))
+      if (routeNode.meta?.isLeaf) break
+    }
+    defaultActive.value = '/' + pathArr.filter((p) => p && typeof p === 'string').join('/')
+  },
+  { immediate: true }
+)
 
 const handleOpen = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
+  // console.log(key, keyPath)
   emits('open', key, keyPath)
 }
 const handleClose = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
+  // console.log(key, keyPath)
   emits('close', key, keyPath)
 }
 const handleSelect = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
+  // console.log(key, keyPath)
   emits('select', key, keyPath)
 }
 </script>
@@ -38,8 +46,10 @@ const handleSelect = (key: string, keyPath: string[]) => {
   <div class="sidebar-menu">
     <el-scrollbar>
       <el-menu
+        ref="menuRef"
         :default-active="defaultActive"
         v-bind="attrs"
+        :ellipsis="false"
         @open="handleOpen"
         @close="handleClose"
         @select="handleSelect"

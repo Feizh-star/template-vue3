@@ -4,8 +4,8 @@ import router from '@/router'
 import { routes as constants } from '@/router'
 import { getRoutes } from '@/api/menu'
 import Layout from '@/layout/Layout.vue'
-import RouterSocket from '@/layout/RouterSocket.vue'
 import pathModule from 'path-browserify'
+import { searchTreeNode } from '@/utils/tools'
 
 const pages = importPage()
 
@@ -13,17 +13,16 @@ interface IState {
   resolved: boolean
   menuList: RouteRecordRaw[]
   currentMenu: RouteRecordRaw
-  routePath: any[]
+  routePath: RouteRecordRaw[]
 }
 
-let socketIndex = 1
 export const useMenu = defineStore({
   id: 'menuTree',
   state: () => ({
     resolved: false,
     menuList: [] as RouteRecordRaw[],
     currentMenu: {} as RouteRecordRaw,
-    routePath: [] as any[],
+    routePath: [] as RouteRecordRaw[],
   }),
   getters: {
     resolve: (state: IState) => state.resolved,
@@ -39,17 +38,11 @@ export const useMenu = defineStore({
     async fetchMenuList() {
       try {
         let routes = await getRoutes()
+        addRouteName(routes)
         routes = addLayoutForSingleRoute(routes)
-        const parsedRoute = parseRoutes(routes)
+        const parsedRoute = parseRoutes(routes, '', routes)
         this.menuList = [...constants, ...parsedRoute]
         this.setResolve(true)
-        // router.addRoute('', {
-        //   path: '/:pathMatch(.*)*',
-        //   name: "NotFound",
-        //   redirect: '/404',
-        //   meta: { hidden: true, }
-        // })
-        // console.log(this.menuList)
       } catch (error) {
         console.error(error)
       }
@@ -72,37 +65,44 @@ export const useMenu = defineStore({
  * @param parent 父路由名称，用于添加路由
  * @returns 符合vue-router要求的路由表
  */
-function parseRoutes(routes: MyRawRoute[], parent: string = ''): RouteRecordRaw[] {
+function parseRoutes(
+  routes: IOriginRoute[],
+  parent: string = '',
+  fullTree: IOriginRoute[]
+): RouteRecordRaw[] {
   const parsedRoutes: RouteRecordRaw[] = []
   for (const raw of routes) {
-    let component: RouteComponent | (() => Promise<RouteComponent>)
-    if (raw.component === 'Layout') {
+    let redirectPath: string | undefined = undefined
+    const showChildren = raw.children?.filter((item) => !item.meta?.hidden)
+    if (showChildren && showChildren.length > 0) {
+      const stack =
+        searchTreeNode(fullTree, raw.name, { id: 'name' })?._stack?.map((item) => item.path) || []
+      redirectPath = pathModule.resolve(...[...stack, raw.path, showChildren[0].path])
+    }
+    let component: RouteComponent | (() => Promise<RouteComponent>) | undefined
+    if (!raw.component) {
+      component = undefined
+    } else if (raw.component === 'Layout') {
       component = Layout
-    } else if (raw.component === 'RouterSocket') {
-      component = RouterSocket
     } else {
       // component = () => import(`../views/${raw.component.replace('.vue', '')}.vue`)
       // webpack不能编译动态的import(),需要借助babel-plugin-dynamic-import-webpack
       // component = () => require(`@/views/${raw.component}`)
       component = pages[raw.component]
     }
-    // 避免1级目录类型的路由节点名称重复(path是'/'的1级路由的name都是Layout)
-    if (raw.name == 'Layout') {
-      raw.name = raw.name.concat(String(socketIndex++))
-      raw.props && (raw.props.containerName = raw.name)
-    }
     const parsedRoute: RouteRecordRaw = {
       path: raw.path,
       component: component,
       name: raw.name,
       meta: raw.meta,
-      redirect: raw.redirect || '',
+      redirect: raw.redirect == '-1' ? '' : raw.redirect || redirectPath,
       props: raw.props ? raw.props : {},
       children: [],
     }
+    parsedRoute.children = [{ ...parsedRoute }] // 先addRoute，后设置children会导致vue-router报警告，这一步无用，只是去除警告
     router.addRoute(parent, parsedRoute)
     parsedRoutes.push(parsedRoute)
-    parsedRoute.children = parseRoutes(raw.children || [], raw.name)
+    parsedRoute.children = parseRoutes(raw.children || [], raw.name, fullTree)
   }
   return parsedRoutes
 }
@@ -111,27 +111,48 @@ function parseRoutes(routes: MyRawRoute[], parent: string = ''): RouteRecordRaw[
  * @param routes 接口获取的路由表
  * @returns 处理后的路由表
  */
-function addLayoutForSingleRoute(routes: MyRawRoute[]): MyRawRoute[] {
+function addLayoutForSingleRoute(routes: IOriginRoute[]): IOriginRoute[] {
   return routes.map((r) => {
-    let routeParse: MyRawRoute = r
-    if (r.name !== 'Layout' && (!r.children || r.children.length === 0)) {
+    let routeParse: IOriginRoute = r
+    if (!routeParse.component) {
+      // 第一层没给组件，那就放在Layout中
+      routeParse.component = 'Layout'
+    } else if (!r.meta?.noLayout) {
       if (r.path.startsWith('/')) r.path = r.path.replace('/', '')
+      const newName = `Layout-${r.name || Math.random().toString(36).substring(2, 12)}`
       routeParse = {
         path: '/',
-        name: 'Layout',
+        name: newName,
         component: 'Layout',
         meta: {
           title: '',
           hidden: false,
         },
         props: {
-          containerName: 'Layout',
+          containerName: newName,
         },
         children: [r],
       }
     }
     return routeParse
   })
+}
+
+function addRouteName(routes: IOriginRoute[], parentName: string = '') {
+  for (const routeItem of routes) {
+    const routeChildrenCount = routeItem.children?.length || 0
+    const itemName = [parentName, routeItem.path.replace('/', '')].filter((p) => p).join('-')
+    routeItem.name = itemName
+    const props = routeItem.props || {}
+    if (routeItem.component) {
+      props.key = itemName
+    }
+    if (routeChildrenCount > 0) {
+      props.containerName = itemName
+    }
+    routeItem.props = props
+    if (routeChildrenCount > 0) addRouteName(routeItem.children as IOriginRoute[], itemName)
+  }
 }
 
 /**
@@ -143,6 +164,5 @@ function importPage() {
   for (const path in viewModules) {
     modulesRemovedBase[path.replace('/src/views/', '')] = viewModules[path]
   }
-  // console.log(modulesRemovedBase)
   return modulesRemovedBase
 }

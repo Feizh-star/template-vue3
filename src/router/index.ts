@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw, RouteLocationNormalized } from 'vue-router'
-import { h } from 'vue'
-import Layout from '@/layout/Layout.vue'
+// import { h } from 'vue'
+// import Layout from '@/layout/Layout.vue'
 import { useMenu } from '@/store/menu'
-import { filterTreeNode } from '@/utils/tools'
+import { searchTreeNode } from '@/utils/tools'
 import pathModule from 'path-browserify'
 
 export const routes: Array<RouteRecordRaw> = [
@@ -59,7 +59,7 @@ router.afterEach((to: RouteLocationNormalized) => {
 function setCurrentMenu(to: RouteLocationNormalized) {
   const menu = useMenu()
   const fullpath = to.fullPath
-  const currentRoute = filterTreeNode(
+  const currentRoute = searchTreeNode(
     menu.getMenuList,
     fullpath,
     { id: 'path' },
@@ -69,8 +69,8 @@ function setCurrentMenu(to: RouteLocationNormalized) {
       return currentFullPath === fPath
     }
   )
-  menu.setRoutePath(currentRoute ? [...currentRoute._stack, currentRoute] : [])
-  menu.setCurrentMenu(currentRoute || {})
+  menu.setRoutePath(currentRoute ? [...(currentRoute._stack || []), currentRoute] : [])
+  menu.setCurrentMenu(currentRoute || ({} as RouteRecordRaw))
 }
 
 export default router
