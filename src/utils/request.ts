@@ -94,11 +94,12 @@ service.interceptors.response.use(
     }
   },
   (error) => {
-    removePendingRequest(error.config || {}) // 从pendingRequest对象中移除请求
     if (axios.isCancel(error)) {
+      // 既然是取消请求造成的error，就不用再次removePendingRequest了(已执行过)
       console.log('已取消的重复请求：' + error.message)
     } else {
-      console.log('err' + error)
+      removePendingRequest(error.config || {}) // 非取消造成的错误，从pendingRequest对象中移除请求
+      console.error(error)
       let { message } = error
       if (message == 'Network Error') {
         message = '后端接口连接异常'

@@ -60,7 +60,7 @@ export const useMenu = defineStore({
 })
 
 /**
- * 将原始路由衰转换为符合vue-router要求的路由表，并加入到router中
+ * 将原始路由表转换为符合vue-router要求的路由表，并加入到router中
  * @param 原始器由表
  * @param parent 父路由名称，用于添加路由
  * @returns 符合vue-router要求的路由表
