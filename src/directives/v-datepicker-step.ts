@@ -1,8 +1,6 @@
 import { unref, type VNode, type Ref } from 'vue'
 import moment from 'moment'
 
-const upSvg = `<svg t="1705646297034" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1033" width="200" height="200"><path d="M975.29704297 743.64791467L512 280.35208533l-463.29704297 463.29704297 926.59408594 0z" p-id="1034" fill="#666666"></path></svg>`
-const downSvg = `<svg t="1705646365046" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1182" width="200" height="200"><path d="M48.70295703 280.35208533L512 743.64791467l463.29704297-463.29704297-926.59408594 0z" p-id="1183" fill="#666666"></path></svg>`
 const upDownIconClass = 'mx-updown-icon'
 const upDownIconClassUp = 'mx-updown-icon-up'
 const upDownIconClassDown = 'mx-updown-icon-down'
@@ -70,6 +68,10 @@ interface IElOptions {
 const stepIconWidth = 24
 const elOptionMap = new WeakMap<HTMLElement, IElOptions>()
 const iconEventMap = new WeakMap<HTMLElement, { event: string; handler: EventListener }[]>()
+const arrowEventMap = new WeakMap<
+  HTMLElement,
+  { mouseenter: EventListener; mouseleave: EventListener }
+>()
 const vDatepickerStep = {
   mounted(el: HTMLElement, binding: { value: IBindValue }, vnode: DatepickerVnode) {
     if (!hasBindValue(binding)) {
@@ -166,6 +168,15 @@ function removeIconElAndEvent(el: HTMLElement, elOption: IElOptions) {
     iconEvents.forEach((item) => {
       iconEl.removeEventListener(item.event, item.handler)
     })
+
+    const arrowEl = iconEl.children[0] as HTMLElement
+    const arrowEvent = arrowEventMap.get(arrowEl)
+    if (arrowEl?.tagName === 'SPAN' && arrowEvent) {
+      for (const key in arrowEvent) {
+        arrowEl.removeEventListener(key, arrowEvent[key as keyof typeof arrowEvent])
+      }
+    }
+
     if (iconEl.parentNode === el) {
       el.removeChild(iconEl)
     }
@@ -223,7 +234,32 @@ function setIconStyle(el: HTMLElement, type: 'up' | 'down') {
   el.style.right = '8px'
   el.style.cursor = 'pointer'
   el.style.userSelect = 'none'
-  el.innerHTML = type === 'up' ? upSvg : downSvg
+  const arrow = createArrow(type)
+  el.appendChild(arrow)
+}
+function createArrow(type: 'up' | 'down') {
+  const direction = type === 'up' ? 'Bottom' : 'Top'
+  const arrow = document.createElement('span')
+  arrow.style.display = 'inline-block'
+  arrow.style.cursor = 'pointer'
+  arrow.style.width = '12px'
+  arrow.style.height = '12px'
+  arrow.style.border = '6px solid transparent'
+  arrow.style[`border${direction}Color`] = '#666666'
+  arrow.style[`margin${direction}`] = '4px'
+  const enterEvent = function (this: HTMLElement) {
+    this.style[`border${direction}Color`] = '#999999'
+  }
+  const leaveEvent = function (this: HTMLElement) {
+    this.style[`border${direction}Color`] = '#666666'
+  }
+  arrow.addEventListener('mouseenter', enterEvent)
+  arrow.addEventListener('mouseleave', leaveEvent)
+  arrowEventMap.set(arrow, {
+    mouseenter: enterEvent,
+    mouseleave: leaveEvent,
+  })
+  return arrow
 }
 function clickEventHanlder(e: Event, type: 'up' | 'down', elOptions: IElOptions) {
   const {
