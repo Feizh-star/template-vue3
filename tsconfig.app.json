@@ -1,12 +1,6 @@
 {
   "extends": "@vue/tsconfig/tsconfig.web.json",
-  "include": [
-    "env.d.ts",
-    "src/**/*",
-    "src/**/*.vue",
-    "auto-imports.d.ts",
-    "build/*.ts",
-  ],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "auto-imports.d.ts", "build/*.ts"],
   "exclude": ["src/**/__tests__/*", "node_modules", "dist"],
   "compilerOptions": {
     "allowJs": true, // 允许编译器编译JS，JSX文件
@@ -14,11 +8,12 @@
     "ignoreDeprecations": "5.0",
     "resolveJsonModule": true,
     "esModuleInterop": true,
+    "jsxImportSource": "vue",
     "composite": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@build/*": ["build/*"],
+      "@build/*": ["build/*"]
     }
   }
 }
