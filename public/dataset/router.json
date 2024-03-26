@@ -168,6 +168,30 @@
             }
           }
         ]
+      },
+      {
+        "path": "testcrud",
+        "component": "TestCrud/Index.vue",
+        "meta": {
+          "title": "TestCrud",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        }
+      },
+      {
+        "path": "testform",
+        "component": "TestFormGroup/Index.vue",
+        "meta": {
+          "title": "TestFormGroup",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        }
       }
     ]
   }
