@@ -56,6 +56,7 @@ import HorScroll from '@/components/HorScroll/Index.vue'
 import { ArrowLeftBold, ArrowRightBold } from '@element-plus/icons'
 import { useUserStore } from '@/store/user'
 import { useMenu } from '@/store/menu'
+import { backToIndex } from '@/router/index'
 
 const props = defineProps<{
   showMenu: boolean
@@ -106,7 +107,7 @@ onUnmounted(() => {
 const userStore = useUserStore()
 function logout() {
   userStore.logOut().then(() => {
-    location.href = '/index'
+    backToIndex()
   })
 }
 </script>

@@ -73,4 +73,8 @@ function setCurrentMenu(to: RouteLocationNormalized) {
   menu.setCurrentMenu(currentRoute || ({} as RouteRecordRaw))
 }
 
+export const backToIndex = () => {
+  location.href = (import.meta.env.DEV ? '/' : import.meta.env.VITE_APP_BASE_URL) + 'index'
+}
+
 export default router

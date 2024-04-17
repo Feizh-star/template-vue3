@@ -5,6 +5,7 @@ import { getToken } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
 import { tansParams } from '@/utils/tools'
 import { useUserStore } from '@/store/user'
+import { backToIndex } from '@/router/index'
 
 // 是否显示重新登录
 export const isRelogin = { show: false }
@@ -72,7 +73,7 @@ service.interceptors.response.use(
             useUserStore()
               .logOut()
               .then(() => {
-                location.href = '/index'
+                backToIndex()
               })
           })
           .catch(() => {
