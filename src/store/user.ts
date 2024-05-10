@@ -1,5 +1,27 @@
-import { login, logout, getInfo } from '@/api/user'
+// import { login, logout, getInfo } from '@/api/user'
 import { setToken, getToken, removeToken } from '@/utils/auth'
+
+function falseLogin() {
+  return new Promise((resolve) => {
+    resolve({
+      token: 'qwertyuiopasdfghjklzxcvbnm',
+    })
+  })
+}
+function falseGetInfo() {
+  return new Promise((resolve) => {
+    resolve({
+      user: 'zs',
+      roles: ['admin'],
+      permissions: [],
+    })
+  })
+}
+function falseLogout() {
+  return new Promise((resolve) => {
+    resolve(true)
+  })
+}
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -13,7 +35,8 @@ export const useUserStore = defineStore('user', {
     login(userInfo: ILoginParams) {
       userInfo.username = userInfo.username.trim()
       return new Promise((resolve, reject) => {
-        login(userInfo)
+        // login(userInfo).then((res: any) => {
+        falseLogin()
           .then((res: any) => {
             setToken(res.token)
             this.token = res.token
@@ -27,7 +50,8 @@ export const useUserStore = defineStore('user', {
     // 获取用户信息
     getInfo() {
       return new Promise((resolve, reject) => {
-        getInfo()
+        // getInfo().then((res: any) => {
+        falseGetInfo()
           .then((res: any) => {
             const user = res.user
 
@@ -50,7 +74,8 @@ export const useUserStore = defineStore('user', {
     },
     logOut() {
       return new Promise((resolve, reject) => {
-        logout()
+        // logout().then(() => {
+        falseLogout()
           .then(() => {
             this.token = ''
             this.roles = []
