@@ -83,6 +83,15 @@ function debounce(fn: (...arg: any[]) => void, delay: number) {
 </script>
 
 <script setup lang="ts">
+/**
+ * 如需在不需要滚动时（界面较宽）水平铺满，在外部这样设置，然后插槽列表使用flex布局
+    :deep(.horizontal-scroll-bar) {
+      .scroll-items {
+        width: 100%;
+        min-width: fit-content;
+      }
+    }
+ */
 import { useResizeObserver } from '@vueuse/core'
 export interface Props {
   width?: string
