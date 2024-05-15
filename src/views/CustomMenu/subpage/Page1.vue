@@ -1,8 +1,15 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useSquare } from './compositions/useSquare'
+import { useTestPoints } from './compositions/useTestPoints'
+const renderCanvas = ref<HTMLCanvasElement | null>(null)
+
+useSquare({ el: renderCanvas })
+// useTestPoints({ el: renderCanvas })
+</script>
 
 <template>
   <div class="custom-page1">
-    <el-empty description="CustomMenu 页面一" />
+    <canvas ref="renderCanvas"></canvas>
   </div>
 </template>
 
@@ -10,5 +17,10 @@
 .custom-page1 {
   width: 100%;
   height: 100%;
+  padding: 16px;
+  > canvas {
+    width: 100%;
+    height: 100%;
+  }
 }
 </style>
