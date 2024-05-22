@@ -73,8 +73,8 @@ export function hexToRgb(hex: string) {
   result.push(parseInt(hex.substring(0, 2), 16))
   result.push(parseInt(hex.substring(2, 4), 16))
   result.push(parseInt(hex.substring(4, 6), 16))
-  if (hex.length === 9) {
-    result.push(parseInt(hex.substring(7, 9), 16))
+  if (hex.length === 8) {
+    result.push(parseInt(hex.substring(6, 8), 16))
   }
   // 返回结果数组
   return result

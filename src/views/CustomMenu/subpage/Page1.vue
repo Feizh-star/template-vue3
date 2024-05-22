@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useSquare } from './compositions/useSquare'
 import { useTestPoints } from './compositions/useTestPoints'
+import * as lodashLib from 'lodash'
+
 const renderCanvas = ref<HTMLCanvasElement | null>(null)
 
 useSquare({ el: renderCanvas })

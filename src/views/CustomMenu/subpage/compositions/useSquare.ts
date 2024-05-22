@@ -156,13 +156,14 @@ function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
   const scale1 = []
   for (let i = 0; i < flowingLinePoints.length; i++) {
     const sle = (i + 1) / flowingLinePoints.length
-    scale1.push(sle > 0.8 ? 1 : sle)
+    scale1.push(1)
   }
   flowingLineGeometry.attributes.scale1 = new THREE.BufferAttribute(new Float32Array(scale1), 1) // 使拖尾的光串联的点呈现大小比例的变化从而形成拖尾效果
   const flowingLineMaterial = new THREE.PointsMaterial({
     // color: 0xfff000,
     vertexColors: true, // 使用顶点颜色
-    size: 2,
+    transparent: true, // 开启透明
+    size: 2.5,
   })
 
   flowingLineMaterial.onBeforeCompile = (shader) => {
@@ -184,9 +185,10 @@ function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
 
   // 为每一个顶点设置颜色
   const colorGradient = createGradient([
-    { color: '#53ffc1', percent: 0 },
-    { color: '#53ffc1', percent: 0.85 },
-    { color: '#ffffff', percent: 1 },
+    { color: '#53ffc100', percent: 0 },
+    { color: '#53ffc180', percent: 0.6 },
+    { color: '#53ffc1ff', percent: 0.85 },
+    { color: '#ffffffff', percent: 1 },
   ])
   const colors: number[] = []
   const count = flowingLineGeometry.getAttribute('position').count
@@ -195,9 +197,9 @@ function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
     //根据顶点位置顺序大小设置颜色渐变
     const c = colorGradient.getColor(percent) //颜色插值计算
     const rgbColor = rgbNormalized(hexToRgb(c))
-    colors.push(rgbColor[0], rgbColor[1], rgbColor[2])
+    colors.push(rgbColor[0], rgbColor[1], rgbColor[2], rgbColor[3])
   }
-  flowingLineGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  flowingLineGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4))
 
   const flowingLine = new THREE.Points(flowingLineGeometry, flowingLineMaterial)
   scene.add(flowingLine)
