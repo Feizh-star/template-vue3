@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useSquare } from './compositions/useSquare'
+import { useTestFlowLine3D } from './compositions/useTestFlowLine3D'
 import { useTestPoints } from './compositions/useTestPoints'
 import * as lodashLib from 'lodash'
 
 const renderCanvas = ref<HTMLCanvasElement | null>(null)
 
-useSquare({ el: renderCanvas })
+// useSquare({ el: renderCanvas })
+useTestFlowLine3D({ el: renderCanvas })
 // useTestPoints({ el: renderCanvas })
 </script>
 

@@ -9,6 +9,8 @@ export function createGradient(colors: { color: string; percent: number }[]) {
   ) {
     throw new Error('Color value must be #xxxxxx or #xxxxxxxx!')
   }
+  const lengthSet = new Set(colors.map((item) => item.color.length))
+  const withOpacity = Math.max(...[...lengthSet]) === 9
   function getColor(percent: number) {
     if (percent <= 0) return colors[0].color
     if (percent >= 1) return colors[colors.length - 1].color
@@ -47,7 +49,7 @@ export function createGradient(colors: { color: string; percent: number }[]) {
     )
     result.push(`${b.toString(16).padStart(2, '0')}`)
 
-    if (lowerColor.length === 9 || upperColor.length === 9) {
+    if (withOpacity) {
       const lowerColorA = lowerColor.length === 9 ? parseInt(lowerColor.substring(7, 9), 16) : 255
       const upperColorA = upperColor.length === 9 ? parseInt(upperColor.substring(7, 9), 16) : 255
       const a = Math.round(lowerColorA * (1 - percentInRange) + upperColorA * percentInRange)

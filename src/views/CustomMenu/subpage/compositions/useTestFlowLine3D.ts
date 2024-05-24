@@ -6,8 +6,9 @@ import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import { createGradient, hexToRgb, rgbNormalized } from '@/utils/colorGradient'
+import { FlowLine3D } from './flowLine3D'
 
-export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
+export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> }) {
   let camera, scene, renderer
 
   onMounted(() => {
@@ -72,7 +73,7 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
     controls.addEventListener('change', render)
     controls.update()
 
-    const positions = [
+    const positions: [number, number, number][] = [
       [30, 0, 30],
       [-30, 0, 30],
       [-30, 0, -30],
@@ -81,28 +82,18 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
     ]
     const points = positions.map((item) => new THREE.Vector3(...item))
 
-    const trackLine = new LineGeometry()
-    trackLine.setPositions(positions.flat())
+    const trackLine = new FlowLine3D({ path: positions }).addTo(scene)
 
-    const trackLineMaterial = new LineMaterial({
-      color: 0x53ffc1,
-      linewidth: 2, // in world units with size attenuation, pixels otherwise
-      //resolution:  // to be set by renderer, eventually
-      dashed: false,
-      alphaToCoverage: true,
-    })
-    console.log(trackLineMaterial)
-    const line = new Line2(trackLine, trackLineMaterial)
-    line.computeLineDistances()
-    line.scale.set(1, 1, 1)
-    scene.add(line)
+    // setTimeout(() => {
+    //   trackLine.destory()
+    // }, 3000)
 
     const flowingLine = addFlowingLine(scene, points)
 
     function animate() {
       // 一定要在此函数中调用
       if (flowingLine) flowingLine.update()
-      trackLineMaterial.resolution.set(canvas.width, canvas.height)
+      trackLine.lineMaterial?.resolution.set(canvas.width, canvas.height)
       render()
       requestAnimationFrame(animate)
     }
@@ -130,77 +121,54 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
   }
 }
 function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
-  // 生成轨迹线line
-  const curvePath = new THREE.CurvePath<THREE.Vector3>()
-  for (let i = 0; i < points.length - 1; i++) {
-    const singleLine = new THREE.LineCurve3(points[i], points[i + 1])
-    curvePath.add(singleLine)
-  }
-  const linePoints = curvePath.getSpacedPoints(1000) // 将曲线细分出更多的的点
+  // 插值轨迹线line
+  const linePoints = getTweenPoint(points, 200) // 将曲线细分出更多的的点
   linePoints.unshift(...new Array(50).fill(linePoints[0]))
 
-  // 生成那道拖尾的光flowingLine
-  const flowingLineGeometry = new THREE.BufferGeometry()
+  const scaleAttrName = 'scale1'
   const flowingLineLength = 50 // 那道拖尾的光的长度（即占用了轨迹线上多少个点）
   let lineIndex = 0 // 拖尾的光从轨迹线的第一个点位开始流动
 
-  let flowingLinePoints = linePoints.slice(lineIndex, lineIndex + flowingLineLength) // 拖尾的光对应的那段轨迹线
+  const flowingLineGeometry = new THREE.BufferGeometry()
+  // 更新/初始化几何体的位置
+  const flowingLinePoints = updatePositions(
+    flowingLineGeometry,
+    linePoints,
+    lineIndex,
+    flowingLineLength
+  )
+  // 为每一个点设置缩放
+  setFlowPointScale(flowingLineGeometry, flowingLinePoints, scaleAttrName)
+  // 为每一个顶点设置颜色
+  setGeometryColor(flowingLineGeometry, [
+    { color: '#53ffc100', percent: 0 },
+    { color: '#53ffc180', percent: 0.6 },
+    { color: '#53ffc1ff', percent: 0.85 },
+    { color: '#ffffffff', percent: 1 },
+  ])
 
-  const flowingLineCurve = new THREE.CurvePath<THREE.Vector3>()
-  for (let i = 0; i < flowingLinePoints.length - 1; i++) {
-    const singleLine = new THREE.LineCurve3(points[i], points[i + 1])
-    flowingLineCurve.add(singleLine)
-  }
-  flowingLinePoints = flowingLineCurve.getSpacedPoints(100) // 将拖尾的光它自己的曲线细分出更多的点方便后续设置一个个点串联成拖尾的光线
-
-  flowingLineGeometry.setFromPoints(flowingLinePoints)
-  const scale1 = []
-  for (let i = 0; i < flowingLinePoints.length; i++) {
-    const sle = (i + 1) / flowingLinePoints.length
-    scale1.push(1)
-  }
-  flowingLineGeometry.attributes.scale1 = new THREE.BufferAttribute(new Float32Array(scale1), 1) // 使拖尾的光串联的点呈现大小比例的变化从而形成拖尾效果
   const flowingLineMaterial = new THREE.PointsMaterial({
     // color: 0xfff000,
     vertexColors: true, // 使用顶点颜色
     transparent: true, // 开启透明
     size: 2.5,
   })
-
   flowingLineMaterial.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace(
         'void main() {',
         `
-          attribute float scale1;
+          attribute float ${scaleAttrName};
           void main() {
         `
       )
       .replace(
         'gl_PointSize = size;',
         `
-          gl_PointSize = size * scale1;
+          gl_PointSize = size * ${scaleAttrName};
         `
       )
   }
-
-  // 为每一个顶点设置颜色
-  const colorGradient = createGradient([
-    { color: '#53ffc100', percent: 0 },
-    { color: '#53ffc180', percent: 0.6 },
-    { color: '#53ffc1ff', percent: 0.85 },
-    { color: '#ffffffff', percent: 1 },
-  ])
-  const colors: number[] = []
-  const count = flowingLineGeometry.getAttribute('position').count
-  for (let i = 0; i < count; i++) {
-    const percent = i / count //点索引值相对所有点数量的百分比
-    //根据顶点位置顺序大小设置颜色渐变
-    const c = colorGradient.getColor(percent) //颜色插值计算
-    const rgbColor = rgbNormalized(hexToRgb(c))
-    colors.push(rgbColor[0], rgbColor[1], rgbColor[2], rgbColor[3])
-  }
-  flowingLineGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4))
 
   const flowingLine = new THREE.Points(flowingLineGeometry, flowingLineMaterial)
   scene.add(flowingLine)
@@ -212,19 +180,65 @@ function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
         lineIndex = 0
       }
       lineIndex += 1
-      const newFlowingLinePoints = linePoints.slice(lineIndex, lineIndex + flowingLineLength)
-      const newFlowingLineCurve = new THREE.CurvePath<THREE.Vector3>()
-      for (let i = 0; i < newFlowingLinePoints.length - 1; i++) {
-        const singleLine = new THREE.LineCurve3(
-          newFlowingLinePoints[i],
-          newFlowingLinePoints[i + 1]
-        )
-        newFlowingLineCurve.add(singleLine)
-      }
-      const flowingLinePointsTween = newFlowingLineCurve.getSpacedPoints(100)
+
       // 为拖尾的光设置新的点位从而实现流动效果
-      flowingLine.geometry.setFromPoints(flowingLinePointsTween)
+      updatePositions(flowingLine.geometry, linePoints, lineIndex, flowingLineLength)
+
       flowingLine.geometry.computeBoundingSphere()
     },
   }
+}
+
+function getTweenPoint(points: THREE.Vector3[], magnification = 1) {
+  const curvePath = new THREE.CurvePath<THREE.Vector3>()
+  for (let i = 0; i < points.length - 1; i++) {
+    const singleLine = new THREE.LineCurve3(points[i], points[i + 1])
+    curvePath.add(singleLine)
+  }
+  return curvePath.getSpacedPoints(points.length * Math.round(magnification))
+}
+
+function updatePositions(
+  geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
+  points: THREE.Vector3[],
+  index: number,
+  length: number
+) {
+  const newFlowingLinePoints = points.slice(index, index + length)
+  const flowingLinePointsTween = getTweenPoint(newFlowingLinePoints, 2)
+  geometry.setFromPoints(flowingLinePointsTween)
+  return flowingLinePointsTween
+}
+
+function setGeometryColor(
+  geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
+  colorStop: { color: string; percent: number }[]
+) {
+  const colorGradient = createGradient(colorStop)
+  const colors: number[] = []
+  const count = geometry.getAttribute('position').count
+  let colorLength = 0
+  for (let i = 0; i < count; i++) {
+    const percent = i / count //点索引值相对所有点数量的百分比
+    //根据顶点位置顺序大小设置颜色渐变
+    const c = colorGradient.getColor(percent) //颜色插值计算
+    const rgbColor = rgbNormalized(hexToRgb(c))
+    if (colorLength === 0) colorLength = rgbColor.length
+    colors.push(...rgbColor)
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, colorLength))
+}
+
+function setFlowPointScale(
+  geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
+  flowPoints: THREE.Vector3[],
+  attrName: string
+) {
+  const scaleValue = []
+  for (let i = 0; i < flowPoints.length; i++) {
+    const sle = (i + 1) / flowPoints.length
+    scaleValue.push(sle)
+  }
+  // 使拖尾的光串联的点呈现大小比例的变化从而形成拖尾效果
+  geometry.attributes[attrName] = new THREE.BufferAttribute(new Float32Array(scaleValue), 1)
 }

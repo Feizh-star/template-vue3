@@ -64,6 +64,7 @@ const defaultOption: IGplot3DOption = {
   },
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function customMerge(target: IGplot3DOption, source: IGplot3DOption) {
   return undefined
 }
@@ -73,7 +74,7 @@ function hexString2Number(hex: string) {
 /**
  * 计划：
  * 数据描述：线（路径位置，颜色，虚实线），节点（位置，名称，中心偏移），背景区块（路径位置，颜色，虚实线，下标）
- * 写一个特效线类，包含一条线和线上的特效
+ * 写一个特效线类，包含一条线和线上的特效：写特效
  */
 export class Gplot3D {
   private domElement!: HTMLCanvasElement
