@@ -1,14 +1,19 @@
-import type { Ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { Line2 } from 'three/addons/lines/Line2.js'
-import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
-import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import * as lodashLib from 'lodash'
-import { createGradient, hexToRgb, rgbNormalized } from '@/utils/colorGradient'
+// import { createGradient, hexToRgb, rgbNormalized } from './colorGradient'
+import { FlowLine3D, type IFlowLine3DOption } from './flowLine3D'
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+}
+export interface ISpriteNodeItem {
+  common: Record<string, any>
+  src: string
+  center: number[]
+  scale: number[]
+  position: number[]
+  offset: number[]
 }
 export interface IGplot3DOption {
   el: HTMLElement
@@ -50,7 +55,7 @@ const defaultOption: IGplot3DOption = {
     viewAngle: 15,
     near: 0.1,
     far: 1000,
-    initialPosition: { x: 100, y: 100, z: 100 },
+    initialPosition: { x: 200, y: 200, z: 200 },
   },
   controls: {
     enablePan: true,
@@ -78,7 +83,7 @@ function hexString2Number(hex: string) {
  */
 export class Gplot3D {
   private domElement!: HTMLCanvasElement
-  private option: IGplot3DOption = defaultOption
+  private option: IGplot3DOption
   private observer!: ResizeObserver
   private devicePixelRatio: number
   private scene!: THREE.Scene
@@ -87,13 +92,14 @@ export class Gplot3D {
 
   constructor(option: DeepPartial<IGplot3DOption>) {
     this.devicePixelRatio = window.devicePixelRatio
-    this.option = lodashLib.mergeWith(defaultOption, option, customMerge)
+    this.option = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption), option, customMerge)
     this.createCanvas()
     this.initBaseScene()
     this.initRenderer()
     this.initOrbitControls()
 
     this.render()
+    this.animate()
   }
   private render() {
     if (!this.renderer || !this.scene || !this.camera) {
@@ -185,6 +191,105 @@ export class Gplot3D {
   }
   private cancelResize() {
     if (this.observer) this.observer.disconnect()
+  }
+
+  private rafId!: number | null
+  private animate() {
+    // 一定要在此函数中调用
+    this.flowLines.forEach((item) => {
+      item.effectRun()
+    })
+    this.render()
+    this.rafId = requestAnimationFrame(() => {
+      this.animate()
+    })
+  }
+  private cancelAnimate() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
+    }
+  }
+  public destory() {
+    this.removeFlowLines()
+    this.removeSpriteNodes()
+    this.cancelResize()
+    this.cancelAnimate()
+  }
+  /**
+   * 管理线
+   */
+  private flowLines: FlowLine3D[] = []
+  public addFlowLines(lineData: DeepPartial<IFlowLine3DOption>[]) {
+    if (!this.scene || !this.domElement) return this
+    this.flowLines = lineData.map((l) => {
+      return new FlowLine3D({ ...l, canvas: this.domElement }).addTo(this.scene)
+    })
+    return this
+  }
+  public removeFlowLines() {
+    this.flowLines.forEach((item) => item.destory())
+    this.flowLines = []
+    return this
+  }
+  public getFlowLineById(id: number) {
+    const flowLineMap = new Map(this.flowLines.map((item) => [item.id, item]))
+    return flowLineMap.get(id) || null
+  }
+  public setStatusById(
+    id: number,
+    enable = false,
+    colorCfg?: {
+      color?: string
+      colorStop?: { color: string; percent: number }[]
+    }
+  ) {
+    const flowLine = this.getFlowLineById(id)
+    if (!flowLine) {
+      console.warn(`The instance of FlowLine3D whose id is ${id} does not exist`)
+      return null
+    }
+    flowLine.setMaterial({
+      dashed: !enable,
+      color: colorCfg?.color ? colorCfg.color : undefined,
+    })
+    flowLine.setEffect({
+      enable,
+      colorStop: colorCfg?.colorStop ? colorCfg.colorStop : [],
+    })
+  }
+
+  /**
+   * 管理点
+   */
+  private spriteNodes: THREE.Sprite[] = []
+  private spriteNodesMap: WeakMap<THREE.Sprite, DeepPartial<ISpriteNodeItem>> = new WeakMap()
+  public addSpriteNodes(nodeData: DeepPartial<ISpriteNodeItem>[]) {
+    if (!this.scene) return this
+    this.spriteNodes = nodeData.map((item) => {
+      const map = new THREE.TextureLoader().load(item.src || '')
+      const material = new THREE.SpriteMaterial({ map: map })
+      const sprite = new THREE.Sprite(material)
+      const center = new Array(2).fill(0.5).map((v, i) => item.center?.[i] || v) as number[]
+      const scale = new Array(3).fill(1).map((v, i) => item.scale?.[i] || v) as number[]
+      const position = new Array(3)
+        .fill(0)
+        .map((v, i) => (item.position?.[i] || v) + (item.offset?.[i] || 0)) as number[]
+      sprite.center.set(center[0], center[1])
+      sprite.scale.set(scale[0], scale[1], scale[2])
+      sprite.position.set(position[0], position[1], position[2])
+      this.scene.add(sprite)
+      this.spriteNodesMap.set(sprite, item)
+      return sprite
+    })
+    return this
+  }
+  public removeSpriteNodes() {
+    this.spriteNodes.forEach((item) => {
+      this.scene.remove(item)
+    })
+    this.spriteNodes = []
+    return this
   }
 }
 

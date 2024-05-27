@@ -47,19 +47,47 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
       canvas.height / window.devicePixelRatio
     )
 
-    new THREE.TextureLoader().load(
-      new URL('../assets/sprite.png', import.meta.url).href,
-      (loadTexture) => {
-        const material = new THREE.SpriteMaterial({ map: loadTexture })
-        const sWidth = material.map.image.width
-        const sHeight = material.map.image.height
-        const sprite = new THREE.Sprite(material)
-        sprite.center.set(0.5, 0.5)
-        sprite.scale.set(sWidth / 8, sHeight / 8, 1)
-        sprite.position.set(-0.3, 1, 3)
-        scene.add(sprite)
-      }
+    // new THREE.TextureLoader().load(
+    //   new URL('../assets/sprite.png', import.meta.url).href,
+    //   (loadTexture) => {
+    //     const material = new THREE.SpriteMaterial({ map: loadTexture })
+    //     const sWidth = material.map.image.width
+    //     const sHeight = material.map.image.height
+    //     const sprite = new THREE.Sprite(material)
+    //     sprite.center.set(0.5, 0.5)
+    //     sprite.scale.set(sWidth / 8, sHeight / 8, 1)
+    //     sprite.position.set(-0.3, 1, 3)
+    //     scene.add(sprite)
+    //   }
+    // )
+    const map = new THREE.TextureLoader().load(
+      new URL('../assets/sprite.png', import.meta.url).href
     )
+    const material = new THREE.SpriteMaterial({ map: map })
+    const sprite = new THREE.Sprite(material)
+    sprite.center.set(0.5, 0.5)
+    sprite.scale.set(15, 15, 15)
+    sprite.position.set(-0.3, 1, 3)
+    scene.add(sprite)
+    console.log(sprite)
+
+    const raycaster = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+    canvas.addEventListener('mousemove', onMouseMove, false)
+    function onMouseMove(event) {
+      // 更新鼠标位置
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      // 将鼠标位置转换为世界坐标
+      raycaster.setFromCamera(mouse, camera)
+
+      // 计算物体和鼠标的交点
+      const intersects = raycaster.intersectObjects(scene.children)
+      const obj = intersects[0]
+      if (obj && obj.object.type === 'Sprite') {
+        console.log(obj)
+      }
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enablePan = true
@@ -80,20 +108,60 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
       [30, 0, -30],
       [30, 0, 30],
     ]
-    const points = positions.map((item) => new THREE.Vector3(...item))
+    const positions1: [number, number, number][] = [
+      [15, 0, 15],
+      [15, 0, -15],
+      [-15, 0, -15],
+      [-15, 0, 15],
+      [15, 0, 15],
+    ]
 
-    const trackLine = new FlowLine3D({ path: positions }).addTo(scene)
-
+    const color = ['#53ffc1', '#ff5600']
+    const lines = [
+      {
+        id: 2,
+        path: positions,
+        lineMaterial: { color: color[0] },
+        effect: {
+          enable: true,
+          size: 2.5,
+          colorStop: [
+            { color: '#ffffffff', percent: 0 },
+            { color: `${color[0]}ff`, percent: 0.15 },
+            { color: `${color[0]}80`, percent: 0.4 },
+            { color: `${color[0]}00`, percent: 1 },
+          ],
+        },
+      },
+      {
+        id: 5,
+        path: positions1,
+        lineMaterial: { color: color[1] },
+        effect: {
+          enable: true,
+          size: 2.5,
+          colorStop: [
+            { color: '#ffffffff', percent: 0 },
+            { color: `${color[1]}ff`, percent: 0.15 },
+            { color: `${color[1]}80`, percent: 0.4 },
+            { color: `${color[1]}00`, percent: 1 },
+          ],
+        },
+      },
+    ]
+    const effectLines = lines.map((item) => new FlowLine3D({ ...item, canvas }).addTo(scene))
+    console.log(effectLines)
     // setTimeout(() => {
-    //   trackLine.destory()
+    //   trackLine.setEffect({
+    //     enable: true,
+    //   })
     // }, 3000)
-
-    const flowingLine = addFlowingLine(scene, points)
 
     function animate() {
       // 一定要在此函数中调用
-      if (flowingLine) flowingLine.update()
-      trackLine.lineMaterial?.resolution.set(canvas.width, canvas.height)
+      effectLines.forEach((item) => {
+        item.effectRun()
+      })
       render()
       requestAnimationFrame(animate)
     }
@@ -118,74 +186,6 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
 
   function render() {
     renderer.render(scene, camera)
-  }
-}
-function addFlowingLine(scene: THREE.Scene, points: THREE.Vector3[]) {
-  // 插值轨迹线line
-  const linePoints = getTweenPoint(points, 200) // 将曲线细分出更多的的点
-  linePoints.unshift(...new Array(50).fill(linePoints[0]))
-
-  const scaleAttrName = 'scale1'
-  const flowingLineLength = 50 // 那道拖尾的光的长度（即占用了轨迹线上多少个点）
-  let lineIndex = 0 // 拖尾的光从轨迹线的第一个点位开始流动
-
-  const flowingLineGeometry = new THREE.BufferGeometry()
-  // 更新/初始化几何体的位置
-  const flowingLinePoints = updatePositions(
-    flowingLineGeometry,
-    linePoints,
-    lineIndex,
-    flowingLineLength
-  )
-  // 为每一个点设置缩放
-  setFlowPointScale(flowingLineGeometry, flowingLinePoints, scaleAttrName)
-  // 为每一个顶点设置颜色
-  setGeometryColor(flowingLineGeometry, [
-    { color: '#53ffc100', percent: 0 },
-    { color: '#53ffc180', percent: 0.6 },
-    { color: '#53ffc1ff', percent: 0.85 },
-    { color: '#ffffffff', percent: 1 },
-  ])
-
-  const flowingLineMaterial = new THREE.PointsMaterial({
-    // color: 0xfff000,
-    vertexColors: true, // 使用顶点颜色
-    transparent: true, // 开启透明
-    size: 2.5,
-  })
-  flowingLineMaterial.onBeforeCompile = (shader) => {
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        'void main() {',
-        `
-          attribute float ${scaleAttrName};
-          void main() {
-        `
-      )
-      .replace(
-        'gl_PointSize = size;',
-        `
-          gl_PointSize = size * ${scaleAttrName};
-        `
-      )
-  }
-
-  const flowingLine = new THREE.Points(flowingLineGeometry, flowingLineMaterial)
-  scene.add(flowingLine)
-
-  return {
-    update: () => {
-      // 每隔一段时间不断在轨迹线上向前取线段从而生成拖尾的光对应的一个个点位
-      if (lineIndex > linePoints.length - flowingLineLength) {
-        lineIndex = 0
-      }
-      lineIndex += 1
-
-      // 为拖尾的光设置新的点位从而实现流动效果
-      updatePositions(flowingLine.geometry, linePoints, lineIndex, flowingLineLength)
-
-      flowingLine.geometry.computeBoundingSphere()
-    },
   }
 }
 
