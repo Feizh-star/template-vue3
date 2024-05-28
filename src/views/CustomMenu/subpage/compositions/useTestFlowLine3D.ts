@@ -6,6 +6,7 @@ import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import { createGradient, hexToRgb, rgbNormalized } from '@/utils/colorGradient'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { FlowLine3D } from './flowLine3D'
 
 export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> }) {
@@ -37,8 +38,8 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
 
     scene.add(camera)
 
-    const axesHelper = new THREE.AxesHelper(50)
-    scene.add(axesHelper)
+    // const axesHelper = new THREE.AxesHelper(50)
+    // scene.add(axesHelper)
 
     renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas })
     renderer.setPixelRatio(window.devicePixelRatio)
@@ -60,33 +61,67 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
     //     scene.add(sprite)
     //   }
     // )
-    const map = new THREE.TextureLoader().load(
-      new URL('../assets/sprite.png', import.meta.url).href
+    // const map = new THREE.TextureLoader().load(
+    //   new URL('../assets/sprite.png', import.meta.url).href
+    // )
+    // const material = new THREE.SpriteMaterial({ map: map })
+    // const sprite = new THREE.Sprite(material)
+    // sprite.center.set(0.5, 0.5)
+    // sprite.scale.set(15, 15, 15)
+    // sprite.position.set(-0.3, 1, 3)
+    // scene.add(sprite)
+    // console.log(sprite)
+
+    let mixer: THREE.AnimationMixer | null = null
+    let previousTime = 0
+    const modelMap: any = new WeakMap()
+    const clock = new THREE.Clock()
+    const loader = new GLTFLoader()
+    loader.load(
+      new URL('../assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb', import.meta.url).href,
+      function (gltf) {
+        console.log(gltf)
+        gltf.scene.scale.set(5, 5, 5)
+        gltf.scene.rotation.set(0, 0, 0)
+        scene.add(gltf.scene)
+        // modelObj = gltf.scene
+        const mapChildrenToModel = (model: any, arr: any[], childMap: WeakMap<any, any>) => {
+          for (const item of arr) {
+            childMap.set(item, model)
+            if (item.children) {
+              mapChildrenToModel(model, item.children, childMap)
+            }
+          }
+        }
+        modelMap.set(gltf.scene, gltf)
+        mapChildrenToModel(gltf, gltf.scene.children, modelMap)
+
+        mixer = new THREE.AnimationMixer(gltf.scene)
+        const action = mixer.clipAction(gltf.animations[0])
+        action.play()
+      },
+      undefined,
+      function (error) {
+        console.error(error)
+      }
     )
-    const material = new THREE.SpriteMaterial({ map: map })
-    const sprite = new THREE.Sprite(material)
-    sprite.center.set(0.5, 0.5)
-    sprite.scale.set(15, 15, 15)
-    sprite.position.set(-0.3, 1, 3)
-    scene.add(sprite)
-    console.log(sprite)
 
     const raycaster = new THREE.Raycaster()
     const mouse = new THREE.Vector2()
-    canvas.addEventListener('mousemove', onMouseMove, false)
+    canvas.addEventListener('click', onMouseMove, false)
     function onMouseMove(event) {
       // 更新鼠标位置
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      mouse.x = ((event.clientX - canvas.getBoundingClientRect().left) / canvas.clientWidth) * 2 - 1
+      mouse.y =
+        -((event.clientY - canvas.getBoundingClientRect().top) / canvas.clientHeight) * 2 + 1
       // 将鼠标位置转换为世界坐标
       raycaster.setFromCamera(mouse, camera)
 
       // 计算物体和鼠标的交点
-      const intersects = raycaster.intersectObjects(scene.children)
-      const obj = intersects[0]
-      if (obj && obj.object.type === 'Sprite') {
-        console.log(obj)
-      }
+      const intersects = raycaster.intersectObjects(scene.children, true)
+      const models = intersects.map((item) => modelMap.get(item.object)).filter((item) => item)
+      const model = [...new Set(models)]
+      console.log(model)
     }
 
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -162,6 +197,13 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
       effectLines.forEach((item) => {
         item.effectRun()
       })
+      const elapsedTime = clock.getElapsedTime()
+      const deltaTime = elapsedTime - previousTime
+      previousTime = elapsedTime
+      // update mixer
+      if (mixer) {
+        mixer.update(deltaTime)
+      }
       render()
       requestAnimationFrame(animate)
     }

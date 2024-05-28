@@ -5,6 +5,7 @@ import { KMZLoader } from 'three/addons/loaders/KMZLoader.js'
 import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createGradient, hexToRgb, rgbNormalized } from '@/utils/colorGradient'
 
 export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
@@ -46,17 +47,38 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
       canvas.height / window.devicePixelRatio
     )
 
-    new THREE.TextureLoader().load(
-      new URL('../assets/sprite.png', import.meta.url).href,
-      (loadTexture) => {
-        const material = new THREE.SpriteMaterial({ map: loadTexture })
-        const sWidth = material.map.image.width
-        const sHeight = material.map.image.height
-        const sprite = new THREE.Sprite(material)
-        sprite.center.set(0.5, 0.5)
-        sprite.scale.set(sWidth / 8, sHeight / 8, 1)
-        sprite.position.set(-0.3, 1, 3)
-        scene.add(sprite)
+    // new THREE.TextureLoader().load(
+    //   new URL('../assets/sprite.png', import.meta.url).href,
+    //   (loadTexture) => {
+    //     const material = new THREE.SpriteMaterial({ map: loadTexture })
+    //     const sWidth = material.map.image.width
+    //     const sHeight = material.map.image.height
+    //     const sprite = new THREE.Sprite(material)
+    //     sprite.center.set(0.5, 0.5)
+    //     sprite.scale.set(sWidth / 8, sHeight / 8, 1)
+    //     sprite.position.set(-0.3, 1, 3)
+    //     scene.add(sprite)
+    //   }
+    // )
+    let mixer: THREE.AnimationMixer | null = null
+    let previousTime = 0
+    const clock = new THREE.Clock()
+    const loader = new GLTFLoader()
+    loader.load(
+      new URL('../assets/robot_playground.glb', import.meta.url).href,
+      function (gltf) {
+        console.log(gltf)
+        gltf.scene.scale.set(5, 5, 5)
+        gltf.scene.rotation.set(0, 0, 0)
+        scene.add(gltf.scene)
+
+        mixer = new THREE.AnimationMixer(gltf.scene)
+        const action = mixer.clipAction(gltf.animations[0])
+        action.play()
+      },
+      undefined,
+      function (error) {
+        console.error(error)
       }
     )
 
@@ -103,6 +125,14 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
       // 一定要在此函数中调用
       if (flowingLine) flowingLine.update()
       trackLineMaterial.resolution.set(canvas.width, canvas.height)
+
+      const elapsedTime = clock.getElapsedTime()
+      const deltaTime = elapsedTime - previousTime
+      previousTime = elapsedTime
+      // update mixer
+      if (mixer) {
+        mixer.update(deltaTime)
+      }
       render()
       requestAnimationFrame(animate)
     }

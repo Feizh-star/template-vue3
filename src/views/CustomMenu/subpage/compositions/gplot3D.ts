@@ -15,6 +15,13 @@ export interface ISpriteNodeItem {
   position: number[]
   offset: number[]
 }
+export interface IGltfLoaderResult {
+  animations: Array<THREE.AnimationClip>
+  scene: THREE.Group
+  scenes: Array<THREE.Group>
+  cameras: Array<THREE.Camera>
+  asset: Object
+}
 export interface IGplot3DOption {
   el: HTMLElement
   scene: {
@@ -260,7 +267,7 @@ export class Gplot3D {
   }
 
   /**
-   * 管理点
+   * 管理点-精灵图
    */
   private spriteNodes: THREE.Sprite[] = []
   private spriteNodesMap: WeakMap<THREE.Sprite, DeepPartial<ISpriteNodeItem>> = new WeakMap()
@@ -291,6 +298,11 @@ export class Gplot3D {
     this.spriteNodes = []
     return this
   }
+  /**
+   * 管理点-gltf模型
+   */
+  private gltfNodes: IGltfLoaderResult[]
+  private gltfNodesMap: WeakMap<IGltfLoaderResult, DeepPartial<ISpriteNodeItem>> = new WeakMap()
 }
 
 /* 尺寸变化工具-1 */
