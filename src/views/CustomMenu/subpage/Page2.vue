@@ -415,8 +415,7 @@ const lines: IFlowLineItem[] = [
 ]
 const modelNodes = [
   {
-    // src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    src: new URL('./assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb', import.meta.url).href,
+    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
     rotation: [0, 0, 0],
     scale: [5, 5, 5],
     position: [...centerPosition],
