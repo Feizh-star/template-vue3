@@ -18,6 +18,7 @@ import {
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
+export type IFlowLineItem = IFlowLine3DOption & { common: Record<string, any> }
 export interface ISpriteNodeItem {
   common: Record<string, any>
   src: string
@@ -319,10 +320,16 @@ export class Gplot3D {
    * 管理线
    */
   private flowLines: FlowLine3D[] = []
-  public addFlowLines(lineData: DeepPartial<IFlowLine3DOption>[]) {
+  private flowLinesMap: WeakMap<FlowLine3D, DeepPartial<IFlowLineItem>> = new WeakMap()
+  public addFlowLines(lineData: DeepPartial<IFlowLineItem>[]) {
     if (!this.scene || !this.domElement) return this
     this.flowLines = lineData.map((l) => {
-      return new FlowLine3D({ ...l, canvas: this.domElement }).addTo(this.scene)
+      if (l.id && this.getFlowLineById(l.id)) {
+        this.removeFlowLineById(l.id) // 如果此id已存在，则销毁重建
+      }
+      const flowLine = new FlowLine3D({ ...l, canvas: this.domElement }).addTo(this.scene)
+      this.flowLinesMap.set(flowLine, l)
+      return flowLine
     })
     return this
   }
@@ -333,7 +340,19 @@ export class Gplot3D {
   }
   public getFlowLineById(id: number) {
     const flowLineMap = new Map(this.flowLines.map((item) => [item.id, item]))
-    return flowLineMap.get(id) || null
+    return flowLineMap.get(id)
+  }
+  public getFlowLineDataById(id: number) {
+    const flowLine = this.getFlowLineById(id)
+    return flowLine && this.flowLinesMap.get(flowLine)
+  }
+  public removeFlowLineById(id: number) {
+    const index = this.flowLines.findIndex((item) => item.id === id)
+    const flowLine = index >= 0 ? this.flowLines[index] : undefined
+    if (flowLine) {
+      this.flowLines.splice(index, 1)
+      flowLine.destory()
+    }
   }
   public setStatusById(
     id: number,
@@ -441,9 +460,9 @@ export class Gplot3D {
    */
   private gltfNodes: IGltfLoaderResult[] = []
   private gltfNodesMap: WeakMap<IGltfLoaderResult, DeepPartial<IGltfNodeItem>> = new WeakMap()
+  private gltfNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
   private childrenModelMap: WeakMap<Object, IGltfLoaderResult> = new WeakMap()
   private gltfNodesAnimationMixer: WeakMap<IGltfLoaderResult, AnimationMixerUpdater> = new WeakMap() // 可根据模型数据查找动画控制器
-  private gltfNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
   public async addGltfNodes(nodeData: DeepPartial<IGltfNodeItem>[]) {
     if (!this.scene)
       return Promise.resolve(nodeData.map((item) => ({ status: false, data: item, model: null })))

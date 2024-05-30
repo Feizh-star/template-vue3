@@ -75,13 +75,13 @@ function hexString2Number(hex: string) {
   return parseInt(hex.replace('#', ''), 16)
 }
 
+let maxId: number = 1
+const flowLine3DIds = new Set<number>()
 export class FlowLine3D {
-  static MaxId: number = 1
-  static Ids: Set<number> = new Set()
   private option: IFlowLine3DOption
-  private lineIns: Line2 | null
-  private lineGeometryIns: LineGeometry | null
-  private lineMaterialIns: LineMaterial | null
+  private lineIns!: Line2 | null
+  private lineGeometryIns!: LineGeometry | null
+  private lineMaterialIns!: LineMaterial | null
   private scene!: THREE.Scene | null
   public id!: number | null
 
@@ -106,13 +106,13 @@ export class FlowLine3D {
     if (specifiedId === 0 || typeof specifiedId !== 'number') {
       console.warn('Id must be a number that be greater than 0')
     }
-    if (specifiedId && !FlowLine3D.Ids.has(specifiedId)) {
+    if (specifiedId && !flowLine3DIds.has(specifiedId)) {
       this.id = specifiedId
     } else {
-      this.id = FlowLine3D.MaxId + 1
+      this.id = maxId + 1
     }
-    FlowLine3D.Ids.add(this.id)
-    FlowLine3D.MaxId = Math.max(...[...FlowLine3D.Ids])
+    flowLine3DIds.add(this.id)
+    maxId = Math.max(...[...flowLine3DIds])
   }
   private setScale(scale: [number, number, number]) {
     if (!this.lineIns) return
@@ -146,8 +146,7 @@ export class FlowLine3D {
     if (!this.lineMaterialIns) return this
     const lineMaterialOpt = lodashLib.mergeWith(this.option.lineMaterial, material, customMerge)
     this.option.lineMaterial = lineMaterialOpt
-
-    this.lineMaterialIns.color.setHex(hexString2Number(lineMaterialOpt.color))
+    ;(this.lineMaterialIns.color as THREE.Color).setHex(hexString2Number(lineMaterialOpt.color))
     this.lineMaterialIns.dashed = lineMaterialOpt.dashed
     this.lineMaterialIns.linewidth = lineMaterialOpt.linewidth
     return this
@@ -316,8 +315,8 @@ export class FlowLine3D {
     this.flowEffectMaterialIns = null
     this.flowEffectObject = null
     this.flowEffectInterpolation = []
-    this.id && FlowLine3D.Ids.delete(this.id)
-    FlowLine3D.MaxId = FlowLine3D.Ids.size === 0 ? 1 : Math.max(...[...FlowLine3D.Ids])
+    this.id && flowLine3DIds.delete(this.id)
+    maxId = flowLine3DIds.size === 0 ? 1 : Math.max(...[...flowLine3DIds])
     this.id = null
     this.scene = null
   }

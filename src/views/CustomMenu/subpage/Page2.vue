@@ -139,6 +139,19 @@ function testGplot3D() {
     if (!tooltipEl.value) return
     tooltipEl.value.style.display = `none`
   })
+  // let a = false
+  // setInterval(() => {
+  //   gplot.value?.setStatusById(5, a, {
+  //     color: color[a ? 1 : 0],
+  //     colorStop: [
+  //       { color: '#ffffffff', percent: 0 },
+  //       { color: `${color[a ? 1 : 0]}ff`, percent: 0.15 },
+  //       { color: `${color[a ? 1 : 0]}80`, percent: 0.4 },
+  //       { color: `${color[a ? 1 : 0]}00`, percent: 1 },
+  //     ],
+  //   })
+  //   a = !a
+  // }, 3000)
 }
 </script>
 
