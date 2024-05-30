@@ -28,6 +28,7 @@ export interface IFlowLine3DOption {
   }
   effect: {
     enable: boolean
+    reverse: boolean
     colorStop: { color: string; percent: number }[] // 渐变色，优先级高于lineMaterial.color
     multiple: number // 点插值倍数
     length: number // 特效相对长度
@@ -52,6 +53,7 @@ const defaultOption: IFlowLine3DOption = {
   },
   effect: {
     enable: false,
+    reverse: false,
     colorStop: [],
     multiple: 200,
     length: 50,
@@ -180,6 +182,7 @@ export class FlowLine3D {
     const pointVectors = positions.map((item) => new THREE.Vector3(...item))
     const interpolation = getTweenPoint(pointVectors, effectOpt.multiple)
     interpolation.unshift(...new Array(effectOpt.length).fill(interpolation[0]))
+    if (effectOpt.reverse) interpolation.reverse()
     this.flowEffectInterpolation = interpolation
   }
   private initFlowEffectGeometry() {

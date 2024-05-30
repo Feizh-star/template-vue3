@@ -1,8 +1,19 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import * as lodashLib from 'lodash'
-// import { createGradient, hexToRgb, rgbNormalized } from './colorGradient'
 import { FlowLine3D, type IFlowLine3DOption } from './flowLine3D'
+import {
+  loadGltfModel,
+  mapChildrenToModel,
+  createDomSizeObserver,
+  setCanvasSize,
+  updateMousePosition,
+  disposeModel,
+  disposeSprite,
+  registerNodeEventHelper,
+  recordOutEventToInnerHelper,
+  removeNodeEventHelper,
+} from './gplot3DTool'
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
@@ -11,6 +22,14 @@ export interface ISpriteNodeItem {
   common: Record<string, any>
   src: string
   center: number[]
+  scale: number[]
+  position: number[]
+  offset: number[]
+}
+interface IGltfNodeItem {
+  common: Record<string, any>
+  src: string
+  rotation: number[]
   scale: number[]
   position: number[]
   offset: number[]
@@ -206,6 +225,9 @@ export class Gplot3D {
     this.flowLines.forEach((item) => {
       item.effectRun()
     })
+    this.gltfNodes.forEach((item) => {
+      this.gltfNodesAnimationMixer.get(item)?.update()
+    })
     this.render()
     this.rafId = requestAnimationFrame(() => {
       this.animate()
@@ -220,9 +242,79 @@ export class Gplot3D {
   public destory() {
     this.removeFlowLines()
     this.removeSpriteNodes()
+    this.removeGltfNodes()
     this.cancelResize()
     this.cancelAnimate()
+    this.removeAllMouseEvent()
+    this.option.el?.removeChild(this.domElement)
   }
+
+  /* 事件监听器 */
+  private raycaster: THREE.Raycaster = new THREE.Raycaster()
+  private mousePosition: THREE.Vector2 = new THREE.Vector2()
+  private mouseEvents: Map<string, ((event: Event, intersects: THREE.Intersection[]) => void)[]> =
+    new Map()
+  private mouseEventHandlerMap = new WeakMap<Function, ReturnType<typeof registerNodeEventHelper>>()
+  private mouseEventCommonHandlerMap: Map<string, Function> = new Map()
+  private registerMouseEvent(
+    eventType: string,
+    handler: (event: Event, intersects: THREE.Intersection[]) => void
+  ) {
+    const handlers = this.mouseEvents.get(eventType)
+    if (handlers && handlers.length > 0) {
+      handlers.push(handler)
+      this.mouseEvents.set(eventType, handlers)
+    } else {
+      const commonHandler = lodashLib.throttle((event: Event) => {
+        const { mousePosition: mouse, domElement: canvas } = this
+        // 更新鼠标位置
+        updateMousePosition(mouse, event, canvas)
+        // 将鼠标位置转换为世界坐标
+        this.raycaster.setFromCamera(mouse, this.camera)
+        // 计算物体和鼠标的交点
+        const intersects = this.raycaster.intersectObjects(this.scene.children)
+        const eventHanlders = this.mouseEvents.get(eventType)
+        eventHanlders?.forEach((handler) => {
+          handler(event, intersects)
+        })
+      }, 33)
+      this.domElement?.addEventListener(eventType, commonHandler)
+      this.mouseEvents.set(eventType, [handler])
+      this.mouseEventCommonHandlerMap.set(eventType, commonHandler)
+    }
+  }
+  private removeMouseEvent(
+    eventType: string,
+    handler?: (event: Event, intersects: THREE.Intersection[]) => void
+  ) {
+    if (handler) {
+      const handlers = this.mouseEvents.get(eventType)
+      if (handlers) {
+        this.mouseEvents.set(
+          eventType,
+          handlers.filter((item) => item !== handler)
+        )
+      }
+    } else {
+      this.mouseEvents.delete(eventType)
+    }
+  }
+  // 把回调函数数组已经空了的事件关闭
+  private removeNoHandlerMouseEvent() {
+    ;[...this.mouseEvents.entries()]
+      .filter((item) => item[1].length === 0)
+      .map((item) => item[0])
+      .forEach((eventType) => {
+        this.removeMouseEvent(eventType)
+      })
+  }
+  private removeAllMouseEvent() {
+    this.mouseEvents.clear()
+    for (const [eventType, handler] of this.mouseEventCommonHandlerMap.entries()) {
+      this.domElement?.removeEventListener(eventType, handler as (e: Event) => void)
+    }
+  }
+
   /**
    * 管理线
    */
@@ -271,8 +363,9 @@ export class Gplot3D {
    */
   private spriteNodes: THREE.Sprite[] = []
   private spriteNodesMap: WeakMap<THREE.Sprite, DeepPartial<ISpriteNodeItem>> = new WeakMap()
+  private spriteNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
   public addSpriteNodes(nodeData: DeepPartial<ISpriteNodeItem>[]) {
-    if (!this.scene) return this
+    if (!this.scene) return []
     this.spriteNodes = nodeData.map((item) => {
       const map = new THREE.TextureLoader().load(item.src || '')
       const material = new THREE.SpriteMaterial({ map: map })
@@ -289,63 +382,201 @@ export class Gplot3D {
       this.spriteNodesMap.set(sprite, item)
       return sprite
     })
-    return this
+    return this.spriteNodes
+  }
+  public onSpriteNodes(
+    eventType: string,
+    handler: (
+      type: string,
+      event: Event,
+      model: THREE.Sprite[],
+      data: DeepPartial<ISpriteNodeItem>[]
+    ) => void
+  ) {
+    const eInfo = registerNodeEventHelper(
+      'sprite',
+      eventType,
+      handler,
+      this.registerMouseEvent.bind(this),
+      (intersects) =>
+        intersects
+          .map((item) =>
+            new Set(this.spriteNodes).has(item.object as THREE.Sprite) ? item.object : null
+          )
+          .filter((item) => item) as THREE.Sprite[],
+      this.spriteNodesMap
+    )
+    recordOutEventToInnerHelper(
+      eventType,
+      handler,
+      eInfo,
+      this.spriteNodesEventMap,
+      this.mouseEventHandlerMap
+    )
+  }
+  public offSpriteNodes(eventType: string, handler?: Function) {
+    removeNodeEventHelper(
+      eventType,
+      this.spriteNodesEventMap,
+      this.mouseEventHandlerMap,
+      this.removeMouseEvent.bind(this),
+      handler
+    )
+    this.removeNoHandlerMouseEvent()
   }
   public removeSpriteNodes() {
     this.spriteNodes.forEach((item) => {
       this.scene.remove(item)
+      disposeSprite(item)
     })
     this.spriteNodes = []
+    for (const eInfos of this.spriteNodesEventMap.values()) {
+      eInfos.forEach((item) => this.removeMouseEvent(item.name, item.callback))
+    }
+    this.removeNoHandlerMouseEvent()
     return this
   }
   /**
    * 管理点-gltf模型
    */
-  private gltfNodes: IGltfLoaderResult[]
-  private gltfNodesMap: WeakMap<IGltfLoaderResult, DeepPartial<ISpriteNodeItem>> = new WeakMap()
+  private gltfNodes: IGltfLoaderResult[] = []
+  private gltfNodesMap: WeakMap<IGltfLoaderResult, DeepPartial<IGltfNodeItem>> = new WeakMap()
+  private childrenModelMap: WeakMap<Object, IGltfLoaderResult> = new WeakMap()
+  private gltfNodesAnimationMixer: WeakMap<IGltfLoaderResult, AnimationMixerUpdater> = new WeakMap() // 可根据模型数据查找动画控制器
+  private gltfNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
+  public async addGltfNodes(nodeData: DeepPartial<IGltfNodeItem>[]) {
+    if (!this.scene)
+      return Promise.resolve(nodeData.map((item) => ({ status: false, data: item, model: null })))
+    const result: {
+      status: boolean
+      data: DeepPartial<IGltfNodeItem>
+      model: IGltfLoaderResult | null
+    }[] = []
+    for (const item of nodeData) {
+      try {
+        const gltfModel = await loadGltfModel<IGltfLoaderResult>(item?.src || '')
+        const modelObject = gltfModel.scene
+        // 位置，旋转，缩放
+        const rotation = new Array(3).fill(0).map((v, i) => item.rotation?.[i] || v) as number[]
+        const scale = new Array(3).fill(1).map((v, i) => item.scale?.[i] || v) as number[]
+        const position = new Array(3)
+          .fill(0)
+          .map((v, i) => (item.position?.[i] || v) + (item.offset?.[i] || 0)) as number[]
+        modelObject.rotation.set(rotation[0], rotation[1], rotation[2])
+        modelObject.scale.set(scale[0], scale[1], scale[2])
+        modelObject.position.set(position[0], position[1], position[2])
+
+        // 将模型下的children（可以理解为零件），一一映射到模型数据本身，方便交互时根据零件找到整个模型
+        this.childrenModelMap.set(modelObject, gltfModel)
+        mapChildrenToModel(gltfModel, modelObject.children, this.childrenModelMap)
+
+        // 处理模型的动画
+        this.gltfNodesAnimationMixer.set(gltfModel, new AnimationMixerUpdater(gltfModel))
+
+        this.gltfNodes.push(gltfModel)
+        this.gltfNodesMap.set(gltfModel, item)
+        this.scene.add(modelObject)
+        result.push({
+          status: true,
+          data: item,
+          model: gltfModel,
+        })
+      } catch (error) {
+        console.error(error)
+        result.push({
+          status: false,
+          data: item,
+          model: null,
+        })
+      }
+    }
+    return result
+  }
+  public onGltfNodes(
+    eventType: string,
+    handler: (
+      type: string,
+      event: Event,
+      model: IGltfLoaderResult[],
+      data: DeepPartial<IGltfNodeItem>[]
+    ) => void
+  ) {
+    const eInfo = registerNodeEventHelper(
+      'gltf',
+      eventType,
+      handler,
+      this.registerMouseEvent.bind(this),
+      (intersects) =>
+        intersects
+          .map((item) => this.childrenModelMap.get(item.object))
+          .filter((item) => item) as IGltfLoaderResult[],
+      this.gltfNodesMap
+    )
+    recordOutEventToInnerHelper(
+      eventType,
+      handler,
+      eInfo,
+      this.gltfNodesEventMap,
+      this.mouseEventHandlerMap
+    )
+  }
+  public offGltfNodes(eventType: string, handler?: Function) {
+    removeNodeEventHelper(
+      eventType,
+      this.gltfNodesEventMap,
+      this.mouseEventHandlerMap,
+      this.removeMouseEvent.bind(this),
+      handler
+    )
+    this.removeNoHandlerMouseEvent()
+  }
+  public removeGltfNodes() {
+    this.gltfNodes.forEach((item) => {
+      this.gltfNodesAnimationMixer.get(item)?.distory()
+      this.scene.remove(item.scene)
+      disposeModel(item.scene)
+    })
+    this.gltfNodes = []
+    for (const eInfos of this.gltfNodesEventMap.values()) {
+      eInfos.forEach((item) => this.removeMouseEvent(item.name, item.callback))
+    }
+    this.removeNoHandlerMouseEvent()
+    return this
+  }
 }
 
-/* 尺寸变化工具-1 */
-function createDomSizeObserver(
-  el: HTMLElement,
-  callback: (width: number, height: number, oldWidth: number, oldHeight: number) => void
-) {
-  let oldWidth = 0
-  let oldHeight = 0
-  // 创建一个观察器实例并传入回调函数
-  const observer = new ResizeObserver(function (entries) {
-    const entry = entries[0]
-    const { width, height } = entry.contentRect
-    if (width !== oldWidth || height !== oldHeight) {
-      callback(width, height, oldWidth, oldHeight)
-    }
-    oldWidth = width
-    oldHeight = height
-  })
-  observer.observe(el)
-  return observer
-}
-/* 尺寸变化工具-2 */
-function setCanvasSize(father: HTMLElement, child: HTMLCanvasElement) {
-  const { width, height } = getElInnerSize(father)
-  child.width = width
-  child.height = height
-  return { width, height }
-}
-/* 尺寸变化工具-3 */
-function getElInnerSize(el: HTMLElement) {
-  const elSizeInfo = getComputedStyle(el)
-  const elBoxSizing = elSizeInfo.boxSizing
-  const elWidth = parseFloat(elSizeInfo.width)
-  const elHeight = parseFloat(elSizeInfo.height)
-  const elPaddingX = parseFloat(elSizeInfo.paddingLeft) + parseFloat(elSizeInfo.paddingRight)
-  const elPaddingY = parseFloat(elSizeInfo.paddingTop) + parseFloat(elSizeInfo.paddingBottom)
-  const elBorderX = parseFloat(elSizeInfo.borderLeft) + parseFloat(elSizeInfo.borderRight)
-  const elBorderY = parseFloat(elSizeInfo.borderTop) + parseFloat(elSizeInfo.borderBottom)
-  const width = elBoxSizing === 'border-box' ? elWidth - elPaddingX - elBorderX : elWidth
-  const height = elBoxSizing === 'border-box' ? elHeight - elPaddingY - elBorderY : elHeight
-  return {
-    width,
-    height,
+/**
+ * 简单模型动画管理器
+ */
+class AnimationMixerUpdater {
+  private clock: THREE.Clock = new THREE.Clock()
+  private mixer: THREE.AnimationMixer
+  private previousTime: number = 0
+  private animateClip: { clip: THREE.AnimationClip; action: THREE.AnimationAction }[] = []
+  constructor(gltfModel: IGltfLoaderResult) {
+    this.mixer = new THREE.AnimationMixer(gltfModel.scene)
+    gltfModel.animations.forEach((clip) => {
+      const action = this.mixer.clipAction(clip)
+      action.play()
+      this.animateClip.push({ clip, action })
+    })
+  }
+  public update() {
+    if (!this.mixer) return this
+    const elapsedTime = this.clock.getElapsedTime()
+    const deltaTime = elapsedTime - this.previousTime
+    this.previousTime = elapsedTime
+    this.mixer.update(deltaTime)
+    return this
+  }
+  public distory() {
+    if (!this.mixer) return
+    const root = this.mixer.getRoot()
+    this.mixer.stopAllAction()
+    this.animateClip.forEach((item) => {
+      this.mixer.uncacheClip(item.clip)
+      this.mixer.uncacheAction(item.clip, root)
+    })
+    this.mixer.uncacheRoot(root)
   }
 }

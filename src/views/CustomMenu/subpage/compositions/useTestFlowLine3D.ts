@@ -118,7 +118,7 @@ export function useTestFlowLine3D({ el }: { el: Ref<HTMLCanvasElement | null> })
       raycaster.setFromCamera(mouse, camera)
 
       // 计算物体和鼠标的交点
-      const intersects = raycaster.intersectObjects(scene.children, true)
+      const intersects = raycaster.intersectObjects(scene.children)
       const models = intersects.map((item) => modelMap.get(item.object)).filter((item) => item)
       const model = [...new Set(models)]
       console.log(model)

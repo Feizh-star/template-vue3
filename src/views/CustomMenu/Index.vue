@@ -68,6 +68,7 @@ const menuList = computed(() => {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04), 0px 8px 20px rgba(0, 0, 0, 0.08);
+    z-index: 1;
   }
   .page-container {
     width: 100%;
