@@ -78,13 +78,13 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/robot_playground.glb', import.meta.url).href,
+    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
     rotation: [0, 0, 0],
     scale: [5, 5, 5],
     position: [15, 0, -15],
     offset: [0, 0, 0],
     common: {
-      name: '机器人',
+      name: '汤姆',
     },
   },
 ]
