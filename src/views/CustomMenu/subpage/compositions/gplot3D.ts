@@ -117,6 +117,8 @@ export class Gplot3D {
   private camera!: THREE.PerspectiveCamera
   private renderer!: THREE.WebGLRenderer
 
+  private flowEffectUpdate!: lodashLib.DebouncedFunc<() => void>
+
   constructor(option: DeepPartial<IGplot3DOption>) {
     this.devicePixelRatio = window.devicePixelRatio
     this.option = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption), option, customMerge)
@@ -127,6 +129,12 @@ export class Gplot3D {
 
     this.render()
     this.animate()
+
+    this.flowEffectUpdate = lodashLib.throttle(() => {
+      this.flowLines.forEach((item) => {
+        item.effectRun()
+      })
+    }, 16.7)
   }
   private render() {
     if (!this.renderer || !this.scene || !this.camera) {
@@ -223,9 +231,10 @@ export class Gplot3D {
   private rafId!: number | null
   private animate() {
     // 一定要在此函数中调用
-    this.flowLines.forEach((item) => {
-      item.effectRun()
-    })
+    // this.flowLines.forEach((item) => {
+    //   item.effectRun()
+    // })
+    this.flowEffectUpdate?.()
     this.gltfNodes.forEach((item) => {
       this.gltfNodesAnimationMixer.get(item)?.update()
     })
