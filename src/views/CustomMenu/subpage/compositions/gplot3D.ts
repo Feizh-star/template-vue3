@@ -16,7 +16,7 @@ import {
 } from './gplot3DTool'
 
 type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+  [P in keyof T]?: T[P] extends any[] ? T[P] : T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
 export type IFlowLineItem = IFlowLine3DOption & { common: Record<string, any> }
 export interface ISpriteNodeItem {

@@ -12,7 +12,7 @@ import {
 import * as lodashLib from 'lodash'
 
 type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+  [P in keyof T]?: T[P] extends any[] ? T[P] : T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
 
 export interface IFlowLine3DOption {
@@ -40,6 +40,7 @@ export interface IFlowLine3DOption {
     scale: [number, number, number]
   }
 }
+export type IFlowLineItem = DeepPartial<IFlowLine3DOption>
 
 const defaultOption: IFlowLine3DOption = {
   id: 1,
@@ -94,7 +95,7 @@ export class FlowLine3D {
   public get lineMaterial() {
     return this.lineMaterialIns
   }
-  constructor(option: DeepPartial<IFlowLine3DOption>) {
+  constructor(option: IFlowLineItem) {
     this.option = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption), option, customMerge)
     this.setId()
     this.initFlowLine()
