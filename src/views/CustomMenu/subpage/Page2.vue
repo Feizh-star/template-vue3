@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Gplot3D } from './compositions/gplot3D'
-import type { IFlowLineItem } from './compositions/flowLine3D'
-import { dist } from 'zrender/lib/core/vector'
+import { Gplot3D } from '@/libs/gplot3D/gplot3D'
+import type { IFlowLineItem } from '@/libs/gplot3D/flowLine3D'
 
 const renderEl = ref<HTMLElement | null>(null)
 const tooltipEl = ref<HTMLElement | null>(null)
