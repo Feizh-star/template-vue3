@@ -474,49 +474,66 @@ export class Gplot3D {
   public async addGltfNodes(nodeData: DeepPartial<IGltfNodeItem>[]) {
     if (!this.scene)
       return Promise.resolve(nodeData.map((item) => ({ status: false, data: item, model: null })))
-    const result: {
-      status: boolean
-      data: DeepPartial<IGltfNodeItem>
-      model: IGltfLoaderResult | null
-    }[] = []
-    for (const item of nodeData) {
-      try {
-        const gltfModel = await loadGltfModel<IGltfLoaderResult>(item?.src || '')
-        const modelObject = gltfModel.scene
-        // 位置，旋转，缩放
-        const rotation = new Array(3).fill(0).map((v, i) => item.rotation?.[i] || v) as number[]
-        const scale = new Array(3).fill(1).map((v, i) => item.scale?.[i] || v) as number[]
-        const position = new Array(3)
-          .fill(0)
-          .map((v, i) => (item.position?.[i] || v) + (item.offset?.[i] || 0)) as number[]
-        modelObject.rotation.set(rotation[0], rotation[1], rotation[2])
-        modelObject.scale.set(scale[0], scale[1], scale[2])
-        modelObject.position.set(position[0], position[1], position[2])
+    const loaders = nodeData.map((item) => {
+      return new Promise<{
+        status: boolean
+        data: DeepPartial<IGltfNodeItem>
+        model: IGltfLoaderResult | null
+        error: null | Error
+      }>((resolve) => {
+        try {
+          loadGltfModel<IGltfLoaderResult>(item?.src || '')
+            .then((gltfModel) => {
+              const modelObject = gltfModel.scene
+              // 位置，旋转，缩放
+              const rotation = new Array(3)
+                .fill(0)
+                .map((v, i) => item.rotation?.[i] || v) as number[]
+              const scale = new Array(3).fill(1).map((v, i) => item.scale?.[i] || v) as number[]
+              const position = new Array(3)
+                .fill(0)
+                .map((v, i) => (item.position?.[i] || v) + (item.offset?.[i] || 0)) as number[]
+              modelObject.rotation.set(rotation[0], rotation[1], rotation[2])
+              modelObject.scale.set(scale[0], scale[1], scale[2])
+              modelObject.position.set(position[0], position[1], position[2])
 
-        // 将模型下的children（可以理解为零件），一一映射到模型数据本身，方便交互时根据零件找到整个模型
-        this.childrenModelMap.set(modelObject, gltfModel)
-        mapChildrenToModel(gltfModel, modelObject.children, this.childrenModelMap)
+              // 将模型下的children（可以理解为零件），一一映射到模型数据本身，方便交互时根据零件找到整个模型
+              this.childrenModelMap.set(modelObject, gltfModel)
+              mapChildrenToModel(gltfModel, modelObject.children, this.childrenModelMap)
 
-        // 处理模型的动画
-        this.gltfNodesAnimationMixer.set(gltfModel, new AnimationMixerUpdater(gltfModel))
+              // 处理模型的动画
+              this.gltfNodesAnimationMixer.set(gltfModel, new AnimationMixerUpdater(gltfModel))
 
-        this.gltfNodes.push(gltfModel)
-        this.gltfNodesMap.set(gltfModel, item)
-        this.scene.add(modelObject)
-        result.push({
-          status: true,
-          data: item,
-          model: gltfModel,
-        })
-      } catch (error) {
-        console.error(error)
-        result.push({
-          status: false,
-          data: item,
-          model: null,
-        })
-      }
-    }
+              this.gltfNodes.push(gltfModel)
+              this.gltfNodesMap.set(gltfModel, item)
+              this.scene.add(modelObject)
+              resolve({
+                status: true,
+                data: item,
+                model: gltfModel,
+                error: null,
+              })
+            })
+            .catch((error) => {
+              resolve({
+                status: false,
+                data: item,
+                model: null,
+                error: error,
+              })
+            })
+        } catch (error) {
+          resolve({
+            status: false,
+            data: item,
+            model: null,
+            error: error as Error,
+          })
+        }
+      })
+    })
+    // Promise.all是为了最终给出一个加载完成的结果，每一个promise内部的loadGltfModel都是同步执行，互不阻塞
+    const result = await Promise.all(loaders)
     return result
   }
   public onGltfNodes(
