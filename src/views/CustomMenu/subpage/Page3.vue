@@ -7,12 +7,12 @@ const tooltipEl = ref<HTMLElement | null>(null)
 
 const color = ['#53ffc1', '#ff5600']
 
-const size = 5
+const size = 3.5
 const speed = 2
 const multiple = 50
 const centerPosition: [number, number, number] = [-20, 0, 0]
 const distance = 24
-const lineIntervalHalf = 2
+const lineIntervalHalf = 1
 const straightway = (
   begin: [number, number, number],
   end: [number, number, number],
