@@ -1,4 +1,5 @@
 declare module 'three/addons/controls/OrbitControls.js'
+declare module 'three/addons/loaders/GLTFLoader.js'
 declare module 'three/addons/lines/Line2.js' {
   import { LineSegments } from 'three'
   import { LineMaterial } from 'three/addons/lines/LineMaterial.js'

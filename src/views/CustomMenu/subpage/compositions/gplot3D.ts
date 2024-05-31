@@ -13,6 +13,7 @@ import {
   registerNodeEventHelper,
   recordOutEventToInnerHelper,
   removeNodeEventHelper,
+  throttle,
 } from './gplot3DTool'
 
 type DeepPartial<T> = {
@@ -117,8 +118,6 @@ export class Gplot3D {
   private camera!: THREE.PerspectiveCamera
   private renderer!: THREE.WebGLRenderer
 
-  private flowEffectUpdate!: lodashLib.DebouncedFunc<() => void>
-
   constructor(option: DeepPartial<IGplot3DOption>) {
     this.devicePixelRatio = window.devicePixelRatio
     this.option = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption), option, customMerge)
@@ -129,12 +128,6 @@ export class Gplot3D {
 
     this.render()
     this.animate()
-
-    this.flowEffectUpdate = lodashLib.throttle(() => {
-      this.flowLines.forEach((item) => {
-        item.effectRun()
-      })
-    }, 16.7)
   }
   private render() {
     if (!this.renderer || !this.scene || !this.camera) {
@@ -230,11 +223,7 @@ export class Gplot3D {
 
   private rafId!: number | null
   private animate() {
-    // 一定要在此函数中调用
-    // this.flowLines.forEach((item) => {
-    //   item.effectRun()
-    // })
-    this.flowEffectUpdate?.()
+    if (this.flowEffectUpdate) this.flowEffectUpdate()
     this.gltfNodes.forEach((item) => {
       this.gltfNodesAnimationMixer.get(item)?.update()
     })
@@ -275,7 +264,7 @@ export class Gplot3D {
       handlers.push(handler)
       this.mouseEvents.set(eventType, handlers)
     } else {
-      const commonHandler = lodashLib.throttle((event: Event) => {
+      const commonHandler = throttle((event: Event) => {
         const { mousePosition: mouse, domElement: canvas } = this
         // 更新鼠标位置
         updateMousePosition(mouse, event, canvas)
@@ -287,7 +276,7 @@ export class Gplot3D {
         eventHanlders?.forEach((handler) => {
           handler(event, intersects)
         })
-      }, 33)
+      }, 16.7)
       this.domElement?.addEventListener(eventType, commonHandler)
       this.mouseEvents.set(eventType, [handler])
       this.mouseEventCommonHandlerMap.set(eventType, commonHandler)
@@ -330,6 +319,7 @@ export class Gplot3D {
    */
   private flowLines: FlowLine3D[] = []
   private flowLinesMap: WeakMap<FlowLine3D, DeepPartial<IFlowLineItem>> = new WeakMap()
+  private flowEffectUpdate!: (() => void) | null
   public addFlowLines(lineData: DeepPartial<IFlowLineItem>[]) {
     if (!this.scene || !this.domElement) return this
     this.flowLines = lineData.map((l) => {
@@ -340,11 +330,17 @@ export class Gplot3D {
       this.flowLinesMap.set(flowLine, l)
       return flowLine
     })
+    this.flowEffectUpdate = throttle(() => {
+      this.flowLines.forEach((item) => {
+        item.effectRun()
+      })
+    }, 16.7)
     return this
   }
   public removeFlowLines() {
     this.flowLines.forEach((item) => item.destory())
     this.flowLines = []
+    this.flowEffectUpdate = null
     return this
   }
   public getFlowLineById(id: number) {
@@ -361,6 +357,9 @@ export class Gplot3D {
     if (flowLine) {
       this.flowLines.splice(index, 1)
       flowLine.destory()
+    }
+    if (this.flowLines.length === 0) {
+      this.flowEffectUpdate = null
     }
   }
   public setStatusById(

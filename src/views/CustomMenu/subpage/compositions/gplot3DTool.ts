@@ -248,3 +248,22 @@ export function removeNodeEventHelper(
     })
   }
 }
+
+/**
+ * @desc 简单函数节流
+ * @param func 回调函数
+ * @param limit 时间限制
+ */
+export function throttle<T extends (...args: any[]) => void>(func: T, wait: number) {
+  //上次执行时间
+  let previous = 0
+  return function (this: any, ...args: Parameters<T>) {
+    //当前时间
+    const now = performance ? performance.now() : Date.now()
+    // 若当前时间-上次执行时间大于时间限制
+    if (previous === 0 || now - previous >= wait) {
+      func.apply(this, args)
+      previous = now
+    }
+  }
+}
