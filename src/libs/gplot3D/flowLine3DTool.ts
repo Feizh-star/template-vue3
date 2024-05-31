@@ -5,8 +5,7 @@ import { createGradient, hexToRgb, rgbNormalized } from './colorGradient'
 export function getTweenPoint(points: THREE.Vector3[], magnification = 1) {
   const curvePath = new THREE.CurvePath<THREE.Vector3>()
   for (let i = 0; i < points.length - 1; i++) {
-    const singleLine = new THREE.LineCurve3(points[i], points[i + 1])
-    curvePath.add(singleLine)
+    curvePath.add(new THREE.LineCurve3(points[i], points[i + 1]))
   }
   return curvePath.getSpacedPoints(points.length * Math.round(magnification))
 }
@@ -18,8 +17,7 @@ export function updatePositions(
   index: number,
   length: number
 ) {
-  const newFlowingLinePoints = points.slice(index, index + length)
-  const flowingLinePointsTween = getTweenPoint(newFlowingLinePoints, 2)
+  const flowingLinePointsTween = getTweenPoint(points.slice(index, index + length), 2)
   geometry.setFromPoints(flowingLinePointsTween)
   return flowingLinePointsTween
 }
