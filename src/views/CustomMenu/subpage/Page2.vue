@@ -9,7 +9,7 @@ const color = ['#53ffc1', '#ff5600']
 
 const size = 5
 const speed = 2
-const multiple = 50
+const multiple = 100
 const centerPosition: [number, number, number] = [-40, 0, 0]
 const distance = 40
 const lineIntervalHalf = 2

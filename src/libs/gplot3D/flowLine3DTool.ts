@@ -17,7 +17,7 @@ export function updatePositions(
   index: number,
   length: number
 ) {
-  const flowingLinePointsTween = getTweenPoint(points.slice(index, index + length), 2)
+  const flowingLinePointsTween = points.slice(index, index + length)
   geometry.setFromPoints(flowingLinePointsTween)
   return flowingLinePointsTween
 }

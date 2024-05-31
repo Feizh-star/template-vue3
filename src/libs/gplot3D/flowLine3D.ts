@@ -181,7 +181,9 @@ export class FlowLine3D {
     const { path: positions, effect: effectOpt } = this.option
     const pointVectors = positions.map((item) => new THREE.Vector3(...item))
     const interpolation = getTweenPoint(pointVectors, effectOpt.multiple)
-    interpolation.unshift(...new Array(effectOpt.length).fill(interpolation[0]))
+    interpolation.unshift(
+      ...new Array(effectOpt.length).fill(0).map(() => interpolation[0].clone())
+    )
     if (effectOpt.reverse) interpolation.reverse()
     this.flowEffectInterpolation = interpolation
   }
