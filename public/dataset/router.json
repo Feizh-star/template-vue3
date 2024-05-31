@@ -48,6 +48,18 @@
             "value": "Male"
           }
         }
+      },
+      {
+        "path": "cusmenupage3",
+        "component": "CustomMenu/subpage/Page3.vue",
+        "meta": {
+          "title": "自定义子级菜单3",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "Male"
+          }
+        }
       }
     ]
   },

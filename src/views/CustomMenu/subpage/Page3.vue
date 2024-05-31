@@ -10,8 +10,8 @@ const color = ['#53ffc1', '#ff5600']
 const size = 5
 const speed = 2
 const multiple = 50
-const centerPosition: [number, number, number] = [-40, 0, 0]
-const distance = 40
+const centerPosition: [number, number, number] = [-20, 0, 0]
+const distance = 24
 const lineIntervalHalf = 2
 const straightway = (
   begin: [number, number, number],
@@ -42,6 +42,149 @@ const getTargetByInterval = (x: number = 0, z: number = 0) => {
     number
   ]
 }
+
+const nodes = [
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: [...centerPosition],
+    common: {
+      name: '电脑',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(-2, -1),
+    common: {
+      name: '电力监控系统',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(-1, -1),
+    common: {
+      name: '内网防火墙',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(0, -1),
+    common: {
+      name: '风功率预测交换机',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(1, -1),
+    common: {
+      name: '风功率预测服务器',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(2, -1),
+    common: {
+      name: '反向隔离装置',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(3, -1),
+    common: {
+      name: '气象服务器',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(4, -1),
+    common: {
+      name: '外网防火墙',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(4, 0),
+    common: {
+      name: '互联网',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(-1, 2),
+    common: {
+      name: '平面非实时交换机一',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(0, 2),
+    common: {
+      name: '平面非实时纵向加密装置一',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(1, 2),
+    common: {
+      name: '平面非实时纵向加密装置二',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(2, 2),
+    common: {
+      name: '平面非实时交换机二',
+    },
+  },
+  {
+    src: new URL('./assets/sprite.png', import.meta.url).href,
+    center: [0.5, 0.5],
+    scale: [15, 15, 15],
+    offset: [-0.3, 1, 2],
+    position: getTargetByInterval(0.5, 3),
+    common: {
+      name: '调度数据网',
+    },
+  },
+]
 
 // console.log(straightway([-10, 0, -10], [-10, 0, -50], { justify: 'Z' }))
 const lines: IFlowLineItem[] = [
@@ -660,148 +803,6 @@ const lines: IFlowLineItem[] = [
     },
   },
 ]
-const modelNodes = [
-  {
-    src: new URL('./assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: [...centerPosition],
-    offset: [0, 0, 0],
-    common: {
-      name: '电脑',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(-2, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '电力监控系统',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(-1, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '内网防火墙',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(0, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '风功率预测交换机',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(1, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '风功率预测服务器',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(2, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '反向隔离装置',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(3, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '气象服务器',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(4, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '外网防火墙',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(4, 0),
-    offset: [0, 0, 0],
-    common: {
-      name: '互联网',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(-1, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时交换机一',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(0, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时纵向加密装置一',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(1, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时纵向加密装置二',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(2, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时交换机二',
-    },
-  },
-  {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
-    position: getTargetByInterval(0.5, 3),
-    offset: [0, 0, 0],
-    common: {
-      name: '调度数据网',
-    },
-  },
-]
 
 const gplot = shallowRef<Gplot3D | null>(null)
 onMounted(() => {
@@ -829,13 +830,13 @@ function testGplot3D() {
       backgroundColor: '#1a212e',
     },
     camera: {
-      initialPosition: { x: 300, y: 300, z: 300 },
+      initialPosition: { x: 200, y: 340, z: 180 },
     },
   })
   gplot.value.addFlowLines(lines)
 
-  gplot.value.addGltfNodes(modelNodes)
-  gplot.value.onGltfNodes('mousemove', (type, e, models, datas) => {
+  gplot.value.addSpriteNodes(nodes)
+  gplot.value.onSpriteNodes('mousemove', (type, e, models, datas) => {
     if (!tooltipEl.value || !renderEl.value) return
     const mevent = e as MouseEvent
     const left = mevent.clientX - renderEl.value.getBoundingClientRect().left
@@ -843,11 +844,11 @@ function testGplot3D() {
     tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
     tooltipEl.value.innerText = datas[0]?.common?.name || ''
   })
-  gplot.value.onGltfNodes('mouseenter', () => {
+  gplot.value.onSpriteNodes('mouseenter', () => {
     if (!tooltipEl.value) return
     tooltipEl.value.style.display = `block`
   })
-  gplot.value.onGltfNodes('mouseleave', () => {
+  gplot.value.onSpriteNodes('mouseleave', () => {
     if (!tooltipEl.value) return
     tooltipEl.value.style.display = `none`
   })
