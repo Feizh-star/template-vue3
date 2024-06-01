@@ -13,7 +13,7 @@
   },
   {
     "path": "/custommenu",
-    "component": "CustomMenu/Index.vue",
+    "component": "ThreeMenu/Index.vue",
     "meta": {
       "title": "threejs",
       "hidden": false,
@@ -27,7 +27,7 @@
     "children": [
       {
         "path": "cusmenupage1",
-        "component": "CustomMenu/subpage/Page1.vue",
+        "component": "ThreeMenu/subpage/Page1.vue",
         "meta": {
           "title": "测试线",
           "hidden": false,
@@ -39,7 +39,7 @@
       },
       {
         "path": "cusmenupage2",
-        "component": "CustomMenu/subpage/Page2.vue",
+        "component": "ThreeMenu/subpage/Page2.vue",
         "meta": {
           "title": "线模型",
           "hidden": false,
@@ -51,7 +51,7 @@
       },
       {
         "path": "cusmenupage3",
-        "component": "CustomMenu/subpage/Page3.vue",
+        "component": "ThreeMenu/subpage/Page3.vue",
         "meta": {
           "title": "线精灵",
           "hidden": false,
