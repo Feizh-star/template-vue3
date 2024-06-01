@@ -662,9 +662,9 @@ const lines: IFlowLineItem[] = [
 ]
 const modelNodes = [
   {
-    src: new URL('./assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: [...centerPosition],
     offset: [0, 0, 0],
     common: {
@@ -829,6 +829,7 @@ function testGplot3D() {
       backgroundColor: '#1a212e',
     },
     camera: {
+      far: 10000,
       initialPosition: { x: 300, y: 300, z: 300 },
     },
   })

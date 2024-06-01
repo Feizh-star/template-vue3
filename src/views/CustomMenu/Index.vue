@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Female, Male } from '@element-plus/icons'
+import { Female, Male, Sugar } from '@element-plus/icons'
 import { useRouter } from 'vue-router'
 import { useMenu } from '@/store/menu'
 import { computed } from 'vue'
 
-const componentIcon: any = { Female, Male }
+const componentIcon: any = { Female, Male, Sugar }
 
 const props = defineProps<{
   containerName?: string
