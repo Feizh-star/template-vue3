@@ -64,6 +64,46 @@
     ]
   },
   {
+    "path": "/cesiummenu",
+    "component": "CesiumMenu/Index.vue",
+    "meta": {
+      "title": "cesiumjs",
+      "hidden": false,
+      "alwaysShow": false,
+      "isLeaf": true,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yitihuajiankong"
+      }
+    },
+    "children": [
+      {
+        "path": "cesiumpage1",
+        "component": "CesiumMenu/subpage/Page1.vue",
+        "meta": {
+          "title": "测试",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
+      },
+      {
+        "path": "cesiumpage2",
+        "component": "CesiumMenu/subpage/Page2.vue",
+        "meta": {
+          "title": "测试1",
+          "hidden": false,
+          "icon": {
+            "type": "class",
+            "value": "Male"
+          }
+        }
+      }
+    ]
+  },
+  {
     "path": "/customsubmenu",
     "meta": {
       "title": "自定义非首级子目录",
