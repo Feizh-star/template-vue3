@@ -15,7 +15,7 @@
     "path": "/custommenu",
     "component": "CustomMenu/Index.vue",
     "meta": {
-      "title": "自定义首级子目录",
+      "title": "threejs",
       "hidden": false,
       "alwaysShow": false,
       "isLeaf": true,
@@ -29,7 +29,7 @@
         "path": "cusmenupage1",
         "component": "CustomMenu/subpage/Page1.vue",
         "meta": {
-          "title": "自定义子级菜单1",
+          "title": "测试线",
           "hidden": false,
           "icon": {
             "type": "class",
@@ -41,7 +41,7 @@
         "path": "cusmenupage2",
         "component": "CustomMenu/subpage/Page2.vue",
         "meta": {
-          "title": "自定义子级菜单2",
+          "title": "线模型",
           "hidden": false,
           "icon": {
             "type": "class",
@@ -53,7 +53,7 @@
         "path": "cusmenupage3",
         "component": "CustomMenu/subpage/Page3.vue",
         "meta": {
-          "title": "自定义子级菜单3",
+          "title": "线精灵",
           "hidden": false,
           "icon": {
             "type": "class",
