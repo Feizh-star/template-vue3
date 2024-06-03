@@ -671,10 +671,13 @@ const modelNodes = [
       name: '电脑',
     },
   },
+  // src/views/ThreeMenu/subpage/assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb
+  // src/views/ThreeMenu/subpage/assets/cat/scene.gltf
+  // src/views/ThreeMenu/subpage/assets/um_windmill_10_kw.glb
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(-2, -1),
     offset: [0, 0, 0],
     common: {
@@ -682,9 +685,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(-1, -1),
     offset: [0, 0, 0],
     common: {
@@ -692,9 +695,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(0, -1),
     offset: [0, 0, 0],
     common: {
@@ -702,9 +705,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(1, -1),
     offset: [0, 0, 0],
     common: {
@@ -712,9 +715,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(2, -1),
     offset: [0, 0, 0],
     common: {
@@ -722,9 +725,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(3, -1),
     offset: [0, 0, 0],
     common: {
@@ -732,9 +735,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(4, -1),
     offset: [0, 0, 0],
     common: {
@@ -742,9 +745,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(4, 0),
     offset: [0, 0, 0],
     common: {
@@ -752,9 +755,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(-1, 2),
     offset: [0, 0, 0],
     common: {
@@ -762,9 +765,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(0, 2),
     offset: [0, 0, 0],
     common: {
@@ -772,9 +775,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(1, 2),
     offset: [0, 0, 0],
     common: {
@@ -782,9 +785,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(2, 2),
     offset: [0, 0, 0],
     common: {
@@ -792,9 +795,9 @@ const modelNodes = [
     },
   },
   {
-    src: new URL('./assets/cat/scene.gltf', import.meta.url).href,
-    rotation: [0, 0, 0],
-    scale: [5, 5, 5],
+    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [0.005, 0.005, 0.005],
     position: getTargetByInterval(0.5, 3),
     offset: [0, 0, 0],
     common: {
