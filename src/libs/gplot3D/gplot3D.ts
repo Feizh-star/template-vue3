@@ -1,5 +1,9 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js'
+import { Line2 } from 'three/addons/lines/Line2.js'
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import * as lodashLib from 'lodash'
 import { FlowLine3D, type IFlowLine3DOption } from './flowLine3D'
 import {
@@ -14,12 +18,31 @@ import {
   recordOutEventToInnerHelper,
   removeNodeEventHelper,
   throttle,
+  loadFont,
 } from './gplot3DTool'
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends any[] ? T[P] : T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
 export type IFlowLineItem = IFlowLine3DOption & { common: Record<string, any> }
+export interface ITextOption {
+  font: string
+  content: string | ((cmn?: Record<string, any>) => string)
+  geometry: {
+    size: number
+    depth: number
+  }
+  material: {
+    color: string
+    transparent: boolean
+    opacity: number
+  }
+  center: boolean
+  rotation: number[]
+  scale: number[]
+  offset: number[]
+  position: number[]
+}
 export interface ISpriteNodeItem {
   common: Record<string, any>
   src: string
@@ -27,15 +50,23 @@ export interface ISpriteNodeItem {
   scale: number[]
   position: number[]
   offset: number[]
+  text: ITextOption
 }
-interface IGltfNodeItem {
+export interface IGltfNodeItem {
   common: Record<string, any>
   src: string
   rotation: number[]
   scale: number[]
   position: number[]
   offset: number[]
+  text: ITextOption
 }
+export type IRailItem = DeepPartial<
+  Omit<IFlowLineItem, 'effect' | 'id' | 'canvas' | 'line'> & {
+    text: ITextOption
+    relative: number
+  }
+>
 export interface IGltfLoaderResult {
   animations: Array<THREE.AnimationClip>
   scene: THREE.Group
@@ -68,6 +99,13 @@ export interface IGplot3DOption {
       RIGHT: THREE.MOUSE
     }
   }
+  grid: {
+    enable: boolean
+    size: number
+    divisions: number
+    colorCenterLine: string
+    colorGrid: string
+  }
 }
 
 const defaultOption: IGplot3DOption = {
@@ -95,6 +133,13 @@ const defaultOption: IGplot3DOption = {
       RIGHT: THREE.MOUSE.ROTATE,
     },
   },
+  grid: {
+    enable: false,
+    size: 100,
+    divisions: 5,
+    colorCenterLine: '#20273f',
+    colorGrid: '#20273f',
+  },
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -117,6 +162,7 @@ export class Gplot3D {
   private scene!: THREE.Scene
   private camera!: THREE.PerspectiveCamera
   private renderer!: THREE.WebGLRenderer
+  private fontMap = new Map<string, any>()
 
   constructor(option: DeepPartial<IGplot3DOption>) {
     this.devicePixelRatio = window.devicePixelRatio
@@ -150,13 +196,23 @@ export class Gplot3D {
   /* 初始化场景、相机、灯光、轨道 */
   private initBaseScene() {
     const canvas = this.domElement
-    const { scene: sceneOpt, ambient: ambientOpt, camera: cameraOpt } = this.option
+    const { scene: sceneOpt, ambient: ambientOpt, camera: cameraOpt, grid: gridOpt } = this.option
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(hexString2Number(sceneOpt.backgroundColor))
 
     const ambient = new THREE.AmbientLight(hexString2Number(ambientOpt.color), ambientOpt.luminance)
     scene.add(ambient)
+
+    if (gridOpt.enable) {
+      const gridHelper = new THREE.GridHelper(
+        gridOpt.size,
+        gridOpt.divisions,
+        gridOpt.colorCenterLine,
+        gridOpt.colorGrid
+      )
+      scene.add(gridHelper)
+    }
 
     const camera = new THREE.PerspectiveCamera(
       cameraOpt.viewAngle,
@@ -228,6 +284,7 @@ export class Gplot3D {
       this.gltfNodesAnimationMixer.get(item)?.update()
     })
     this.render()
+    // console.log('camera.position', this.camera.position)
     this.rafId = requestAnimationFrame(() => {
       this.animate()
     })
@@ -238,13 +295,63 @@ export class Gplot3D {
       this.rafId = null
     }
   }
+  public addFont(name: string, url: string) {
+    return loadFont(url).then((font) => {
+      this.fontMap.set(name, font)
+    })
+  }
+  private clearFont() {
+    this.fontMap.clear()
+  }
+  private setText(origin: number[], option: DeepPartial<ITextOption>) {
+    const font = this.fontMap.get(option.font || '')
+    if (!font) {
+      console.warn(`No font named ${option.font} found`)
+      return []
+    }
+    if (!option.content) return []
+    const contentSplit = (option.content as string).split('\n')
+    const textMeshList: THREE.Mesh[] = []
+    for (const [l, text] of contentSplit.entries()) {
+      const geometry = new TextGeometry(text, {
+        font: font,
+        size: option.geometry?.size || 0.3, // 字体大小
+        depth: option.geometry?.depth || 0, // 挤出文本的厚度
+      })
+      geometry.computeBoundingBox()
+
+      if (option.center) geometry.center() // 居中文本
+      const materials = new THREE.MeshBasicMaterial({
+        color: hexString2Number(option.material?.color || '#ffffff'),
+        transparent: option.material?.transparent ?? true,
+        opacity: option.material?.opacity || 1,
+      })
+      const textMesh = new THREE.Mesh(geometry, materials)
+      // 位置，旋转，缩放
+      const lineHeight = (geometry.boundingBox.max.y - geometry.boundingBox.min.y) * 1.2
+      const lineYOffset = [0, ((contentSplit.length - 1) * 0.5 - l) * lineHeight, 0]
+      const rotation = new Array(3).fill(0).map((v, i) => option.rotation?.[i] || v) as number[]
+      const scale = new Array(3).fill(1).map((v, i) => option.scale?.[i] || v) as number[]
+      const position = [...origin].map(
+        (v, i) => v + (option.position?.[i] || 0) + (option.offset?.[i] || 0) + lineYOffset[i]
+      ) as number[]
+      textMesh.rotation.set(rotation[0], rotation[1], rotation[2])
+      textMesh.scale.set(scale[0], scale[1], scale[2])
+      textMesh.position.set(position[0], position[1], position[2])
+      this.scene.add(textMesh)
+      textMeshList.push(textMesh)
+    }
+    return textMeshList
+  }
   public destory() {
     this.removeFlowLines()
     this.removeSpriteNodes()
     this.removeGltfNodes()
+    this.removeAllRails()
     this.cancelResize()
     this.cancelAnimate()
     this.removeAllMouseEvent()
+    this.clearFont()
     this.option.el?.removeChild(this.domElement)
   }
 
@@ -384,12 +491,55 @@ export class Gplot3D {
       colorStop: colorCfg?.colorStop ? colorCfg.colorStop : [],
     })
   }
+  /**
+   * 线框
+   */
+  private railLine: Line2[] = []
+  private railLineTextMap: Map<Line2, THREE.Mesh[]> = new Map()
+  public addRails(rails: IRailItem[]) {
+    if (!this.scene || !this.domElement) return []
+    this.railLine = rails.map((item) => {
+      const { path: positions, lineMaterial: lineMaterialOpt, text, relative } = item
+
+      const trackLine = new LineGeometry()
+      trackLine.setPositions(positions?.flat() || [])
+
+      const trackLineMaterial = new LineMaterial()
+      ;(trackLineMaterial.color as THREE.Color).setHex(
+        hexString2Number(lineMaterialOpt?.color || '#fffff')
+      )
+      trackLineMaterial.dashed = lineMaterialOpt?.dashed ?? true
+      trackLineMaterial.linewidth = lineMaterialOpt?.linewidth ?? 1
+      trackLineMaterial.resolution.set(this.domElement.width, this.domElement.width)
+
+      const line = new Line2(trackLine, trackLineMaterial)
+      line.computeLineDistances()
+      this.scene.add(line)
+      if (typeof text?.content === 'string' && positions) {
+        this.railLineTextMap.set(line, this.setText(positions[relative || 0] || positions[0], text))
+      }
+      return line
+    })
+  }
+  public removeAllRails() {
+    this.railLine.forEach((item) => {
+      this.scene.remove(item)
+      disposeModel(item)
+      this.railLineTextMap.get(item)?.forEach((text) => {
+        this.scene.remove(text)
+        disposeModel(text)
+      })
+      this.railLineTextMap.delete(item)
+    })
+    this.railLine = []
+  }
 
   /**
    * 管理点-精灵图
    */
   private spriteNodes: THREE.Sprite[] = []
   private spriteNodesMap: WeakMap<THREE.Sprite, DeepPartial<ISpriteNodeItem>> = new WeakMap()
+  private spriteNodesTextMap: Map<THREE.Sprite, THREE.Mesh[]> = new Map()
   private spriteNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
   public addSpriteNodes(nodeData: DeepPartial<ISpriteNodeItem>[]) {
     if (!this.scene) return []
@@ -406,6 +556,13 @@ export class Gplot3D {
       sprite.scale.set(scale[0], scale[1], scale[2])
       sprite.position.set(position[0], position[1], position[2])
       this.scene.add(sprite)
+      if (item.text) {
+        item.text.content =
+          item.text.content && typeof item.text.content === 'function'
+            ? item.text.content(item.common)
+            : item.text.content
+        this.spriteNodesTextMap.set(sprite, this.setText(position, item.text))
+      }
       this.spriteNodesMap.set(sprite, item)
       return sprite
     })
@@ -455,6 +612,11 @@ export class Gplot3D {
     this.spriteNodes.forEach((item) => {
       this.scene.remove(item)
       disposeSprite(item)
+      this.spriteNodesTextMap.get(item)?.forEach((text) => {
+        this.scene.remove(text)
+        disposeModel(text)
+      })
+      this.spriteNodesTextMap.delete(item)
     })
     this.spriteNodes = []
     for (const eInfos of this.spriteNodesEventMap.values()) {
@@ -468,6 +630,7 @@ export class Gplot3D {
    */
   private gltfNodes: IGltfLoaderResult[] = []
   private gltfNodesMap: WeakMap<IGltfLoaderResult, DeepPartial<IGltfNodeItem>> = new WeakMap()
+  private gltfNodesTextMap: Map<IGltfLoaderResult, THREE.Mesh[]> = new Map()
   private gltfNodesEventMap = new Map<string, ReturnType<typeof registerNodeEventHelper>[]>()
   private childrenModelMap: WeakMap<Object, IGltfLoaderResult> = new WeakMap()
   private gltfNodesAnimationMixer: WeakMap<IGltfLoaderResult, AnimationMixerUpdater> = new WeakMap() // 可根据模型数据查找动画控制器
@@ -507,6 +670,13 @@ export class Gplot3D {
               this.gltfNodes.push(gltfModel)
               this.gltfNodesMap.set(gltfModel, item)
               this.scene.add(modelObject)
+              if (item.text) {
+                item.text.content =
+                  item.text.content && typeof item.text.content === 'function'
+                    ? item.text.content(item.common)
+                    : item.text.content
+                this.gltfNodesTextMap.set(gltfModel, this.setText(position, item.text))
+              }
               resolve({
                 status: true,
                 data: item,
@@ -579,6 +749,11 @@ export class Gplot3D {
       this.gltfNodesAnimationMixer.get(item)?.distory()
       this.scene.remove(item.scene)
       disposeModel(item.scene)
+      this.gltfNodesTextMap.get(item)?.forEach((text) => {
+        this.scene.remove(text)
+        disposeModel(text)
+      })
+      this.gltfNodesTextMap.delete(item)
     })
     this.gltfNodes = []
     for (const eInfos of this.gltfNodesEventMap.values()) {

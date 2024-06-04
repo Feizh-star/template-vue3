@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 
 export function loadGltfModel<T>(
   modelSrc: string,
@@ -266,4 +267,20 @@ export function throttle<T extends (...args: any[]) => void>(func: T, wait: numb
       previous = now
     }
   }
+}
+
+/* 加载字体 */
+export function loadFont(url: string, process?: (xhr: XMLHttpRequest) => void) {
+  return new Promise((resolve, reject) => {
+    new FontLoader().load(
+      url,
+      function (font: any) {
+        resolve(font)
+      },
+      process,
+      (error: any) => {
+        reject(error)
+      }
+    )
+  })
 }

@@ -42,7 +42,24 @@ const getTargetByInterval = (x: number = 0, z: number = 0) => {
     number
   ]
 }
-
+const genTextOpt = (font: string, content?: string) => {
+  return {
+    font: font,
+    content: content || ((cmn: any) => cmn.name),
+    geometry: {
+      size: 0.4,
+      depth: 0,
+    },
+    material: {
+      color: '#ececec',
+    },
+    center: true,
+    rotation: [-Math.PI / 2, 0, Math.PI / 2],
+    // rotation: [0, Math.PI / 2, 0],
+    scale: [1000, 1000, 1000],
+    position: [1200, 500, 0],
+  }
+}
 // console.log(straightway([-10, 0, -10], [-10, 0, -50], { justify: 'Z' }))
 const lines: IFlowLineItem[] = [
   {
@@ -670,6 +687,7 @@ const modelNodes = [
     common: {
       name: '电脑',
     },
+    text: genTextOpt('font1'),
   },
   // src/views/ThreeMenu/subpage/assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb
   // src/views/ThreeMenu/subpage/assets/cat/scene.gltf
@@ -683,6 +701,7 @@ const modelNodes = [
     common: {
       name: '电力监控系统',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -693,6 +712,7 @@ const modelNodes = [
     common: {
       name: '内网防火墙',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -703,6 +723,7 @@ const modelNodes = [
     common: {
       name: '风功率预测交换机',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -713,6 +734,7 @@ const modelNodes = [
     common: {
       name: '风功率预测服务器',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -723,6 +745,7 @@ const modelNodes = [
     common: {
       name: '反向隔离装置',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -733,6 +756,7 @@ const modelNodes = [
     common: {
       name: '气象服务器',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -743,6 +767,7 @@ const modelNodes = [
     common: {
       name: '外网防火墙',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -753,6 +778,7 @@ const modelNodes = [
     common: {
       name: '互联网',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -763,6 +789,7 @@ const modelNodes = [
     common: {
       name: '平面非实时交换机一',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -773,6 +800,7 @@ const modelNodes = [
     common: {
       name: '平面非实时纵向加密装置一',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -783,6 +811,7 @@ const modelNodes = [
     common: {
       name: '平面非实时纵向加密装置二',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -793,6 +822,7 @@ const modelNodes = [
     common: {
       name: '平面非实时交换机二',
     },
+    text: genTextOpt('font1'),
   },
   {
     src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
@@ -803,6 +833,7 @@ const modelNodes = [
     common: {
       name: '调度数据网',
     },
+    text: genTextOpt('font1'),
   },
 ]
 
@@ -836,25 +867,29 @@ function testGplot3D() {
       initialPosition: { x: 300, y: 300, z: 300 },
     },
   })
-  gplot.value.addFlowLines(lines)
+  gplot.value
+    .addFont('font1', new URL('./font/Microsoft YaHei_Regular.json', import.meta.url).href)
+    .then(() => {
+      gplot.value?.addFlowLines(lines)
 
-  gplot.value.addGltfNodes(modelNodes)
-  gplot.value.onGltfNodes('mousemove', (type, e, models, datas) => {
-    if (!tooltipEl.value || !renderEl.value) return
-    const mevent = e as MouseEvent
-    const left = mevent.clientX - renderEl.value.getBoundingClientRect().left
-    const top = mevent.clientY - renderEl.value.getBoundingClientRect().top
-    tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
-    tooltipEl.value.innerText = datas[0]?.common?.name || ''
-  })
-  gplot.value.onGltfNodes('mouseenter', () => {
-    if (!tooltipEl.value) return
-    tooltipEl.value.style.display = `block`
-  })
-  gplot.value.onGltfNodes('mouseleave', () => {
-    if (!tooltipEl.value) return
-    tooltipEl.value.style.display = `none`
-  })
+      gplot.value?.addGltfNodes(modelNodes)
+      gplot.value?.onGltfNodes('mousemove', (type, e, models, datas) => {
+        if (!tooltipEl.value || !renderEl.value) return
+        const mevent = e as MouseEvent
+        const left = mevent.clientX - renderEl.value.getBoundingClientRect().left
+        const top = mevent.clientY - renderEl.value.getBoundingClientRect().top
+        tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
+        tooltipEl.value.innerText = datas[0]?.common?.name || ''
+      })
+      gplot.value?.onGltfNodes('mouseenter', () => {
+        if (!tooltipEl.value) return
+        tooltipEl.value.style.display = `block`
+      })
+      gplot.value?.onGltfNodes('mouseleave', () => {
+        if (!tooltipEl.value) return
+        tooltipEl.value.style.display = `none`
+      })
+    })
 }
 </script>
 

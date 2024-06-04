@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { Gplot3D } from '@/libs/gplot3D/gplot3D'
+import type { IRailItem } from '@/libs/gplot3D/gplot3D'
 import type { IFlowLineItem } from '@/libs/gplot3D/flowLine3D'
 
 const renderEl = ref<HTMLElement | null>(null)
 const tooltipEl = ref<HTMLElement | null>(null)
 
-const color = ['#53ffc1', '#ff5600']
+const color = ['#53ffc1', '#ff5600', '#f5b84a']
 
-const size = 3.5
+const size = 4.5
 const speed = 2
 const multiple = 100
-const centerPosition: [number, number, number] = [-20, 0, 0]
+const centerPosition: [number, number, number] = [-27, 0, -27]
 const distance = 24
 const lineIntervalHalf = 1
 const straightway = (
@@ -42,147 +43,183 @@ const getTargetByInterval = (x: number = 0, z: number = 0) => {
     number
   ]
 }
+const genTextOpt = (font: string, content?: string) => {
+  return {
+    font: font,
+    content:
+      content ||
+      ((cmn: any) => {
+        return cmn.name.length > 10
+          ? `${cmn.name.substring(0, 7)}\n${cmn.name.substring(7)}`
+          : cmn.name
+      }),
+    geometry: {
+      size: 1.8,
+      depth: 0,
+    },
+    material: {
+      color: '#ececec',
+    },
+    center: true,
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    position: [0, 1, 8],
+  }
+}
 
 const nodes = [
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node1.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [6, 9, 9],
+    offset: [0, 1, 0],
     position: [...centerPosition],
     common: {
-      name: '电脑',
+      name: '',
     },
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node2.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [12, 12, 12],
+    offset: [0, 1, 0],
     position: getTargetByInterval(-2, -1),
     common: {
       name: '电力监控系统',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node8.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [12, 12, 12],
+    offset: [0, 1, 0],
     position: getTargetByInterval(-1, -1),
     common: {
       name: '内网防火墙',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node6.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [10, 10, 10],
+    offset: [0, 1, 0],
     position: getTargetByInterval(0, -1),
     common: {
       name: '风功率预测交换机',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node5.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [11, 11, 11],
+    offset: [0, 1, 0],
     position: getTargetByInterval(1, -1),
     common: {
       name: '风功率预测服务器',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node4.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [13, 13, 13],
+    offset: [0, 1, 1.2],
     position: getTargetByInterval(2, -1),
     common: {
       name: '反向隔离装置',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node13.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [11, 11, 11],
+    offset: [0, 1, 0],
     position: getTargetByInterval(3, -1),
     common: {
       name: '气象服务器',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node8.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [12, 12, 12],
+    offset: [0, 1, 0],
     position: getTargetByInterval(4, -1),
     common: {
       name: '外网防火墙',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node7.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [12, 12, 12],
+    offset: [0, 1, 0],
     position: getTargetByInterval(4, 0),
     common: {
       name: '互联网',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node6.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [10, 10, 10],
+    offset: [0, 1, 0],
     position: getTargetByInterval(-1, 2),
     common: {
       name: '平面非实时交换机一',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node11.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [11, 11, 11],
+    offset: [0, 1, 0],
     position: getTargetByInterval(0, 2),
     common: {
       name: '平面非实时纵向加密装置一',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node11.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [11, 11, 11],
+    offset: [0, 1, 0],
     position: getTargetByInterval(1, 2),
     common: {
       name: '平面非实时纵向加密装置二',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node6.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [10, 10, 10],
+    offset: [0, 1, 0],
     position: getTargetByInterval(2, 2),
     common: {
       name: '平面非实时交换机二',
     },
+    text: genTextOpt('font1'),
   },
   {
-    src: new URL('./assets/sprite.png', import.meta.url).href,
+    src: new URL('./assets/sprites/node3.png', import.meta.url).href,
     center: [0.5, 0.5],
-    scale: [15, 15, 15],
-    offset: [-0.3, 1, 2],
+    scale: [13, 13, 13],
+    offset: [0, 1, 1.2],
     position: getTargetByInterval(0.5, 3),
     common: {
       name: '调度数据网',
     },
+    text: genTextOpt('font1'),
   },
 ]
 
@@ -247,7 +284,7 @@ const lines: IFlowLineItem[] = [
       ],
       [centerPosition[0] - 1 * distance - distance, 0, centerPosition[2] - 1 * distance],
     ],
-    lineMaterial: { color: color[0] },
+    lineMaterial: { color: color[2] },
     effect: {
       enable: true,
       size: size,
@@ -255,9 +292,9 @@ const lines: IFlowLineItem[] = [
       multiple: multiple,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
+        { color: `${color[2]}ff`, percent: 0.15 },
+        { color: `${color[2]}80`, percent: 0.4 },
+        { color: `${color[2]}00`, percent: 1 },
       ],
     },
   },
@@ -339,17 +376,17 @@ const lines: IFlowLineItem[] = [
     path: straightway(getTargetByInterval(1, -1), getTargetByInterval(0, -1), {
       justify: 'X',
     }).go,
-    lineMaterial: { color: color[0] },
+    lineMaterial: { color: color[1], dashed: true },
     effect: {
-      enable: true,
+      enable: false,
       size: size,
       speed: speed,
       multiple: multiple,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
+        { color: `${color[1]}ff`, percent: 0.15 },
+        { color: `${color[1]}80`, percent: 0.4 },
+        { color: `${color[1]}00`, percent: 1 },
       ],
     },
   },
@@ -803,6 +840,63 @@ const lines: IFlowLineItem[] = [
     },
   },
 ]
+const genRailTextOpt = (font: string, position: number[], content?: string) => {
+  return {
+    font: font,
+    content: content || '',
+    geometry: {
+      size: 1.6,
+      depth: 0,
+    },
+    material: {
+      color: '#D7ECF8',
+    },
+    center: true,
+    rotation: [-Math.PI / 2, 0, 0],
+    scale: [1, 1, 1],
+    position: position,
+  }
+}
+const rails: IRailItem[] = [
+  {
+    path: [
+      [-62, 0, 57],
+      [-82, 0, 57],
+      [-82, 0, -72],
+      [-62, 0, -72],
+      [-62, 0, 57],
+    ],
+    relative: 0,
+    lineMaterial: { color: '#647186' },
+    text: genRailTextOpt('font1', [-6, 0, -2.5], '安全区1'),
+  },
+  {
+    path: [
+      [32, 0, 57],
+      [-59, 0, 57],
+      [-59, 0, -72],
+      [32, 0, -72],
+      [32, 0, 57],
+    ],
+    relative: 0,
+    lineMaterial: { color: '#647186' },
+    text: genRailTextOpt('font1', [-6, 0, -2.5], '安全区2'),
+  },
+  {
+    path: [
+      [57, 0, 57],
+      [35, 0, 57],
+      [35, 0, -72],
+      [57, 0, -72],
+      [57, 0, 57],
+    ],
+    relative: 0,
+    lineMaterial: { color: '#647186' },
+    text: genRailTextOpt('font1', [-8, 0, -2.5], '管理信息大区'),
+  },
+]
+// [-58.4, 0, -42] [-68, 0, -42] [-8, 0, 72]
+// [28, 0, -24]
 
 const gplot = shallowRef<Gplot3D | null>(null)
 onMounted(() => {
@@ -830,28 +924,33 @@ function testGplot3D() {
       backgroundColor: '#1a212e',
     },
     camera: {
-      initialPosition: { x: 200, y: 340, z: 180 },
+      initialPosition: { x: 254.64725857847603, y: 322.8563456977105, z: 270.5627122396308 },
     },
   })
   gplot.value.addFlowLines(lines)
 
-  gplot.value.addSpriteNodes(nodes)
-  gplot.value.onSpriteNodes('mousemove', (type, e, models, datas) => {
-    if (!tooltipEl.value || !renderEl.value) return
-    const mevent = e as MouseEvent
-    const left = mevent.clientX - renderEl.value.getBoundingClientRect().left
-    const top = mevent.clientY - renderEl.value.getBoundingClientRect().top
-    tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
-    tooltipEl.value.innerText = datas[0]?.common?.name || ''
-  })
-  gplot.value.onSpriteNodes('mouseenter', () => {
-    if (!tooltipEl.value) return
-    tooltipEl.value.style.display = `block`
-  })
-  gplot.value.onSpriteNodes('mouseleave', () => {
-    if (!tooltipEl.value) return
-    tooltipEl.value.style.display = `none`
-  })
+  gplot.value
+    .addFont('font1', new URL('./font/Microsoft YaHei_Regular.json', import.meta.url).href)
+    .then(() => {
+      gplot.value?.addSpriteNodes(nodes)
+      gplot.value?.onSpriteNodes('mousemove', (type, e, models, datas) => {
+        if (!tooltipEl.value || !renderEl.value || !datas[0]?.common?.name) return
+        const mevent = e as MouseEvent
+        const left = mevent.clientX - renderEl.value.getBoundingClientRect().left
+        const top = mevent.clientY - renderEl.value.getBoundingClientRect().top
+        tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
+        tooltipEl.value.innerText = datas[0]?.common?.name || ''
+      })
+      gplot.value?.onSpriteNodes('mouseenter', (type, e, models, datas) => {
+        if (!tooltipEl.value || !datas[0]?.common?.name) return
+        tooltipEl.value.style.display = `block`
+      })
+      gplot.value?.onSpriteNodes('mouseleave', (type, e, models, datas) => {
+        if (!tooltipEl.value || !datas[0]?.common?.name) return
+        tooltipEl.value.style.display = `none`
+      })
+      gplot.value?.addRails(rails)
+    })
 }
 </script>
 
