@@ -205,6 +205,8 @@ export class Gplot3D {
     scene.add(ambient)
 
     if (gridOpt.enable) {
+      // colorCenterLine: '#20273f',
+      // colorGrid: '#20273f',
       const gridHelper = new THREE.GridHelper(
         gridOpt.size,
         gridOpt.divisions,
@@ -468,7 +470,9 @@ export class Gplot3D {
     if (this.flowLines.length === 0) {
       this.flowEffectUpdate = null
     }
+    return this
   }
+  // 只是给外界提供一个方便的工具，其实不算这个类的功能，这些代码在外部写是一样的
   public setStatusById(
     id: number,
     enable = false,
@@ -497,7 +501,7 @@ export class Gplot3D {
   private railLine: Line2[] = []
   private railLineTextMap: Map<Line2, THREE.Mesh[]> = new Map()
   public addRails(rails: IRailItem[]) {
-    if (!this.scene || !this.domElement) return []
+    if (!this.scene || !this.domElement) return this
     this.railLine = rails.map((item) => {
       const { path: positions, lineMaterial: lineMaterialOpt, text, relative } = item
 
@@ -520,6 +524,7 @@ export class Gplot3D {
       }
       return line
     })
+    return this
   }
   public removeAllRails() {
     this.railLine.forEach((item) => {
@@ -532,6 +537,7 @@ export class Gplot3D {
       this.railLineTextMap.delete(item)
     })
     this.railLine = []
+    return this
   }
 
   /**
@@ -597,6 +603,7 @@ export class Gplot3D {
       this.spriteNodesEventMap,
       this.mouseEventHandlerMap
     )
+    return this
   }
   public offSpriteNodes(eventType: string, handler?: Function) {
     removeNodeEventHelper(
@@ -607,6 +614,7 @@ export class Gplot3D {
       handler
     )
     this.removeNoHandlerMouseEvent()
+    return this
   }
   public removeSpriteNodes() {
     this.spriteNodes.forEach((item) => {
@@ -733,6 +741,7 @@ export class Gplot3D {
       this.gltfNodesEventMap,
       this.mouseEventHandlerMap
     )
+    return this
   }
   public offGltfNodes(eventType: string, handler?: Function) {
     removeNodeEventHelper(
@@ -743,6 +752,7 @@ export class Gplot3D {
       handler
     )
     this.removeNoHandlerMouseEvent()
+    return this
   }
   public removeGltfNodes() {
     this.gltfNodes.forEach((item) => {
