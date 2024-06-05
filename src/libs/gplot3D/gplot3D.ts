@@ -550,7 +550,10 @@ export class Gplot3D {
   public addSpriteNodes(nodeData: DeepPartial<ISpriteNodeItem>[]) {
     if (!this.scene) return []
     this.spriteNodes = nodeData.map((item) => {
-      const map = new THREE.TextureLoader().load(item.src || '')
+      const map = new THREE.TextureLoader().load(item.src || '', function (texture) {
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.needsUpdate = true
+      })
       const material = new THREE.SpriteMaterial({ map: map })
       const sprite = new THREE.Sprite(material)
       const center = new Array(2).fill(0.5).map((v, i) => item.center?.[i] || v) as number[]
