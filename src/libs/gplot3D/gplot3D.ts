@@ -79,9 +79,16 @@ export interface IGplot3DOption {
   scene: {
     backgroundColor: string
   }
-  ambient: {
+  ambientLight: {
+    enable: boolean
     color: string
     luminance: number
+  }
+  directionalLight: {
+    enable: boolean
+    color: string
+    luminance: number
+    position: number[]
   }
   camera: {
     viewAngle: number
@@ -113,9 +120,16 @@ const defaultOption: IGplot3DOption = {
   scene: {
     backgroundColor: '#000000',
   },
-  ambient: {
+  ambientLight: {
+    enable: true,
+    color: '#ffffff',
+    luminance: 1,
+  },
+  directionalLight: {
+    enable: true,
     color: '#ffffff',
     luminance: 3,
+    position: [200, 200, 200],
   },
   camera: {
     viewAngle: 15,
@@ -161,6 +175,8 @@ export class Gplot3D {
   private devicePixelRatio: number
   private scene!: THREE.Scene
   private camera!: THREE.PerspectiveCamera
+  private ambientLight!: THREE.AmbientLight
+  private directionalLight!: THREE.DirectionalLight
   private renderer!: THREE.WebGLRenderer
   private fontMap = new Map<string, any>()
 
@@ -196,17 +212,39 @@ export class Gplot3D {
   /* 初始化场景、相机、灯光、轨道 */
   private initBaseScene() {
     const canvas = this.domElement
-    const { scene: sceneOpt, ambient: ambientOpt, camera: cameraOpt, grid: gridOpt } = this.option
+    const {
+      scene: sceneOpt,
+      ambientLight: ambientOpt,
+      directionalLight: directionalOpt,
+      camera: cameraOpt,
+      grid: gridOpt,
+    } = this.option
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(hexString2Number(sceneOpt.backgroundColor))
 
-    const ambient = new THREE.AmbientLight(hexString2Number(ambientOpt.color), ambientOpt.luminance)
-    scene.add(ambient)
+    if (ambientOpt.enable) {
+      const ambientLight = new THREE.AmbientLight(
+        hexString2Number(ambientOpt.color),
+        ambientOpt.luminance
+      )
+      scene.add(ambientLight)
+      this.ambientLight = ambientLight
+    }
+    if (directionalOpt.enable) {
+      const directionalLight = new THREE.DirectionalLight(
+        hexString2Number(directionalOpt.color),
+        directionalOpt.luminance
+      )
+      const position = new Array(3)
+        .fill(200)
+        .map((v, i) => directionalOpt.position?.[i] || v) as number[]
+      directionalLight.position.set(position[0], position[1], position[2])
+      scene.add(directionalLight)
+      this.directionalLight = directionalLight
+    }
 
     if (gridOpt.enable) {
-      // colorCenterLine: '#20273f',
-      // colorGrid: '#20273f',
       const gridHelper = new THREE.GridHelper(
         gridOpt.size,
         gridOpt.divisions,
