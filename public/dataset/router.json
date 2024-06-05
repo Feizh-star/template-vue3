@@ -66,7 +66,7 @@
   {
     "path": "/customsubmenu",
     "meta": {
-      "title": "自定义非首级子目录",
+      "title": "自定义功能",
       "hidden": false,
       "alwaysShow": true,
       "icon": {
@@ -79,7 +79,7 @@
         "path": "submenu1",
         "component": "CustomSubMenu/Index.vue",
         "meta": {
-          "title": "非首级子目录1",
+          "title": "three辅助",
           "hidden": false,
           "alwaysShow": false,
           "isLeaf": true,
@@ -93,7 +93,7 @@
             "path": "subpage1",
             "component": "CustomSubMenu/subpage/Page1.vue",
             "meta": {
-              "title": "自定义非首级子菜单1",
+              "title": "提取字体",
               "hidden": false,
               "icon": {
                 "type": "class",
@@ -105,7 +105,7 @@
             "path": "subpage2",
             "component": "CustomSubMenu/subpage/Page2.vue",
             "meta": {
-              "title": "自定义非首级子菜单2",
+              "title": "待开发",
               "hidden": false,
               "icon": {
                 "type": "class",
