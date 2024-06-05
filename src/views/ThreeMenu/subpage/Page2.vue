@@ -75,7 +75,7 @@ const modelNodes = [
     position: [...centerPosition],
     offset: [0, 0, 0],
     common: {
-      name: '电脑',
+      name: '',
     },
     text: genTextOpt('font1'),
   },
