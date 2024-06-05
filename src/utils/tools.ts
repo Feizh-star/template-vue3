@@ -131,3 +131,22 @@ export function differenceSet(a: any[], b: any[]) {
   const bs = new Set([...b])
   return [...new Set([...a].filter((x) => !bs.has(x)))]
 }
+
+export function customFlat(arr: any[], depth = 1): any[] {
+  // 检查深度是否为0，如果是，则返回原数组
+  if (depth === 0) {
+    return arr
+  }
+
+  // 使用reduce遍历数组并展平
+  return arr.reduce((acc, val) => {
+    // 如果当前元素是数组且深度大于0，递归展平
+    if (Array.isArray(val)) {
+      acc.push(...customFlat(val, depth - 1))
+    } else {
+      // 否则直接添加到acc中
+      acc.push(val)
+    }
+    return acc
+  }, [])
+}
