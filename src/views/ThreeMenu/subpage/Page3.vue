@@ -930,7 +930,7 @@ function testGplot3D() {
   gplot.value.addFlowLines(lines)
 
   gplot.value
-    .addFont('font1', new URL('./font/Microsoft YaHei_Regular.json', import.meta.url).href)
+    .addFont('font1', new URL('./font/Microsoft_YaHei_Regular.json', import.meta.url).href)
     .then(() => {
       gplot.value?.addSpriteNodes(nodes)
       gplot.value?.onSpriteNodes('mousemove', (type, e, models, datas) => {
