@@ -85,9 +85,6 @@ function parseRoutes(
     } else if (raw.component === 'Layout') {
       component = Layout
     } else {
-      // component = () => import(`../views/${raw.component.replace('.vue', '')}.vue`)
-      // webpack不能编译动态的import(),需要借助babel-plugin-dynamic-import-webpack
-      // component = () => require(`@/views/${raw.component}`)
       component = pages[raw.component]
     }
     const parsedRoute: RouteRecordRaw = {
@@ -99,10 +96,12 @@ function parseRoutes(
       props: raw.props ? raw.props : {},
       children: [],
     }
-    parsedRoute.children = [{ ...parsedRoute }] // 先addRoute，后设置children会导致vue-router报警告，这一步无用，只是去除警告
-    router.addRoute(parent, parsedRoute)
     parsedRoutes.push(parsedRoute)
     parsedRoute.children = parseRoutes(raw.children || [], raw.name, fullTree)
+    // 只有顶层parent不存在，此时parsedRoute的所有后代已经解析完毕，把第一层的parsedRoute及其所有后代加入根路由
+    if (!parent) {
+      router.addRoute(parsedRoute)
+    }
   }
   return parsedRoutes
 }

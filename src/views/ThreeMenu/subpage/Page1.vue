@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useSquare } from './compositions/useSquare'
+import { useCatmullRomCurve3 } from './compositions/useCatmullRomCurve3'
 import { useTestFlowLine3D } from './compositions/useTestFlowLine3D'
 import { useTestPoints } from './compositions/useTestPoints'
 import * as lodashLib from 'lodash'
@@ -7,7 +8,8 @@ import * as lodashLib from 'lodash'
 const renderCanvas = ref<HTMLCanvasElement | null>(null)
 
 // useSquare({ el: renderCanvas })
-useTestFlowLine3D({ el: renderCanvas })
+// useTestFlowLine3D({ el: renderCanvas })
+useCatmullRomCurve3({ el: renderCanvas })
 // useTestPoints({ el: renderCanvas })
 </script>
 

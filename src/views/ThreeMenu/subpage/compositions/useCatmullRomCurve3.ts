@@ -72,7 +72,7 @@ export function useCatmullRomCurve3({ el }: { el: Ref<HTMLCanvasElement | null> 
 
     const material = new THREE.MeshBasicMaterial({
       map: texture,
-      side: THREE.BackSide,
+      side: THREE.DoubleSide,
       transparent: true,
     })
 
@@ -92,7 +92,7 @@ export function useCatmullRomCurve3({ el }: { el: Ref<HTMLCanvasElement | null> 
     }
 
     // 创建管道
-    const tubeGeometry = new THREE.TubeGeometry(curvePath, 80, 0.1)
+    const tubeGeometry = new THREE.TubeGeometry(curvePath, 80, 0.1, 8, false)
 
     const mesh = new THREE.Mesh(tubeGeometry, material)
 
