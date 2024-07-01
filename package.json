@@ -41,6 +41,7 @@
     "reset-css": "^5.0.1",
     "stream-browserify": "^3.0.0",
     "three": "^0.166.0",
+    "three-line-raycast": "^1.0.2",
     "util": "^0.12.5",
     "vue": "^3.3.13",
     "vue-datepicker-next": "^1.0.3",
