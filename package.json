@@ -17,7 +17,6 @@
   "dependencies": {
     "@element-plus/icons": "^0.0.11",
     "@turf/turf": "^6.5.0",
-    "@types/three": "^0.166.0",
     "axios": "^1.4.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
@@ -63,6 +62,7 @@
     "@types/path-browserify": "^1.0.0",
     "@types/pbf": "^3.0.2",
     "@types/qs": "^6.9.10",
+    "@types/three": "^0.166.0",
     "@vitejs/plugin-vue": "^4.2.0",
     "@vitejs/plugin-vue-jsx": "^3.0.0",
     "@vue/eslint-config-prettier": "^7.1.0",
