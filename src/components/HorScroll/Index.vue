@@ -83,15 +83,6 @@ function debounce(fn: (...arg: any[]) => void, delay: number) {
 </script>
 
 <script setup lang="ts">
-/**
- * 如需在不需要滚动时（界面较宽）水平铺满，在外部这样设置，然后插槽列表使用flex布局
-    :deep(.horizontal-scroll-bar) {
-      .scroll-items {
-        width: 100%;
-        min-width: fit-content;
-      }
-    }
- */
 import { useResizeObserver } from '@vueuse/core'
 export interface Props {
   width?: string
@@ -100,6 +91,7 @@ export interface Props {
   interval?: number
   itemSelector?: string
   align?: string
+  wheel?: boolean
 }
 const props = withDefaults(defineProps<Props>(), {
   width: '100%',
@@ -108,6 +100,7 @@ const props = withDefaults(defineProps<Props>(), {
   interval: 300,
   itemSelector: '.scroll-items > .scroll-item',
   align: 'left',
+  wheel: false,
 })
 const emits = defineEmits<{
   (e: 'arrived-edge', direction: 0 | 1): void
@@ -266,10 +259,24 @@ function longPress(type: 0 | 1, mouseType: 'up' | 'down') {
     if (thisData.times === 0) scrollHandler(type)
   }
 }
+function onMouseWheel(e: WheelEvent) {
+  const dir = e.deltaY > 0
+  if (dir && props.wheel) {
+    longPress(1, 'down')
+    longPress(1, 'up')
+  } else {
+    longPress(0, 'down')
+    longPress(0, 'up')
+  }
+}
 </script>
 
 <template>
-  <div class="horizontal-scroll-bar" :style="{ width: width, height: height }">
+  <div
+    class="horizontal-scroll-bar"
+    :style="{ width: width, height: height }"
+    @wheel="onMouseWheel"
+  >
     <button
       class="btn"
       v-show="actived"
