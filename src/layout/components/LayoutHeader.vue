@@ -177,6 +177,7 @@ function logout() {
       .el-menu.el-menu--horizontal {
         background-color: transparent;
         border-bottom: none;
+        --el-menu-item-height: 100%;
         .el-menu-item,
         .el-sub-menu__title,
         > .el-sub-menu.is-active .el-sub-menu__title {
@@ -201,6 +202,18 @@ function logout() {
         .menu-icon {
           .icon-yitihuajiankong {
             margin-right: 10px;
+          }
+        }
+        .external-link {
+          color: var(--el-menu-text-color);
+          font-size: var(--el-menu-item-font-size);
+          height: var(--el-menu-item-height);
+          display: flex;
+          align-items: center;
+          padding: 0 var(--el-menu-base-level-padding);
+          &:hover {
+            color: #ffffff;
+            background-color: #00000033;
           }
         }
       }
@@ -259,6 +272,20 @@ function logout() {
   .menu-icon {
     .icon-yitihuajiankong {
       margin-right: 10px;
+    }
+  }
+  .external-link {
+    align-items: center;
+    background-color: var(--el-menu-bg-color);
+    color: var(--el-menu-text-color);
+    font-size: var(--el-menu-item-font-size);
+    display: flex;
+    height: var(--el-menu-horizontal-sub-item-height);
+    line-height: var(--el-menu-horizontal-sub-item-height);
+    padding: 0 10px;
+    &:hover {
+      color: #ffffff;
+      background-color: #00000033;
     }
   }
 }

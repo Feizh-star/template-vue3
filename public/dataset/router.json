@@ -12,6 +12,17 @@
     }
   },
   {
+    "path": "https://www.baidu.com/",
+    "meta": {
+      "title": "百度",
+      "hidden": false,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yuandianxiao-copy"
+      }
+    }
+  },
+  {
     "path": "/custommenu",
     "component": "CustomMenu/Index.vue",
     "meta": {
@@ -160,6 +171,17 @@
             "component": "TestMenu/Test321.vue",
             "meta": {
               "title": "Test321",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          },
+          {
+            "path": "https://www.taobao.com/",
+            "meta": {
+              "title": "淘宝",
               "hidden": false,
               "icon": {
                 "type": "class",

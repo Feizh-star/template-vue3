@@ -41,7 +41,7 @@ export const useMenu = defineStore({
         addRouteName(routes)
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes, '', routes)
-        this.menuList = [...constants, ...parsedRoute]
+        this.menuList = [...constants, ...parsedRoute.menuList]
         this.setResolve(true)
       } catch (error) {
         console.error(error)
@@ -59,6 +59,10 @@ export const useMenu = defineStore({
   },
 })
 
+function pathIsExternalLink(p: string) {
+  return p.startsWith('http')
+}
+
 /**
  * 将原始路由表转换为符合vue-router要求的路由表，并加入到router中
  * @param 原始器由表
@@ -69,8 +73,9 @@ function parseRoutes(
   routes: IOriginRoute[],
   parent: string = '',
   fullTree: IOriginRoute[]
-): RouteRecordRaw[] {
+): { routeList: RouteRecordRaw[]; menuList: RouteRecordRaw[] } {
   const parsedRoutes: RouteRecordRaw[] = []
+  const parsedMenuItems: RouteRecordRaw[] = []
   for (const raw of routes) {
     let redirectPath: string | undefined = undefined
     const showChildren = raw.children?.filter((item) => !item.meta?.hidden)
@@ -96,14 +101,22 @@ function parseRoutes(
       props: raw.props ? raw.props : {},
       children: [],
     }
-    parsedRoutes.push(parsedRoute)
-    parsedRoute.children = parseRoutes(raw.children || [], raw.name, fullTree)
+    if (!pathIsExternalLink(parsedRoute.path)) parsedRoutes.push(parsedRoute) // 路由不包含外链
+    const parsedMenu = { ...parsedRoute }
+    parsedMenuItems.push(parsedMenu) // 菜单包含外链
+
+    const childParsed = parseRoutes(raw.children || [], raw.name, fullTree)
+    parsedRoute.children = childParsed.routeList
+    parsedMenu.children = childParsed.menuList
     // 只有顶层parent不存在，此时parsedRoute的所有后代已经解析完毕，把第一层的parsedRoute及其所有后代加入根路由
-    if (!parent) {
+    if (!parent && !pathIsExternalLink(parsedRoute.path)) {
       router.addRoute(parsedRoute)
     }
   }
-  return parsedRoutes
+  return {
+    routeList: parsedRoutes,
+    menuList: parsedMenuItems
+  }
 }
 /**
  * 为单层路由加上layout容器
@@ -113,6 +126,7 @@ function parseRoutes(
 function addLayoutForSingleRoute(routes: IOriginRoute[]): IOriginRoute[] {
   return routes.map((r) => {
     let routeParse: IOriginRoute = r
+    if (r.path.startsWith('http')) return routeParse
     if (!routeParse.component) {
       // 第一层没给组件，那就放在Layout中
       routeParse.component = 'Layout'
@@ -139,6 +153,7 @@ function addLayoutForSingleRoute(routes: IOriginRoute[]): IOriginRoute[] {
 
 function addRouteName(routes: IOriginRoute[], parentName: string = '') {
   for (const routeItem of routes) {
+    if (routeItem.path.startsWith('http')) continue
     const routeChildrenCount = routeItem.children?.length || 0
     const itemName = [parentName, routeItem.path.replace('/', '')].filter((p) => p).join('-')
     routeItem.name = itemName

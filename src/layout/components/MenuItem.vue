@@ -6,8 +6,10 @@ import { ref, computed } from 'vue'
 import AppLink from './AppLink.vue'
 import path from 'path-browserify'
 
-const resolvePath = (m: RouteRecordRaw): string =>
-  path.resolve('/', props.parentPath, m?.path || '')
+const resolvePath = (m: RouteRecordRaw): string => {
+  const itemPath = m?.path || ''
+  return itemPath.startsWith('http') ? itemPath : path.resolve('/', props.parentPath, m?.path || '')
+}
 const getMenuTitle = (m: RouteRecordRaw): string => (m?.meta?.title || '') as string
 const getShowingChildren = (ms: RouteRecordRaw[] | undefined): RouteRecordRaw[] =>
   ms?.filter((c) => !c.meta?.hidden) || []
@@ -76,7 +78,11 @@ export default {
 
 <template>
   <AppLink v-if="!isHidden && renderMenuItem" :to="currentPath">
-    <el-menu-item :index="currentPath">
+    <div v-if="currentPath.startsWith('http')" class="external-link">
+      <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw)"></span>
+      {{ getMenuTitle(showingItem as RouteRecordRaw) }}
+    </div>
+    <el-menu-item :index="currentPath" v-else>
       <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw)"></span>
       {{ getMenuTitle(showingItem as RouteRecordRaw) }}
     </el-menu-item>
