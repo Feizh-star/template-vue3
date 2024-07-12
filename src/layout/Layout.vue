@@ -58,7 +58,7 @@ export default defineComponent({
 import { RouterView } from 'vue-router'
 import { useMenu } from '@/store/menu'
 const menu = useMenu()
-const menuList = menu.getMenuList
+const menuList = computed(() => menu.getMenuList)
 
 // Layout和RouterSocket组件添加props判断路由路径匹配，避免vue-router的bug：KeepAlive出现不同分支时，失活的分支的子组件会被重复渲染
 const props = defineProps<{
