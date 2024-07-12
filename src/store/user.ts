@@ -1,5 +1,6 @@
 import { login, logout, getInfo } from '@/api/user'
 import { setToken, getToken, removeToken } from '@/utils/auth'
+import { removeAddedRoutes } from '@/store/menu'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -56,6 +57,7 @@ export const useUserStore = defineStore('user', {
             this.roles = []
             this.permissions = []
             removeToken()
+            removeAddedRoutes()
             resolve(true)
           })
           .catch((error) => {

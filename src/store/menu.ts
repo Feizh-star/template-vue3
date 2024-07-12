@@ -16,6 +16,14 @@ interface IState {
   routePath: RouteRecordRaw[]
 }
 
+const routeItems = new Set<() => void>()
+export const removeAddedRoutes = () => {
+  for (const removeRoute of routeItems) {
+    removeRoute()
+  }
+  routeItems.clear()
+}
+
 export const useMenu = defineStore({
   id: 'menuTree',
   state: () => ({
@@ -110,7 +118,7 @@ function parseRoutes(
     parsedMenu.children = childParsed.menuList
     // 只有顶层parent不存在，此时parsedRoute的所有后代已经解析完毕，把第一层的parsedRoute及其所有后代加入根路由
     if (!parent && !pathIsExternalLink(parsedRoute.path)) {
-      router.addRoute(parsedRoute)
+      routeItems.add(router.addRoute(parsedRoute))
     }
   }
   return {
