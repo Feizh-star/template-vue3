@@ -139,7 +139,7 @@ function addLayoutForSingleRoute(routes: IOriginRoute[]): IOriginRoute[] {
         component: 'Layout',
         meta: {
           title: '',
-          hidden: false,
+          hidden: r.meta?.hidden ?? false,
         },
         props: {
           containerName: newName,
