@@ -10,6 +10,15 @@ export function getTweenPoint(points: THREE.Vector3[], magnification = 1) {
   return curvePath.getSpacedPoints(points.length * Math.round(magnification))
 }
 
+// 设置几何体中点的初始位置
+export function setInitialPosition(
+  geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
+  point: THREE.Vector3,
+  length: number
+) {
+  const startPosition = new Array(length).fill([point.x, point.y, point.z]).flat()
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(startPosition), 3));
+}
 // 更新几何体的位置
 export function updatePositions(
   geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
@@ -18,7 +27,18 @@ export function updatePositions(
   length: number
 ) {
   const flowingLinePointsTween = points.slice(index, index + length)
-  geometry.setFromPoints(flowingLinePointsTween)
+  // 更新拖尾的位置
+  const positions = geometry.attributes.position.array;
+  for (let i = length - 1; i > 0; i--) {
+    positions[i * 3] = positions[(i - 1) * 3];
+    positions[i * 3 + 1] = positions[(i - 1) * 3 + 1];
+    positions[i * 3 + 2] = positions[(i - 1) * 3 + 2];
+  }
+  const headPoint = flowingLinePointsTween[length - 1]
+  positions[0] = headPoint.x;
+  positions[1] = headPoint.y;
+  positions[2] = headPoint.z;
+  geometry.attributes.position.needsUpdate = true;
   return flowingLinePointsTween
 }
 
@@ -42,39 +62,34 @@ export function setGeometryColor(
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, colorLength))
 }
 
-// 设置特效的缩放
-export function setFlowPointScale(
-  geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,
-  flowPoints: THREE.Vector3[],
-  attrName: string,
-  scale: (index: number, length: number) => number
+// 设置特效的顶点尺寸
+export function getFlowPointScale(
+  length: number,
+  size: number,
+  scale: (size: number, index: number, length: number) => number
 ) {
-  const scaleValue = []
-  for (let i = 0; i < flowPoints.length; i++) {
-    const sle = scale(i, flowPoints.length)
-    scaleValue.push(sle)
+  const sizeArray: number[] = []
+  for (let i = 0; i < length; i++) {
+    sizeArray.push(scale(size, i, length))
   }
-  // 使拖尾的光串联的点呈现大小比例的变化从而形成拖尾效果
-  geometry.attributes[attrName] = new THREE.BufferAttribute(new Float32Array(scaleValue), 1)
+  return new THREE.BufferAttribute(new Float32Array(sizeArray), 1)
 }
 
-// 将纯色变成渐变色，并反向成为适合geometry使用的颜色（由于尾部是特效的第一个点，相当于头部）
+// 将纯色变成渐变色，并强制加上透明度
 export function handleColorStop(color: string, colorStop: { color: string; percent: number }[]) {
   let stops: { color: string; percent: number }[] = []
   if (colorStop && colorStop.length > 0) {
-    stops = [...colorStop].reverse()
+    stops = [...colorStop]
   } else {
     stops = [
       { color: color, percent: 0 },
       { color: color, percent: 1 },
     ]
   }
-  return stops.map((item, index, arr) => {
-    let p = Math.abs(arr[index].percent)
-    p = p > 1 ? p % 1 : p
-    return {
-      ...item,
-      percent: 1 - p,
+  stops.forEach(item => {
+    if (/^#[0-9a-fA-F]{7}$/.test(item.color)) {
+      item.color = `${item.color}ff`
     }
   })
+  return stops
 }

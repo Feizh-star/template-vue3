@@ -10,6 +10,14 @@ export function getTweenPoint(points: THREE.Vector3[], magnification = 1) {
   return curvePath.getSpacedPoints(points.length * Math.round(magnification))
 }
 
+/*
+1.THREE.BufferGeometry.setFromPoints 的工作方式:
+  setFromPoints 方法会接受一个包含 THREE.Vector3 对象的数组，然后在内部创建或更新一个新的 Float32Array 来存储这些点的坐标数据。
+  每次调用 setFromPoints，它都会重新分配和填充几何体的 position 属性，即使数据仅仅是发生了小的变化。这意味着它要执行内存分配、数据复制等一系列操作，可能涉及到大量的对象分配和垃圾回收。
+2.直接修改 THREE.BufferGeometry.attributes.position.array:
+  直接操作 position.array 时，你是在操作底层的 Float32Array 数据。这种方式不涉及额外的内存分配或复制操作，只需要更新数组中的数据，且不会触发对象的创建或垃圾回收。
+  更新完成后，只需将 position.needsUpdate 设置为 true，告诉 Three.js 在下次渲染时重新读取这个缓冲区的数据即可。
+*/
 // 更新几何体的位置
 export function updatePositions(
   geometry: THREE.BufferGeometry<THREE.NormalBufferAttributes>,

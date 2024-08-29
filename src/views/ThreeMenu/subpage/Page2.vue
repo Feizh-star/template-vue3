@@ -8,7 +8,7 @@ const tooltipEl = ref<HTMLElement | null>(null)
 
 const color = ['#53ffc1', '#ff5600', '#f5b84a']
 
-const size = 4.5
+const size = 4
 const speed = 2
 const multiple = 100
 const centerPosition: [number, number, number] = [-27, 0, -27]
