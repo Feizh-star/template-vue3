@@ -17,7 +17,7 @@ export function setInitialPosition(
   length: number
 ) {
   const startPosition = new Array(length).fill([point.x, point.y, point.z]).flat()
-  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(startPosition), 3));
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(startPosition), 3))
 }
 // 更新几何体的位置
 export function updatePositions(
@@ -28,16 +28,13 @@ export function updatePositions(
 ) {
   const flowingLinePointsTween = points.slice(index, index + length)
   // 更新拖尾的位置
-  const positions = geometry.attributes.position.array;
-  for (let i = length - 1; i > 0; i--) {
-    positions[i * 3] = positions[(i - 1) * 3];
-    positions[i * 3 + 1] = positions[(i - 1) * 3 + 1];
-    positions[i * 3 + 2] = positions[(i - 1) * 3 + 2];
+  const positions = geometry.attributes.position.array
+  for (const [index, point] of flowingLinePointsTween.entries()) {
+    const lastIndex = length - index - 1
+    positions[lastIndex * 3] = point.x
+    positions[lastIndex * 3 + 1] = point.y
+    positions[lastIndex * 3 + 2] = point.z
   }
-  const headPoint = flowingLinePointsTween[length - 1]
-  positions[0] = headPoint.x;
-  positions[1] = headPoint.y;
-  positions[2] = headPoint.z;
   geometry.attributes.position.needsUpdate = true;
   return flowingLinePointsTween
 }

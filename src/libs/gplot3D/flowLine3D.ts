@@ -163,7 +163,7 @@ export class FlowLine3D {
   private flowEffectMaterialIns!: THREE.ShaderMaterial | null
   private flowEffectObject!: THREE.Points | null
   private flowEffectColor: { color: string; percent: number }[] = []
-  private static scaleAttrName = 'scale1'
+  private static sizeAttrName = 'effectSize'
   private initFlowEffect() {
     this.flowEffectIndex = 0 // 拖尾的光从轨迹线的第一个点位开始流动
     // 初始化几何形状
@@ -193,7 +193,7 @@ export class FlowLine3D {
     const flowEffectGeometry = new THREE.BufferGeometry()
     this.flowEffectGeometryIns = flowEffectGeometry
     // 设置特效尺寸
-    flowEffectGeometry.setAttribute('effectSize', getFlowPointScale(effectOpt.length, effectOpt.size, effectOpt.scale))
+    flowEffectGeometry.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(effectOpt.length, effectOpt.size, effectOpt.scale))
     // 初始化几何体的位置
     setInitialPosition(flowEffectGeometry, this.flowEffectInterpolation[0], effectOpt.length)
     // 为每一个顶点设置颜色
@@ -203,7 +203,7 @@ export class FlowLine3D {
   private initFlowEffectMaterial() {
     const flowEffectMaterial = new THREE.ShaderMaterial({
       vertexShader: `
-        attribute float effectSize;
+        attribute float ${FlowLine3D.sizeAttrName};
         attribute vec4 color;
         varying vec4 vColor;
         void main() {
@@ -213,7 +213,7 @@ export class FlowLine3D {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 
           // 根据视距调整点的大小
-          gl_PointSize = effectSize * (500.0 / -mvPosition.z); // 使点的大小与距离成反比变化，500是一个经验值
+          gl_PointSize = ${FlowLine3D.sizeAttrName} * (500.0 / -mvPosition.z); // 使点的大小与距离成反比变化，500是一个经验值
 
           gl_Position = projectionMatrix * mvPosition;
         }
@@ -233,7 +233,7 @@ export class FlowLine3D {
         }
       `,
       transparent: true
-    });
+    })
     this.flowEffectMaterialIns = flowEffectMaterial
   }
   private enableEffect() {
@@ -263,7 +263,7 @@ export class FlowLine3D {
     // 重新初始化几何体的位置
     setInitialPosition(this.flowEffectGeometryIns, this.flowEffectInterpolation[0], newEffectOpt.length)
     // 重新初始化特效尺寸
-    this.flowEffectGeometryIns.setAttribute('effectSize', getFlowPointScale(newEffectOpt.length, newEffectOpt.size, newEffectOpt.scale))
+    this.flowEffectGeometryIns.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(newEffectOpt.length, newEffectOpt.size, newEffectOpt.scale))
     // 更新顶点颜色
     this.flowEffectColor = handleColorStop(lineMaterialOpt.color, newEffectOpt.colorStop)
     setGeometryColor(this.flowEffectGeometryIns, this.flowEffectColor)
