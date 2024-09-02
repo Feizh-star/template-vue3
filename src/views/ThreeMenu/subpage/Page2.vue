@@ -1010,6 +1010,29 @@ function testGplot3D() {
       gplot.value?.addRails(rails)
     })
 }
+
+let testInterval: any = null
+let testEnable = true
+onMounted(() => {
+  testInterval = setInterval(() => {
+    gplot.value?.setStatusById(7, testEnable, {
+      color: color[testEnable ? 0 : 1],
+      colorStop: [
+        { color: '#ffffffff', percent: 0 },
+        { color: `${color[testEnable ? 0 : 1]}ff`, percent: 0.15 },
+        { color: `${color[testEnable ? 0 : 1]}80`, percent: 0.4 },
+        { color: `${color[testEnable ? 0 : 1]}00`, percent: 1 },
+      ],
+    })
+    testEnable = !testEnable
+  }, 6000)
+})
+onBeforeUnmount(() => {
+  if (testInterval) clearInterval(testInterval)
+})
+onDeactivated(() => {
+  if (testInterval) clearInterval(testInterval)
+})
 </script>
 
 <template>
