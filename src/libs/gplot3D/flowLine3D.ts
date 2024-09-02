@@ -31,10 +31,10 @@ export interface IFlowLine3DOption {
     enable: boolean
     reverse: boolean
     colorStop: { color: string; percent: number }[] // 渐变色，优先级高于lineMaterial.color
-    multiple: number // 点插值倍数
-    length: number // 特效相对长度
-    size: number // 特效宽度
-    speed: number // 移动速度
+    density: number // 点密度，单位距离上多少个点，可以是小数
+    length: number // 特效长度（米），可以是小数
+    size: number // 特效宽度，可以是小数
+    speed: number // 移动速度（米/秒）
     scale: (sizeVal: number, index: number, length: number) => number
   }
   line: {
@@ -57,8 +57,8 @@ const defaultOption: IFlowLine3DOption = {
     enable: false,
     reverse: false,
     colorStop: [],
-    multiple: 200,
-    length: 80,
+    density: 8,
+    length: 10,
     size: 4.5,
     speed: 2,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -85,6 +85,7 @@ export class FlowLine3D {
   private lineGeometryIns!: LineGeometry | null
   private lineMaterialIns!: LineMaterial | null
   private scene!: THREE.Scene | null
+  private lineLength!: number
   public id!: number | null
 
   public get line() {
@@ -137,10 +138,29 @@ export class FlowLine3D {
     line.computeLineDistances()
     this.setLineScale(lineOpt.scale)
   }
+  private getLineLength() {
+    this.lineLength = this.option.path.reduce((res, item, index, arr) => {
+      const next = arr[index + 1]
+      let nextDis = 0
+      if (next) {
+        nextDis = Math.sqrt(Math.pow(next[0] - item[0], 2) + Math.pow(next[1] - item[1], 2) + Math.pow(next[2] - item[2], 2))
+      }
+      return res + nextDis
+    }, 0)
+  }
+  /* 沿着轨迹插值点 */
+  private initInterpolationPath() {
+    const { path: positions, effect: effectOpt } = this.option
+    const pointVectors = positions.map((item) => new THREE.Vector3(...item))
+    const interpolation = getTweenPoint(pointVectors, Math.round(this.lineLength * effectOpt.density))
+    if (effectOpt.reverse) interpolation.reverse()
+    this.flowEffectInterpolation = interpolation
+  }
   public setPath(path: IFlowLine3DOption['path']) {
     if (!this.lineGeometryIns) return this
     this.option.path = lodashLib.cloneDeep(path)
     this.lineGeometryIns.setPositions(this.option.path.flat())
+    this.getLineLength()
     this.initInterpolationPath() // 插值特效的轨迹线line
     return this
   }
@@ -163,6 +183,7 @@ export class FlowLine3D {
   private flowEffectMaterialIns!: THREE.ShaderMaterial | null
   private flowEffectObject!: THREE.Points | null
   private flowEffectColor: { color: string; percent: number }[] = []
+  private flowEffectPointCount: number = 1
   private static sizeAttrName = 'effectSize'
   private initFlowEffect() {
     this.flowEffectIndex = 0 // 拖尾的光从轨迹线的第一个点位开始流动
@@ -178,21 +199,20 @@ export class FlowLine3D {
       )
     }
   }
-  private initInterpolationPath() {
-    const { path: positions, effect: effectOpt } = this.option
-    const pointVectors = positions.map((item) => new THREE.Vector3(...item))
-    const interpolation = getTweenPoint(pointVectors, effectOpt.multiple)
-    if (effectOpt.reverse) interpolation.reverse()
-    this.flowEffectInterpolation = interpolation
+  /* 计算特效占多少个点 */
+  private computeEffectPointCount(l: number) {
+    this.flowEffectPointCount = Math.round(l * this.option.effect.density)
   }
   private initFlowEffectGeometry() {
     const { lineMaterial: lineMaterialOpt, effect: effectOpt } = this.option
     const flowEffectGeometry = new THREE.BufferGeometry()
     this.flowEffectGeometryIns = flowEffectGeometry
+    // 计算特效点长度
+    this.computeEffectPointCount(effectOpt.length)
     // 设置特效尺寸
-    flowEffectGeometry.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(effectOpt.length, effectOpt.size, effectOpt.scale))
+    flowEffectGeometry.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(this.flowEffectPointCount, effectOpt.size, effectOpt.scale))
     // 初始化几何体的位置
-    setInitialPosition(flowEffectGeometry, this.flowEffectInterpolation[0], effectOpt.length)
+    setInitialPosition(flowEffectGeometry, this.flowEffectInterpolation[0], this.flowEffectPointCount)
     // 为每一个顶点设置颜色
     this.flowEffectColor = handleColorStop(lineMaterialOpt.color, effectOpt.colorStop)
     setGeometryColor(flowEffectGeometry, this.flowEffectColor)
@@ -249,25 +269,28 @@ export class FlowLine3D {
     this.lineMaterialIns.resolution.set(width, height)
     return this
   }
+  /* 更改特效效果：密度、方向、速度、长度、粗细、粗细缩放、颜色、是否启用 */
   public setEffect(effect: Partial<IFlowLine3DOption['effect']>) {
     if (!this.flowEffectGeometryIns || !this.flowEffectMaterialIns) return this
     const newEffectOpt = lodashLib.mergeWith(this.option.effect, effect, customMerge)
     this.option.effect = newEffectOpt
     const { lineMaterial: lineMaterialOpt } = this.option
 
-    // 更新插值特效的轨迹线line
+    // 更新插值特效的轨迹线line，受制于参数类型，这里只会更新插值轨迹的密度和方向，不会更新线的路径
     this.initInterpolationPath()
-    // 重新初始化几何体的位置
-    setInitialPosition(this.flowEffectGeometryIns, this.flowEffectInterpolation[0], newEffectOpt.length)
+    // 重新计算特效点长度
+    this.computeEffectPointCount(newEffectOpt.length)
     // 重新初始化特效尺寸
-    this.flowEffectGeometryIns.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(newEffectOpt.length, newEffectOpt.size, newEffectOpt.scale))
+    this.flowEffectGeometryIns.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(this.flowEffectPointCount, newEffectOpt.size, newEffectOpt.scale))
+    // 重新初始化几何体的位置
+    setInitialPosition(this.flowEffectGeometryIns, this.flowEffectInterpolation[0], this.flowEffectPointCount)
     // 更新顶点颜色
     this.flowEffectColor = handleColorStop(lineMaterialOpt.color, newEffectOpt.colorStop)
     setGeometryColor(this.flowEffectGeometryIns, this.flowEffectColor)
     this.enableEffect()
     return this
   }
-  public effectRun() {
+  public effectRun(dt: number) {
     const { effect: effectOpt } = this.option
     if (!effectOpt.enable) return this
     if (!this.flowEffectGeometryIns) return this
@@ -280,10 +303,11 @@ export class FlowLine3D {
       this.flowEffectGeometryIns,
       this.flowEffectInterpolation,
       this.flowEffectIndex,
-      effectOpt.length
+      this.flowEffectPointCount
     )
     this.flowEffectGeometryIns.computeBoundingSphere()
-    this.flowEffectIndex += Math.max(Math.round(effectOpt.speed), 1)
+    const tickMove = Math.max(Math.round(effectOpt.speed * dt * effectOpt.density), 1)
+    this.flowEffectIndex += tickMove
     return this
   }
 

@@ -2,12 +2,12 @@ import * as THREE from 'three'
 import { createGradient, hexToRgb, rgbNormalized } from './colorGradient'
 
 // 对点进行插值，使线更加平滑
-export function getTweenPoint(points: THREE.Vector3[], magnification = 1) {
+export function getTweenPoint(points: THREE.Vector3[], targetCount: number) {
   const curvePath = new THREE.CurvePath<THREE.Vector3>()
   for (let i = 0; i < points.length - 1; i++) {
     curvePath.add(new THREE.LineCurve3(points[i], points[i + 1]))
   }
-  return curvePath.getSpacedPoints(points.length * Math.round(magnification))
+  return curvePath.getSpacedPoints(Math.round(targetCount))
 }
 
 // 设置几何体中点的初始位置

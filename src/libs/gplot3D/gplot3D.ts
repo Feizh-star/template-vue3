@@ -189,7 +189,7 @@ export class Gplot3D {
     this.initOrbitControls()
 
     this.render()
-    this.animate()
+    this.startAnimation()
   }
   private render() {
     if (!this.renderer || !this.scene || !this.camera) {
@@ -317,24 +317,30 @@ export class Gplot3D {
     if (this.observer) this.observer.disconnect()
   }
 
-  private rafId!: number | null
-  private animate() {
-    if (this.flowEffectUpdate) this.flowEffectUpdate()
+  /* 处理动画循环 */
+  private clock!: THREE.Clock
+  private deltaTime: number = 0
+  private startAnimation() {
+    if (!this.clock) this.clock = new THREE.Clock()
+    this.renderer.setAnimationLoop(() => {
+      this.deltaTime = this.clock.getDelta()
+      this.tick()
+    })
+  }
+  private stopAnimation() {
+    this.renderer.setAnimationLoop(null)
+  }
+  private tick() {
+    this.flowLines.forEach(item => {
+      item.effectRun(this.deltaTime)
+    })
     this.gltfNodes.forEach((item) => {
-      this.gltfNodesAnimationMixer.get(item)?.update()
+      this.gltfNodesAnimationMixer.get(item)?.update(this.deltaTime)
     })
     this.render()
-    // console.log('camera.position', this.camera.position)
-    this.rafId = requestAnimationFrame(() => {
-      this.animate()
-    })
   }
-  private cancelAnimate() {
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId)
-      this.rafId = null
-    }
-  }
+
+  /* 添加字体文件 */
   public addFont(name: string, url: string) {
     return loadFont(url).then((font) => {
       this.fontMap.set(name, font)
@@ -389,7 +395,7 @@ export class Gplot3D {
     this.removeGltfNodes()
     this.removeAllRails()
     this.cancelResize()
-    this.cancelAnimate()
+    this.stopAnimation()
     this.removeAllMouseEvent()
     this.clearFont()
     this.option.el?.removeChild(this.domElement)
@@ -466,7 +472,6 @@ export class Gplot3D {
    */
   private flowLines: FlowLine3D[] = []
   private flowLinesMap: WeakMap<FlowLine3D, DeepPartial<IFlowLineItem>> = new WeakMap()
-  private flowEffectUpdate!: (() => void) | null
   public addFlowLines(lineData: DeepPartial<IFlowLineItem>[]) {
     if (!this.scene || !this.domElement) return this
     this.flowLines = lineData.map((l) => {
@@ -477,17 +482,11 @@ export class Gplot3D {
       this.flowLinesMap.set(flowLine, l)
       return flowLine
     })
-    this.flowEffectUpdate = throttle(() => {
-      this.flowLines.forEach((item) => {
-        item.effectRun()
-      })
-    }, 16.7)
     return this
   }
   public removeFlowLines() {
     this.flowLines.forEach((item) => item.destory())
     this.flowLines = []
-    this.flowEffectUpdate = null
     return this
   }
   public getFlowLineById(id: number) {
@@ -504,9 +503,6 @@ export class Gplot3D {
     if (flowLine) {
       this.flowLines.splice(index, 1)
       flowLine.destory()
-    }
-    if (this.flowLines.length === 0) {
-      this.flowEffectUpdate = null
     }
     return this
   }
@@ -819,9 +815,7 @@ export class Gplot3D {
  * 简单模型动画管理器
  */
 class AnimationMixerUpdater {
-  private clock: THREE.Clock = new THREE.Clock()
   private mixer: THREE.AnimationMixer
-  private previousTime: number = 0
   private animateClip: { clip: THREE.AnimationClip; action: THREE.AnimationAction }[] = []
   constructor(gltfModel: IGltfLoaderResult) {
     this.mixer = new THREE.AnimationMixer(gltfModel.scene)
@@ -831,12 +825,9 @@ class AnimationMixerUpdater {
       this.animateClip.push({ clip, action })
     })
   }
-  public update() {
+  public update(dt: number) {
     if (!this.mixer) return this
-    const elapsedTime = this.clock.getElapsedTime()
-    const deltaTime = elapsedTime - this.previousTime
-    this.previousTime = elapsedTime
-    this.mixer.update(deltaTime)
+    this.mixer.update(dt)
     return this
   }
   public distory() {

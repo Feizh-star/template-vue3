@@ -9,11 +9,13 @@ const tooltipEl = ref<HTMLElement | null>(null)
 const color = ['#53ffc1', '#ff5600', '#f5b84a']
 
 const size = 4
-const speed = 2
-const multiple = 100
+const elength = 15
+const speed = 20
+const density = 10
 const centerPosition: [number, number, number] = [-27, 0, -27]
 const distance = 24
 const lineIntervalHalf = 1
+const scale = (sizeVal: number, index: number, length: number) => sizeVal * Math.min(1, (1 - (index / length) + 0.1))
 const straightway = (
   begin: [number, number, number],
   end: [number, number, number],
@@ -239,7 +241,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -258,7 +262,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -293,7 +299,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[2]}ff`, percent: 0.15 },
@@ -328,7 +336,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -347,7 +357,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -366,7 +378,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -385,7 +399,9 @@ const lines: IFlowLineItem[] = [
       enable: false,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[1]}ff`, percent: 0.15 },
@@ -404,7 +420,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -423,7 +441,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -442,7 +462,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -461,7 +483,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -480,7 +504,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -499,7 +525,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -518,7 +546,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -537,7 +567,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -556,7 +588,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -590,7 +624,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -620,7 +656,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -642,7 +680,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -672,7 +712,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -691,7 +733,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -710,7 +754,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -739,7 +785,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -768,7 +816,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -801,7 +851,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
@@ -834,7 +886,9 @@ const lines: IFlowLineItem[] = [
       enable: true,
       size: size,
       speed: speed,
-      multiple: multiple,
+      density: density,
+      scale: scale,
+      length: elength,
       colorStop: [
         { color: '#ffffffff', percent: 0 },
         { color: `${color[0]}ff`, percent: 0.15 },
