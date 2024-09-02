@@ -26,17 +26,16 @@ export function updatePositions(
   index: number,
   length: number
 ) {
-  const flowingLinePointsTween = points.slice(index, index + length)
   // 更新拖尾的位置
   const positions = geometry.attributes.position.array
-  for (const [index, point] of flowingLinePointsTween.entries()) {
-    const lastIndex = length - index - 1
-    positions[lastIndex * 3] = point.x
-    positions[lastIndex * 3 + 1] = point.y
-    positions[lastIndex * 3 + 2] = point.z
+  for (let i = 0; i < length; i++) {
+    const offset = (index + i) % points.length
+    const lastIndex = length - i - 1
+    positions[lastIndex * 3] = points[offset].x
+    positions[lastIndex * 3 + 1] = points[offset].y
+    positions[lastIndex * 3 + 2] = points[offset].z
   }
   geometry.attributes.position.needsUpdate = true;
-  return flowingLinePointsTween
 }
 
 // 设置几何体的渐变色

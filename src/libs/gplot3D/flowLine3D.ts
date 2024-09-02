@@ -182,9 +182,6 @@ export class FlowLine3D {
     const { path: positions, effect: effectOpt } = this.option
     const pointVectors = positions.map((item) => new THREE.Vector3(...item))
     const interpolation = getTweenPoint(pointVectors, effectOpt.multiple)
-    interpolation.unshift(
-      ...new Array(effectOpt.length).fill(0).map(() => interpolation[0].clone())
-    )
     if (effectOpt.reverse) interpolation.reverse()
     this.flowEffectInterpolation = interpolation
   }
@@ -275,7 +272,7 @@ export class FlowLine3D {
     if (!effectOpt.enable) return this
     if (!this.flowEffectGeometryIns) return this
     // 每隔一段时间不断在轨迹线上向前取线段从而生成拖尾的光对应的一个个点位
-    if (this.flowEffectIndex > this.flowEffectInterpolation.length - effectOpt.length) {
+    if (this.flowEffectIndex > this.flowEffectInterpolation.length - 1) {
       this.flowEffectIndex = 0
     }
     // 更新几何体的位置，为拖尾的光设置新的点位从而实现流动效果
