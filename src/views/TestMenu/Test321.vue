@@ -1,4 +1,6 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import '@/libs/doubleTrackByLine/test'
+</script>
 
 <template>
   <div class="test-menu">321</div>
