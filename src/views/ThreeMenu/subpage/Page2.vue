@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { doubleTrackByLine } from '@/libs/doubleTrackByLine/doubleTrackByLine'
 import { Gplot3D } from '@/libs/gplot3D/gplot3D'
 import type { IRailItem } from '@/libs/gplot3D/gplot3D'
 import type { IFlowLineItem } from '@/libs/gplot3D/flowLine3D'
@@ -230,6 +231,24 @@ const modelNodes = [
 ]
 
 // console.log(straightway([-10, 0, -10], [-10, 0, -50], { justify: 'Z' }))
+const testAutoTrack = [
+  [
+    centerPosition[0] + 1 * distance,
+    0,
+    centerPosition[2] + 2 * distance,
+  ],
+  [
+    centerPosition[0] + 1 * distance,
+    0,
+    centerPosition[2] + 3 * distance,
+  ],
+  [
+    centerPosition[0] + 0.5 * distance,
+    0,
+    centerPosition[2] + 3 * distance,
+  ],
+]
+const { track1, track2 } = doubleTrackByLine(testAutoTrack, { distance: lineIntervalHalf })
 const lines: IFlowLineItem[] = [
   {
     id: 1,
@@ -829,23 +848,7 @@ const lines: IFlowLineItem[] = [
   },
   {
     id: 25,
-    path: [
-      [
-        centerPosition[0] + 0.5 * distance,
-        0,
-        centerPosition[2] + 3 * distance + 1 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 1 * distance + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 3 * distance + 1 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 1 * distance + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 2 * distance,
-      ],
-    ],
+    path: track1 as [number, number, number][],
     lineMaterial: { color: color[0] },
     effect: {
       enable: true,
@@ -864,23 +867,7 @@ const lines: IFlowLineItem[] = [
   },
   {
     id: 26,
-    path: [
-      [
-        centerPosition[0] + 1 * distance - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 2 * distance,
-      ],
-      [
-        centerPosition[0] + 1 * distance - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 3 * distance - 1 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 0.5 * distance,
-        0,
-        centerPosition[2] + 3 * distance - 1 * lineIntervalHalf,
-      ],
-    ],
+    path: track2.reverse() as [number, number, number][],
     lineMaterial: { color: color[0] },
     effect: {
       enable: true,
