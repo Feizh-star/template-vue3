@@ -2,12 +2,16 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 
+let gLTFLoaderObject: any = null
 export function loadGltfModel<T>(
   modelSrc: string,
   process?: (xhr: XMLHttpRequest) => void
 ): Promise<T> {
+  if (!gLTFLoaderObject) {
+    gLTFLoaderObject = new GLTFLoader()
+  }
   return new Promise((resolve, reject) => {
-    new GLTFLoader().load(
+    gLTFLoaderObject.load(
       modelSrc,
       (gltf: T) => {
         resolve(gltf)
@@ -269,10 +273,14 @@ export function throttle<T extends (...args: any[]) => void>(func: T, wait: numb
   }
 }
 
+let fontLoaderObject: any = null
 /* 加载字体 */
 export function loadFont(url: string, process?: (xhr: XMLHttpRequest) => void) {
+  if (!fontLoaderObject) {
+    fontLoaderObject = new FontLoader()
+  }
   return new Promise((resolve, reject) => {
-    new FontLoader().load(
+    fontLoaderObject.load(
       url,
       function (font: any) {
         resolve(font)
