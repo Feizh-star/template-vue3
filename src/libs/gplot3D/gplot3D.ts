@@ -274,7 +274,7 @@ export class Gplot3D {
     if (!canvas) return
     const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas })
     renderer.setPixelRatio(this.devicePixelRatio)
-    renderer.setSize(canvas.width / this.devicePixelRatio, canvas.height / this.devicePixelRatio)
+    renderer.setSize(canvas.width, canvas.height)
     this.renderer = renderer
   }
   /* 初始化轨道 */
@@ -304,6 +304,14 @@ export class Gplot3D {
     const { width, height } = setCanvasSize(el, canvas)
     camera.aspect = width / height
     camera.updateProjectionMatrix()
+    if (window.devicePixelRatio !== this.devicePixelRatio) {
+      this.devicePixelRatio = window.devicePixelRatio
+      this.renderer.setPixelRatio(this.devicePixelRatio)
+      this.flowLines.forEach(item => {
+        item.resizeLine(this.devicePixelRatio)
+      })
+      this.resizeRails(this.devicePixelRatio)
+    }
     this.renderer.setSize(width, height)
   }
   private registeResize() {
@@ -478,7 +486,7 @@ export class Gplot3D {
       if (l.id && this.getFlowLineById(l.id)) {
         this.removeFlowLineById(l.id) // 如果此id已存在，则销毁重建
       }
-      const flowLine = new FlowLine3D({ ...l, canvas: this.domElement }).addTo(this.scene)
+      const flowLine = new FlowLine3D({ ...l, canvas: this.domElement, devicePixelRatio: this.devicePixelRatio }).addTo(this.scene)
       this.flowLinesMap.set(flowLine, l)
       return flowLine
     })
@@ -534,6 +542,16 @@ export class Gplot3D {
    */
   private railLine: Line2[] = []
   private railLineTextMap: Map<Line2, THREE.Mesh[]> = new Map()
+  private railLineDataMap: WeakMap<Line2, IRailItem> = new WeakMap()
+  /* 当devicePixelRatio变化时更新line2的宽度 */
+  private resizeRails(dpr: number) {
+    this.railLine.forEach(item => {
+      const railLineOpt = this.railLineDataMap.get(item)
+      if (railLineOpt) {
+        ;(item.material as LineMaterial).linewidth = (railLineOpt.lineMaterial?.linewidth ?? 1) / dpr
+      }
+    })
+  }
   public addRails(rails: IRailItem[]) {
     if (!this.scene || !this.domElement) return this
     this.railLine = rails.map((item) => {
@@ -547,7 +565,7 @@ export class Gplot3D {
         hexString2Number(lineMaterialOpt?.color || '#fffff')
       )
       trackLineMaterial.dashed = lineMaterialOpt?.dashed ?? true
-      trackLineMaterial.linewidth = lineMaterialOpt?.linewidth ?? 1
+      trackLineMaterial.linewidth = (lineMaterialOpt?.linewidth ?? 1) / this.devicePixelRatio
       trackLineMaterial.resolution.set(this.domElement.width, this.domElement.width)
 
       const line = new Line2(trackLine, trackLineMaterial)
@@ -556,6 +574,7 @@ export class Gplot3D {
       if (typeof text?.content === 'string' && positions) {
         this.railLineTextMap.set(line, this.setText(positions[relative || 0] || positions[0], text))
       }
+      this.railLineDataMap.set(line, item)
       return line
     })
     return this

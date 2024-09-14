@@ -19,6 +19,7 @@ type DeepPartial<T> = {
 export interface IFlowLine3DOption {
   id: number
   canvas?: HTMLCanvasElement
+  devicePixelRatio: number
   path: [number, number, number][]
   lineMaterial: {
     // 更多参数详见：https://github.com/mrdoob/three.js/blob/master/examples/jsm/lines/LineMaterial.js
@@ -46,6 +47,7 @@ export type IFlowLineItem = DeepPartial<IFlowLine3DOption>
 const defaultOption: IFlowLine3DOption = {
   id: 1,
   canvas: undefined,
+  devicePixelRatio: window.devicePixelRatio,
   path: [],
   lineMaterial: {
     color: '#53ffc1',
@@ -170,8 +172,14 @@ export class FlowLine3D {
     this.option.lineMaterial = lineMaterialOpt
     ;(this.lineMaterialIns.color as THREE.Color).setHex(hexString2Number(lineMaterialOpt.color))
     this.lineMaterialIns.dashed = lineMaterialOpt.dashed
-    this.lineMaterialIns.linewidth = lineMaterialOpt.linewidth
+    this.lineMaterialIns.linewidth = lineMaterialOpt.linewidth / this.option.devicePixelRatio
     return this
+  }
+  public resizeLine(dpr: number) {
+    this.option.devicePixelRatio = dpr
+    if (!this.lineMaterialIns) return this
+    const { lineMaterial } = this.option
+    this.lineMaterialIns.linewidth = lineMaterial.linewidth / this.option.devicePixelRatio
   }
 
   /**
