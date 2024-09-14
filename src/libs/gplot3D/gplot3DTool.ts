@@ -80,8 +80,9 @@ export function getElInnerSize(el: HTMLElement) {
 /* 更新鼠标位置 */
 export function updateMousePosition(mouse: THREE.Vector2, event: Event, canvas: HTMLCanvasElement) {
   const mevent = event as MouseEvent
-  mouse.x = ((mevent.clientX - canvas.getBoundingClientRect().left) / canvas.clientWidth) * 2 - 1
-  mouse.y = -((mevent.clientY - canvas.getBoundingClientRect().top) / canvas.clientHeight) * 2 + 1
+  const canvasRect = canvas.getBoundingClientRect()
+  mouse.x = ((mevent.clientX - canvasRect.left) / canvasRect.width) * 2 - 1
+  mouse.y = -((mevent.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
 }
 
 export function disposeModel(node: THREE.Object3D): void {
