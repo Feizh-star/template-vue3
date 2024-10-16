@@ -89,7 +89,7 @@ export default defineComponent({
           if (Object.prototype.toString.call(headerFormatter) === '[object Function]') {
             return headerFormatter(h, { ...column, deps: props.deps }, scope)
           } else {
-            return <div>{column.props?.label || ''}</div>
+            return <span>{column.props?.label || ''}</span>
           }
         }
         const scopedSlots = {
