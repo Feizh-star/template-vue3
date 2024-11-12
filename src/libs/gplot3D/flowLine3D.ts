@@ -145,7 +145,11 @@ export class FlowLine3D {
       const next = arr[index + 1]
       let nextDis = 0
       if (next) {
-        nextDis = Math.sqrt(Math.pow(next[0] - item[0], 2) + Math.pow(next[1] - item[1], 2) + Math.pow(next[2] - item[2], 2))
+        nextDis = Math.sqrt(
+          Math.pow(next[0] - item[0], 2) +
+            Math.pow(next[1] - item[1], 2) +
+            Math.pow(next[2] - item[2], 2)
+        )
       }
       return res + nextDis
     }, 0)
@@ -154,7 +158,10 @@ export class FlowLine3D {
   private initInterpolationPath() {
     const { path: positions, effect: effectOpt } = this.option
     const pointVectors = positions.map((item) => new THREE.Vector3(...item))
-    const interpolation = getTweenPoint(pointVectors, Math.round(this.lineLength * effectOpt.density))
+    const interpolation = getTweenPoint(
+      pointVectors,
+      Math.round(this.lineLength * effectOpt.density)
+    )
     if (effectOpt.reverse) interpolation.reverse()
     this.flowEffectInterpolation = interpolation
   }
@@ -218,9 +225,16 @@ export class FlowLine3D {
     // 计算特效点长度
     this.computeEffectPointCount(effectOpt.length)
     // 设置特效尺寸
-    flowEffectGeometry.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(this.flowEffectPointCount, effectOpt.size, effectOpt.scale))
+    flowEffectGeometry.setAttribute(
+      FlowLine3D.sizeAttrName,
+      getFlowPointScale(this.flowEffectPointCount, effectOpt.size, effectOpt.scale)
+    )
     // 初始化几何体的位置
-    setInitialPosition(flowEffectGeometry, this.flowEffectInterpolation[0], this.flowEffectPointCount)
+    setInitialPosition(
+      flowEffectGeometry,
+      this.flowEffectInterpolation[0],
+      this.flowEffectPointCount
+    )
     // 为每一个顶点设置颜色
     this.flowEffectColor = handleColorStop(lineMaterialOpt.color, effectOpt.colorStop)
     setGeometryColor(flowEffectGeometry, this.flowEffectColor)
@@ -257,7 +271,7 @@ export class FlowLine3D {
           gl_FragColor = vec4(vColor);
         }
       `,
-      transparent: true
+      transparent: true,
     })
     this.flowEffectMaterialIns = flowEffectMaterial
   }
@@ -289,9 +303,16 @@ export class FlowLine3D {
     // 重新计算特效点长度
     this.computeEffectPointCount(newEffectOpt.length)
     // 重新初始化特效尺寸
-    this.flowEffectGeometryIns.setAttribute(FlowLine3D.sizeAttrName, getFlowPointScale(this.flowEffectPointCount, newEffectOpt.size, newEffectOpt.scale))
+    this.flowEffectGeometryIns.setAttribute(
+      FlowLine3D.sizeAttrName,
+      getFlowPointScale(this.flowEffectPointCount, newEffectOpt.size, newEffectOpt.scale)
+    )
     // 重新初始化几何体的位置
-    setInitialPosition(this.flowEffectGeometryIns, this.flowEffectInterpolation[0], this.flowEffectPointCount)
+    setInitialPosition(
+      this.flowEffectGeometryIns,
+      this.flowEffectInterpolation[0],
+      this.flowEffectPointCount
+    )
     // 更新顶点颜色
     this.flowEffectColor = handleColorStop(lineMaterialOpt.color, newEffectOpt.colorStop)
     setGeometryColor(this.flowEffectGeometryIns, this.flowEffectColor)

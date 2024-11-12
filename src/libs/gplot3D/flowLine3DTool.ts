@@ -35,7 +35,7 @@ export function updatePositions(
     positions[lastIndex * 3 + 1] = points[offset].y
     positions[lastIndex * 3 + 2] = points[offset].z
   }
-  geometry.attributes.position.needsUpdate = true;
+  geometry.attributes.position.needsUpdate = true
 }
 
 // 设置几何体的渐变色
@@ -82,7 +82,7 @@ export function handleColorStop(color: string, colorStop: { color: string; perce
       { color: color, percent: 1 },
     ]
   }
-  stops.forEach(item => {
+  stops.forEach((item) => {
     if (/^#[0-9a-fA-F]{7}$/.test(item.color)) {
       item.color = `${item.color}ff`
     }

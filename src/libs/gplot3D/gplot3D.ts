@@ -100,6 +100,7 @@ export interface IGplot3DOption {
     enablePan: boolean
     enableRotate: boolean
     enableZoom: boolean
+    initialTarget: { x: number; y: number; z: number }
     mouseButtons: {
       LEFT: THREE.MOUSE
       MIDDLE: THREE.MOUSE
@@ -141,6 +142,7 @@ const defaultOption: IGplot3DOption = {
     enablePan: true,
     enableRotate: true,
     enableZoom: true,
+    initialTarget: { x: 0, y: 0, z: 0 },
     mouseButtons: {
       LEFT: THREE.MOUSE.PAN,
       MIDDLE: THREE.MOUSE.DOLLY,
@@ -284,10 +286,12 @@ export class Gplot3D {
     const camera = this.camera
     const { controls: controlsOpt } = this.option
     const controls = new OrbitControls(camera, canvas)
+    const { x: tx, y: ty, z: tz } = controlsOpt.initialTarget
     controls.enablePan = controlsOpt.enablePan
     controls.enableRotate = controlsOpt.enableRotate
     controls.enableZoom = controlsOpt.enableZoom
     controls.mouseButtons = controlsOpt.mouseButtons
+    controls.target = new THREE.Vector3(tx, ty, tz)
     controls.addEventListener('change', () => {
       this.render()
     })
@@ -307,7 +311,7 @@ export class Gplot3D {
     if (window.devicePixelRatio !== this.devicePixelRatio) {
       this.devicePixelRatio = window.devicePixelRatio
       this.renderer.setPixelRatio(this.devicePixelRatio)
-      this.flowLines.forEach(item => {
+      this.flowLines.forEach((item) => {
         item.resizeLine(this.devicePixelRatio)
       })
       this.resizeRails(this.devicePixelRatio)
@@ -339,7 +343,7 @@ export class Gplot3D {
     this.renderer.setAnimationLoop(null)
   }
   private tick() {
-    this.flowLines.forEach(item => {
+    this.flowLines.forEach((item) => {
       item.effectRun(this.deltaTime)
     })
     this.gltfNodes.forEach((item) => {
@@ -486,7 +490,11 @@ export class Gplot3D {
       if (l.id && this.getFlowLineById(l.id)) {
         this.removeFlowLineById(l.id) // 如果此id已存在，则销毁重建
       }
-      const flowLine = new FlowLine3D({ ...l, canvas: this.domElement, devicePixelRatio: this.devicePixelRatio }).addTo(this.scene)
+      const flowLine = new FlowLine3D({
+        ...l,
+        canvas: this.domElement,
+        devicePixelRatio: this.devicePixelRatio,
+      }).addTo(this.scene)
       this.flowLinesMap.set(flowLine, l)
       return flowLine
     })
@@ -545,10 +553,11 @@ export class Gplot3D {
   private railLineDataMap: WeakMap<Line2, IRailItem> = new WeakMap()
   /* 当devicePixelRatio变化时更新line2的宽度 */
   private resizeRails(dpr: number) {
-    this.railLine.forEach(item => {
+    this.railLine.forEach((item) => {
       const railLineOpt = this.railLineDataMap.get(item)
       if (railLineOpt) {
-        ;(item.material as LineMaterial).linewidth = (railLineOpt.lineMaterial?.linewidth ?? 1) / dpr
+        ;(item.material as LineMaterial).linewidth =
+          (railLineOpt.lineMaterial?.linewidth ?? 1) / dpr
       }
     })
   }
