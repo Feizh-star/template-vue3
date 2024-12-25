@@ -1,8 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useInit } from './compositions/useInit'
+
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+
+useInit({ canvasRef })
+</script>
 
 <template>
   <div class="play-page1">
-    <el-empty description="play-page1 页面一" />
+    <canvas ref="canvasRef" class="canvas"></canvas>
   </div>
 </template>
 
@@ -10,5 +16,10 @@
 .play-page1 {
   width: 100%;
   height: 100%;
+  .canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
 }
 </style>
