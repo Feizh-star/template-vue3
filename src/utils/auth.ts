@@ -1,4 +1,4 @@
-const TokenKey = 'Admin-Token'
+const TokenKey = 'Template-Token'
 
 export function getToken() {
   return localStorage.getItem(TokenKey)
