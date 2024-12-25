@@ -11,7 +11,7 @@ const props = defineProps<{
 
 /* eslint-disable */
 const emits = defineEmits<{
-  (e: "data-change", chart: echarts.ECharts, data: T, oldData: T, options: EChartsOption): void;
+  (e: 'data-change', chart: echarts.ECharts, data: T, oldData: T, options: EChartsOption): void
 }>()
 /* eslint-enable */
 
@@ -63,8 +63,59 @@ function resizeObserver() {
   })
 }
 
+function exportAsImage(
+  fname: string,
+  options: {
+    // 导出的格式，可选 png, jpg, svg
+    // 注意：png, jpg 只有在 canvas 渲染器的时候可使用，svg 只有在使用 svg 渲染器的时候可用
+    type?: 'svg' | 'png' | 'jpeg'
+    // 导出的图片分辨率比例，默认为 1。
+    pixelRatio?: number
+    // 导出的图片背景色，默认使用 option 里的 backgroundColor
+    backgroundColor?: string
+    // 忽略组件的列表，例如要忽略 toolbox 就是 ['toolbox']
+    excludeComponents?: Array<string>
+  }
+) {
+  if (!chart.echart) return
+  const dataUrl = chart.echart.getDataURL({
+    pixelRatio: window.devicePixelRatio,
+    ...options,
+  })
+  download(fname, dataUrl)
+}
+/**
+ * 下载url或blob
+ * @param filename
+ * @param file
+ */
+function download(filename: string, file: string | Blob) {
+  const a = document.createElement('a')
+  // blob.type = "application/octet-stream";
+  filename = filename || '1'
+  // @ts-ignore
+  if (window.navigator.msSaveBlob) {
+    try {
+      // @ts-ignore
+      window.navigator.msSaveBlob(file, filename)
+    } catch (e) {
+      console.log(e)
+    }
+  } else {
+    const url = typeof file === 'string' ? file : window.URL.createObjectURL(file)
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a) // 火狐浏览器 必须把元素插入body中
+    a.click()
+    document.body.removeChild(a)
+    // 释放之前创建的URL对象
+    typeof file !== 'string' && window.URL.revokeObjectURL(url)
+  }
+}
+
 defineExpose({
   getChart: () => chart.echart,
+  exportAsImage,
 })
 </script>
 

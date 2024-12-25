@@ -3,7 +3,7 @@ import type { Ref } from 'vue'
 
 interface IElDialogDraggableArgs {
   dialogVisible: Ref<boolean>
-  elRef: Ref<HTMLElement> | HTMLElement
+  elRef: Ref<HTMLElement | undefined> | HTMLElement
   draggable: Ref<boolean>
   target?: string
   drag?: string
@@ -45,16 +45,31 @@ export function useElDialogDraggable({
       })
     }
   })
-  watch([() => draggable.value, () => dialogVisible.value], ([newDraggable, newVisible]) => {
+  const update = (newDraggable: boolean, newVisible: boolean) => {
     const rootEl = isRef(elRef) ? elRef.value : elRef
     if (!rootEl) return
-    Draggable.updated(rootEl, {
-      value: { target: target, drag: drag, draggable: newDraggable, visible: newVisible || false },
+    nextTick(() => {
+      Draggable.updated(rootEl, {
+        value: {
+          target: target,
+          drag: drag,
+          draggable: newDraggable,
+          visible: newVisible || false,
+        },
+      })
     })
+  }
+  watch([() => draggable.value, () => dialogVisible.value], ([newDraggable, newVisible]) => {
+    update(newDraggable, newVisible)
   })
   onBeforeUnmount(() => {
     const rootEl = isRef(elRef) ? elRef.value : elRef
     if (!rootEl) return
     Draggable.beforeUnmount(rootEl)
   })
+  return {
+    forceUpdate: () => {
+      update(draggable.value, dialogVisible.value)
+    },
+  }
 }

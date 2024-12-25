@@ -58,7 +58,7 @@ export default {
       const downX = e.clientX
       const downY = e.clientY
       const { offsetX, offsetY } = draggableInfo.transform
-      const targetRect = targetEl.getBoundingClientRect()
+      const targetRect = draggableInfo.targetEl.getBoundingClientRect()
       const targetLeft = targetRect.left
       const targetTop = targetRect.top
       const targetWidth = targetRect.width
@@ -73,30 +73,32 @@ export default {
         const moveX = Math.min(Math.max(offsetX + e2.clientX - downX, minLeft), maxLeft)
         const moveY = Math.min(Math.max(offsetY + e2.clientY - downY, minTop), maxTop)
         draggableInfo.transform = { offsetX: moveX, offsetY: moveY }
-        targetEl.style.transform = `translate(${moveX}px, ${moveY}px)`
+        draggableInfo.targetEl.style.transform = `translate(${moveX}px, ${moveY}px)`
       }
       const onMouseup = () => {
         document.removeEventListener('mousemove', onMousemove)
         document.removeEventListener('mouseup', onMouseup)
-        targetEl.style.userSelect = 'unset'
+        draggableInfo.targetEl.style.userSelect = 'unset'
       }
       document.addEventListener('mousemove', onMousemove)
       document.addEventListener('mouseup', onMouseup)
-      targetEl.style.userSelect = 'none'
+      draggableInfo.targetEl.style.userSelect = 'none'
     }
     const onDraggable = () => {
-      if (dragEl && targetEl) {
-        dragEl.addEventListener('mousedown', onMousedown)
+      const draggableInfo = draggableMap.get(el)
+      if (!draggableInfo) return
+      if (draggableInfo.dragEl && draggableInfo.targetEl) {
+        draggableInfo.dragEl.addEventListener('mousedown', onMousedown)
       }
     }
     const offDraggable = () => {
-      if (dragEl && targetEl) {
-        const draggableInfo = draggableMap.get(el)
-        if (!draggableInfo) return
-        dragEl.removeEventListener('mousedown', onMousedown)
+      const draggableInfo = draggableMap.get(el)
+      if (!draggableInfo) return
+      if (draggableInfo.dragEl && draggableInfo.targetEl) {
+        draggableInfo.dragEl.removeEventListener('mousedown', onMousedown)
         if (draggableInfo.disabledBack) {
           draggableInfo.transform = { offsetX: 0, offsetY: 0 }
-          setTimeout(() => (targetEl.style.transform = `translate(0px, 0px)`), 500)
+          setTimeout(() => (draggableInfo.targetEl.style.transform = `translate(0px, 0px)`), 500)
         }
       }
     }
@@ -122,6 +124,16 @@ export default {
       draggableInfo.transform = { offsetX: 0, offsetY: 0 }
       setTimeout(() => (draggableInfo.targetEl.style.transform = `translate(0px, 0px)`), 500)
     }
+    const targetSelector = binding?.value?.target || ''
+    const dragSelector = binding?.value?.drag || ''
+    const targetEl = (el.querySelector(targetSelector) || el) as HTMLElement
+    const dragEl = el.querySelector(dragSelector) as HTMLElement
+    if (dragEl !== draggableInfo.dragEl) {
+      // 如果drag锚点元素变化了，把旧元素上的事件取消掉
+      draggableInfo.offDraggable()
+    }
+    draggableInfo.targetEl = targetEl
+    draggableInfo.dragEl = dragEl
     initDraggable(el, !!binding?.value?.draggable)
   },
   beforeUnmount(el: HTMLElement) {
