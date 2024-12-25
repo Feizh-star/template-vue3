@@ -3,40 +3,20 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
-import { getValidImage } from '@/api/user'
 
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 const UserConfig = window.UserConfig
 
-// 获取验证码
-const validImage = ref('')
-async function getCode() {
-  if (!UserConfig.verificationCode) return
-  try {
-    const res: any = await getValidImage()
-    if (res.code === 200) {
-      validImage.value = 'data:image/gif;base64,' + res.img
-      formData.uuid = res.uuid
-    }
-  } catch (error) {
-    console.error(error)
-  }
-}
-onMounted(() => getCode())
-
 const loginForm = ref()
 const formData = reactive({
   password: '',
   username: '',
-  code: '',
-  uuid: '',
 })
 const rules = reactive({
   username: [{ required: true, message: '请输入用户名', trigger: 'change' }],
   password: [{ required: true, message: '请输入用户密码', trigger: 'change' }],
-  code: [{ required: UserConfig.verificationCode, message: '请输入验证码', trigger: 'change' }],
 })
 const agree = ref(true)
 function submitForm() {
@@ -55,8 +35,6 @@ function submitForm() {
       let msg = ''
       if (keys.has('username') || keys.has('password')) {
         msg = '请输入用户名和密码'
-      } else {
-        msg = '请填写验证码'
       }
       ElMessage.error({
         message: msg,
@@ -67,10 +45,6 @@ function submitForm() {
 function login() {
   const userInfo: IAnyObject & typeof formData = {
     ...formData,
-  }
-  if (!UserConfig.verificationCode) {
-    Reflect.deleteProperty(userInfo, 'code')
-    Reflect.deleteProperty(userInfo, 'uuid')
   }
   if (UserConfig.clientId) {
     userInfo.clientid = UserConfig.clientId
@@ -126,25 +100,6 @@ function login() {
                 show-password
                 @keyup.enter="submitForm"
               ></el-input>
-            </el-form-item>
-            <el-form-item
-              prop="code"
-              label-width="0"
-              class="valid-code"
-              v-if="UserConfig.verificationCode"
-            >
-              <div class="valid-input">
-                <el-input
-                  type="text"
-                  v-model="formData.code"
-                  autocomplete="off"
-                  placeholder="验证码"
-                  @keyup.enter="submitForm"
-                ></el-input>
-              </div>
-              <div class="valid-image" click="getCode">
-                <img :src="validImage" alt="验证码" />
-              </div>
             </el-form-item>
             <div class="btns">
               <el-button type="primary" @click="submitForm">登录</el-button>
@@ -228,25 +183,6 @@ function login() {
           color: #4484ff;
           vertical-align: middle;
           cursor: pointer;
-        }
-      }
-    }
-  }
-  :deep(.el-form-item) {
-    &.valid-code {
-      > .el-form-item__content {
-        > .valid-input {
-          width: 67%;
-        }
-        > .valid-image {
-          width: 33%;
-          padding-left: 10px;
-          > img {
-            width: 100%;
-            height: 100%;
-            vertical-align: bottom;
-            cursor: pointer;
-          }
         }
       }
     }

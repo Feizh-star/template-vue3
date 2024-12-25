@@ -13,16 +13,20 @@ export const useUserStore = defineStore('user', {
   actions: {
     login(userInfo: ILoginParams) {
       userInfo.username = userInfo.username.trim()
-      return new Promise((resolve, reject) => {
-        login(userInfo)
-          .then((res: any) => {
-            setToken(res.token)
-            this.token = res.token
-            resolve(true)
-          })
-          .catch((error) => {
-            reject(error)
-          })
+      return new Promise((resolve) => {
+        const token = '123'
+        setToken(token)
+        this.token = token
+        resolve(true)
+        // login(userInfo)
+        //   .then((res: any) => {
+        //     setToken(res.token)
+        //     this.token = res.token
+        //     resolve(true)
+        //   })
+        //   .catch((error) => {
+        //     reject(error)
+        //   })
       })
     },
     // 获取用户信息
