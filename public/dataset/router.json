@@ -24,12 +24,10 @@
   },
   {
     "path": "/custommenu",
-    "component": "CustomMenu/Index.vue",
     "meta": {
-      "title": "自定义首级子目录",
+      "title": "目录",
       "hidden": false,
       "alwaysShow": false,
-      "isLeaf": true,
       "icon": {
         "type": "class",
         "value": "iconfont icon-yitihuajiankong"
@@ -37,10 +35,10 @@
     },
     "children": [
       {
-        "path": "cusmenupage1",
-        "component": "CustomMenu/subpage/Page1.vue",
+        "path": "playground",
+        "component": "CustomMenu/PlayGround/PlayGround.vue",
         "meta": {
-          "title": "自定义子级菜单1",
+          "title": "菜单1",
           "hidden": false,
           "icon": {
             "type": "class",
@@ -49,10 +47,10 @@
         }
       },
       {
-        "path": "cusmenupage2",
-        "component": "CustomMenu/subpage/Page2.vue",
+        "path": "playpage1",
+        "component": "CustomMenu/Page1/Page1.vue",
         "meta": {
-          "title": "自定义子级菜单2",
+          "title": "菜单2",
           "hidden": false,
           "icon": {
             "type": "class",

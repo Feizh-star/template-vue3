@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@element-plus/icons": "^0.0.11",
+    "@orillusion/core": "^0.8.5-dev.2",
     "@turf/turf": "^6.5.0",
     "axios": "^1.4.0",
     "browserify-zlib": "^0.2.0",

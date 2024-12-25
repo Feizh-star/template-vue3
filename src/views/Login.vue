@@ -57,7 +57,6 @@ function login() {
     })
     .catch((error) => {
       console.error(error)
-      getCode()
     })
 }
 </script>
