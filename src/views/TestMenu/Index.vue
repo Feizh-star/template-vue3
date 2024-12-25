@@ -4,7 +4,7 @@ import { useElDialogDraggable } from '@/directives/draggable/el-dialog-drag'
 // @ts-ignore
 import vDraggable from '@/directives/draggable/draggable'
 // @ts-ignore
-import vGetSize from '@/directives/getSize/get-size'
+import vGetSize from '@/directives/example/getSize/get-size'
 
 const length = ref(1000)
 const list = ref<any[]>([])
