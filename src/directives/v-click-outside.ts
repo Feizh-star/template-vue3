@@ -27,7 +27,7 @@ const vClickOutside = {
     }
     const allChild = allChildOfEl(el)
     elEventMap.set(el, { eventHandler, elChild: allChild, silence: binding.value.silence || [] })
-    window.addEventListener('click', eventHandler)
+    window.addEventListener('click', eventHandler, true)
   },
   unmounted(el: HTMLElement) {
     const eventHandler = elEventMap.get(el)?.eventHandler
