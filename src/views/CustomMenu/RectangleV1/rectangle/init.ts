@@ -26,6 +26,11 @@ export function init(canvas: HTMLCanvasElement) {
   // 使用程序
   gl.useProgram(program)
 
+  // 找到全局变量u_resolution的位置，用于将分辨率传递给顶点着色器，进行坐标转换
+  const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution')
+  // 设置分辨率
+  gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height)
+
   // 创建一个缓冲区，用于存放三个2d裁剪空间点（一个三角形），positionBuffer只是一个引用，实际的缓冲区在GPU中
   const positionBuffer = gl.createBuffer()
   // 将缓冲区绑定到ARRAY_BUFFER，表示这个缓冲区是用来存放顶点数据的。向GPU传递数据时，就是通过这个绑定点，明确数据的用途，并将数据传递到ARRAY_BUFFER绑定的缓冲区中
@@ -41,18 +46,13 @@ export function init(canvas: HTMLCanvasElement) {
   const stride = 0 // 跨步，每次迭代运行运动stride * sizeof(type)以获得下一个位置
   gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, 0)
 
-  // 找到全局变量u_resolution的位置，用于将分辨率传递给顶点着色器，进行坐标转换
-  const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution')
-  // 设置分辨率
-  gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height)
-
   // 找到全局变量u_color的位置，用于将颜色传递给片元着色器，进行颜色填充
   const colorUniformLocation = gl.getUniformLocation(program, 'u_color')
 
   // 循环绘制50个矩形
   for (let ii = 0; ii < 50; ++ii) {
     // 将setRectangle()返回的6个点（两个三角形）上传到缓冲区中，gl.STATIC_DRAW表示这些数据不会经常改变（一次修改多次使用）
-    gl.bufferData(gl.ARRAY_BUFFER, setRectangle(), gl.STATIC_DRAW)
+    gl.bufferData(gl.ARRAY_BUFFER, setRectangle(gl.canvas.width, gl.canvas.height), gl.STATIC_DRAW)
 
     // 给片元着色器中的u_color赋值一个随机颜色
     gl.uniform4f(colorUniformLocation, Math.random(), Math.random(), Math.random(), 1)
@@ -172,11 +172,11 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range)
 }
 // 返回一个矩形的6个点（两个三角形）
-function setRectangle() {
-  const x = randomInt(300)
-  const y = randomInt(300)
-  const width = randomInt(300)
-  const height = randomInt(300)
+function setRectangle(maxX = 300, maxY = 300, maxSide = 30) {
+  const x = randomInt(maxX)
+  const y = randomInt(maxY)
+  const width = randomInt(maxSide)
+  const height = randomInt(maxSide)
   const x1 = x
   const x2 = x + width
   const y1 = y

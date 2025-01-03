@@ -30,7 +30,7 @@
       "alwaysShow": false,
       "icon": {
         "type": "class",
-        "value": "iconfont icon-yitihuajiankong"
+        "value": "iconfont icon-yuandianxiao-copy"
       }
     },
     "children": [
@@ -38,25 +38,51 @@
         "path": "playground",
         "component": "CustomMenu/PlayGround/PlayGround.vue",
         "meta": {
-          "title": "菜单1",
+          "title": "演示",
           "hidden": false,
           "icon": {
             "type": "class",
-            "value": "Female"
+            "value": "iconfont icon-yuandianxiao-copy"
           }
         }
       },
       {
-        "path": "playpage1",
-        "component": "CustomMenu/Page1/Page1.vue",
+        "path": "baserect",
         "meta": {
-          "title": "菜单2",
+          "title": "基础矩形",
           "hidden": false,
+          "alwaysShow": false,
           "icon": {
             "type": "class",
-            "value": "Male"
+            "value": "iconfont icon-yuandianxiao-copy"
           }
-        }
+        },
+        "children": [
+          {
+            "path": "baserect1",
+            "component": "CustomMenu/RectangleV1/RectangleV1.vue",
+            "meta": {
+              "title": "矩形1",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          },
+          {
+            "path": "baserect2",
+            "component": "CustomMenu/RectangleV2/RectangleV2.vue",
+            "meta": {
+              "title": "矩形2",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          }
+        ]
       }
     ]
   },

@@ -26,40 +26,58 @@ export function init(canvas: HTMLCanvasElement) {
   // 使用程序
   gl.useProgram(program)
 
-  // 创建一个缓冲区，用于存放三个2d裁剪空间点（一个三角形），positionBuffer只是一个引用，实际的缓冲区在GPU中
-  const positionBuffer = gl.createBuffer()
-  // 将缓冲区绑定到ARRAY_BUFFER，表示这个缓冲区是用来存放顶点数据的。向GPU传递数据时，就是通过这个绑定点，明确数据的用途，并将数据传递到ARRAY_BUFFER绑定的缓冲区中
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
-  // 找到顶点着色器中的a_position属性的位置
-  const positionAttributeLocation = gl.getAttribLocation(program, 'a_position')
-  // 启用属性（a_position）
-  gl.enableVertexAttribArray(positionAttributeLocation)
-  // 告诉属性如何从positionBuffer中获取数据
-  const size = 2 // 每次迭代运行提取两个单位数据
-  const type = gl.FLOAT // 数据类型是32位浮点型
-  const normalize = false // 不要归一化数据
-  const stride = 0 // 跨步，每次迭代运行运动stride * sizeof(type)以获得下一个位置
-  gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, 0)
-
   // 找到全局变量u_resolution的位置，用于将分辨率传递给顶点着色器，进行坐标转换
   const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution')
   // 设置分辨率
   gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height)
 
-  // 找到全局变量u_color的位置，用于将颜色传递给片元着色器，进行颜色填充
-  const colorUniformLocation = gl.getUniformLocation(program, 'u_color')
+  /* ************************************************************************************ */
+  /* ********************************传递矩形的顶点数据*********************************** */
+  /* ************************************************************************************ */
+  // 生成50个矩形的顶点数据
+  const points: number[] = new Array(50).fill(0).map(() => setRectangle(gl.canvas.width, gl.canvas.height)).flat()
+  // 创建一个缓冲区，用于存放三个2d裁剪空间点（一个三角形），positionBuffer只是一个引用，实际的缓冲区在GPU中
+  const positionBuffer = gl.createBuffer()
+  // 将缓冲区绑定到ARRAY_BUFFER，表示这个缓冲区是用来存放顶点数据的。向GPU传递数据时，就是通过这个绑定点，明确数据的用途，并将数据传递到ARRAY_BUFFER绑定的缓冲区中
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+  // 将50个矩形的数据 2个数 * 6个点 * 50 上传到缓冲区中，gl.STATIC_DRAW表示这些数据不会经常改变（一次修改多次使用）
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(points), gl.STATIC_DRAW)
+  // 找到顶点着色器中的a_position属性的索引
+  const positionAttributeLocation = gl.getAttribLocation(program, 'a_position')
+  // 启用属性（a_position）
+  gl.enableVertexAttribArray(positionAttributeLocation)
+  const size = 2 // 每次迭代运行提取两个单位数据
+  const type = gl.FLOAT // 数据类型是32位浮点型
+  const normalize = false // 不要归一化数据
+  const stride = 0 // 跨步，每次迭代移动stride * sizeof(type)以获得下一个位置
+  // gl.vertexAttribPointer会把第一个参数的索引对应的属性关联到当前绑定点gl.ARRAY_BUFFER对应的缓冲区，即positionBuffer，并配置如何从positionBuffer中获取数据
+  gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, 0)
 
-  // 循环绘制50个矩形
-  for (let ii = 0; ii < 50; ++ii) {
-    // 将setRectangle()返回的6个点（两个三角形）上传到缓冲区中，gl.STATIC_DRAW表示这些数据不会经常改变（一次修改多次使用）
-    gl.bufferData(gl.ARRAY_BUFFER, setRectangle(), gl.STATIC_DRAW)
+  /* ************************************************************************************ */
+  /* ********************************传递矩形的颜色数据*********************************** */
+  /* ************************************************************************************ */
+  // 创建一个颜色数组，包含50个矩形的颜色数据，随机渐变色
+  const getRandomColor = () => [Math.random(), Math.random(), Math.random(), 1]
+  const colors: number[] = new Array(50).fill(0).map(() => [getRandomColor(), ...new Array(4).fill(getRandomColor()), getRandomColor()]).flat(2)
+  // 创建一个缓冲区，用于存放颜色数据
+  const colorBuffer = gl.createBuffer()
+  // 将缓冲区绑定到ARRAY_BUFFER，表示这个缓冲区是用来存放颜色数据的
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+  // 将颜色数据上传到缓冲区中
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
+  // 找到顶点着色器中的a_color属性的索引
+  const colorAttributeLocation = gl.getAttribLocation(program, 'a_color')
+  // 启用属性（a_color）
+  gl.enableVertexAttribArray(colorAttributeLocation)
+  const colorSize = 4 // 每次迭代运行提取四个单位数据
+  const colorType = gl.FLOAT // 数据类型是32位浮点型
+  const colorNormalizeColor = false // 不要归一化数据
+  const colorStride = 0 // 跨步，每次迭代移动colorStride * sizeof(type)以获得下一个位置
+  // gl.vertexAttribPointer会把第一个参数的索引对应的属性关联到当前绑定点gl.ARRAY_BUFFER对应的缓冲区，即colorBuffer，并配置如何从colorBuffer中获取数据
+  gl.vertexAttribPointer(colorAttributeLocation, colorSize, colorType, colorNormalizeColor, colorStride, 0)
 
-    // 给片元着色器中的u_color赋值一个随机颜色
-    gl.uniform4f(colorUniformLocation, Math.random(), Math.random(), Math.random(), 1)
-
-    // 绘制矩形，gl.TRIANGLES代表绘制模式（每三个点绘制一个三角形），0代表从第0个点开始绘制，6代表绘制6个点（两个三角形）
-    gl.drawArrays(gl.TRIANGLES, 0, 6)
-  }
+  // 绘制矩形，gl.TRIANGLES代表绘制模式（每三个点绘制一个三角形），0代表从第0个点开始绘制，6 * 50代表绘制每6个点一个矩形（两个三角形），共50个矩形
+  gl.drawArrays(gl.TRIANGLES, 0, 6 * 50)
 }
 
 /**
@@ -172,15 +190,15 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range)
 }
 // 返回一个矩形的6个点（两个三角形）
-function setRectangle() {
-  const x = randomInt(300)
-  const y = randomInt(300)
-  const width = randomInt(300)
-  const height = randomInt(300)
+function setRectangle(maxX = 300, maxY = 300, maxSide = 30) {
+  const x = randomInt(maxX)
+  const y = randomInt(maxY)
+  const width = randomInt(maxSide)
+  const height = randomInt(maxSide)
   const x1 = x
   const x2 = x + width
   const y1 = y
   const y2 = y + height
-  return new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]) // 两个三角形形成一个矩形
+  return [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2] // 两个三角形形成一个矩形
 }
 
