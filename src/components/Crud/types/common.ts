@@ -13,7 +13,7 @@ export interface IFormConfig {
   originValue: any // 初始值
   elFormItem: IAnyObject // el-form-item 任意props
   modelEventType: string // 指定v-model绑定的事件
-  component: string | ComponentPublicInstance // 表单的名称或组件
+  component: ComponentPublicInstance // 表单的名称或组件
   validator: {
     edit: IAnyObject[]
     query: IAnyObject[]
