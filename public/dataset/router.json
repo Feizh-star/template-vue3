@@ -83,6 +83,70 @@
             }
           }
         ]
+      },
+      {
+        "path": "colorwireframe",
+        "meta": {
+          "title": "彩色线框",
+          "hidden": false,
+          "alwaysShow": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        },
+        "children": [
+          {
+            "path": "wireframe",
+            "component": "CustomMenu/WireFrame/WireFrame.vue",
+            "meta": {
+              "title": "线框",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "path": "light",
+        "meta": {
+          "title": "光照",
+          "hidden": false,
+          "alwaysShow": false,
+          "icon": {
+            "type": "class",
+            "value": "iconfont icon-yuandianxiao-copy"
+          }
+        },
+        "children": [
+          {
+            "path": "directional",
+            "component": "CustomMenu/LightDirectional/LightDirectional.vue",
+            "meta": {
+              "title": "平行光",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          },
+          {
+            "path": "spot",
+            "component": "CustomMenu/LightSpot/LightSpot.vue",
+            "meta": {
+              "title": "点光源",
+              "hidden": false,
+              "icon": {
+                "type": "class",
+                "value": "iconfont icon-yuandianxiao-copy"
+              }
+            }
+          }
+        ]
       }
     ]
   },
