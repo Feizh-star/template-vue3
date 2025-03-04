@@ -2,7 +2,8 @@ import type { RouteRecordRaw, RouteComponent } from 'vue-router'
 import { defineStore } from 'pinia'
 import router from '@/router'
 import { routes as constants } from '@/router'
-import { getRoutes } from '@/api/menu'
+import * as lodash from 'lodash'
+import { menuRouters } from '@/router/modules/menu'
 import Layout from '@/layout/Layout.vue'
 import pathModule from 'path-browserify'
 import { searchTreeNode } from '@/utils/tools'
@@ -45,7 +46,7 @@ export const useMenu = defineStore({
   actions: {
     async fetchMenuList() {
       try {
-        let routes = await getRoutes()
+        let routes = lodash.cloneDeep(menuRouters)
         addRouteName(routes)
         routes = addLayoutForSingleRoute(routes)
         const parsedRoute = parseRoutes(routes, '', routes)

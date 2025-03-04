@@ -203,6 +203,10 @@ function logout() {
           .icon-yitihuajiankong {
             margin-right: 10px;
           }
+          > img {
+            height: 20px;
+            margin-right: 8px;
+          }
         }
         .external-link {
           color: var(--el-menu-text-color);
@@ -270,8 +274,14 @@ function logout() {
 .header-menu-popper {
   background-color: #3b7abd;
   .menu-icon {
+    display: inline-flex;
+    align-items: center;
     .icon-yitihuajiankong {
       margin-right: 10px;
+    }
+    > img {
+      height: 20px;
+      margin-right: 8px;
     }
   }
   .external-link {

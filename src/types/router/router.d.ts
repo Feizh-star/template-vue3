@@ -16,6 +16,7 @@ declare module 'vue-router' {
     icon?: {
       type: 'img' | 'class'
       value: string
+      valueSel?: string
     }
   }
 }
@@ -24,7 +25,7 @@ declare global {
     // 建议单个单词，尽量唯一
     path: string
     // 必须唯一，会被自动设置为使用短横线分隔的路径表示，例如 menu1-menu11-page，menu1-menu12-page
-    name: string
+    name?: string
     // 叶子节点必须有component，单层叶子节点也可以通过设置noLayout为true，让component不使用Layout结构
     // 目录没有component时，作为纯目录，它的后代组件放在Layout中；
     // 目录有component时，在保证component组件有RouterView的前提下，分为两种情况：

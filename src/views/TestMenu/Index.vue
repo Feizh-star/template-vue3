@@ -51,7 +51,7 @@ const boxHalfHeight = computed(() => sizeReactive.boxSize.height / 2 + 'px')
 <template>
   <div class="test-menu" ref="testMenu">
     <header class="form-btn">
-      <el-input-number v-model="length" :min="1" :max="1000000" label="长度"></el-input-number>
+      <el-input-number v-model="length" :min="1" :max="1000000" aria-label="长度"></el-input-number>
       &emsp;
       <el-switch v-model="vList"></el-switch>
       &emsp;

@@ -5,6 +5,7 @@ import { watchEffect } from 'vue'
 import { ref, computed } from 'vue'
 import AppLink from './AppLink.vue'
 import path from 'path-browserify'
+import { useMenu } from '@/store/menu'
 
 const resolvePath = (m: RouteRecordRaw): string => {
   const itemPath = m?.path || ''
@@ -52,18 +53,22 @@ function hasNextLevelMenu(m: RouteRecordRaw): void {
   }
 }
 
-function setIcon(mItem: RouteRecordRaw) {
+const menu = useMenu()
+const currentRoutePath = computed(() => menu.getRoutePath)
+function setIcon(mItem: RouteRecordRaw, fullpath: string) {
   const iconInfo = mItem.meta?.icon
   if (!iconInfo) return ''
   const type = iconInfo.type
-  const value = iconInfo.value
+  const value = iconInfo.value || ''
+  const valueSel = iconInfo.valueSel || ''
+  const isSel = currentRoutePath.value.startsWith(fullpath)
   let result = ''
   switch (type) {
     case 'class':
       result = `<span class="${value || ''}"></span>`
       break
     case 'img':
-      result = `<img src="${value || ''}"/>`
+      result = `<img src="${isSel ? valueSel : value}"/>`
       break
   }
   return result
@@ -79,11 +84,11 @@ export default {
 <template>
   <AppLink v-if="!isHidden && renderMenuItem" :to="currentPath">
     <div v-if="currentPath.startsWith('http')" class="external-link">
-      <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw)"></span>
+      <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw, currentPath)"></span>
       {{ getMenuTitle(showingItem as RouteRecordRaw) }}
     </div>
     <el-menu-item :index="currentPath" v-else>
-      <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw)"></span>
+      <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw, currentPath)"></span>
       {{ getMenuTitle(showingItem as RouteRecordRaw) }}
     </el-menu-item>
   </AppLink>
@@ -93,7 +98,7 @@ export default {
     :popper-class="submenuPopperClass"
   >
     <template #title>
-      <span class="menu-icon" v-html="setIcon(menuItem)"></span>
+      <span class="menu-icon" v-html="setIcon(menuItem, currentSubMenuPath)"></span>
       {{ getMenuTitle(menuItem) }}
     </template>
     <MenuItem
