@@ -118,6 +118,33 @@
     ]
   },
   {
+    "path": "/maplibre",
+    "meta": {
+      "title": "MapLibre",
+      "hidden": false,
+      "alwaysShow": true,
+      "icon": {
+        "type": "class",
+        "value": "iconfont icon-yitihuajiankong"
+      }
+    },
+    "children": [
+      {
+        "path": "mapmodel",
+        "component": "MapLibre/MapModel/MapModel.vue",
+        "meta": {
+          "title": "加载模型",
+          "hidden": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
+      }
+    ]
+  },
+  {
     "path": "/test3",
     "meta": {
       "title": "Test3",
