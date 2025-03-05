@@ -18,7 +18,6 @@ const getShowingChildren = (ms: RouteRecordRaw[] | undefined): RouteRecordRaw[] 
 const props = defineProps<{
   menuItem: RouteRecordRaw
   parentPath: string
-  submenuPopperClass: string
 }>()
 
 const showingItem = ref<RouteRecordRaw | null>()
@@ -83,7 +82,7 @@ export default {
 
 <template>
   <AppLink v-if="!isHidden && renderMenuItem" :to="currentPath">
-    <div v-if="currentPath.startsWith('http')" class="external-link">
+    <div v-if="currentPath.startsWith('http')" class="external-link el-menu-item">
       <span class="menu-icon" v-html="setIcon(showingItem as RouteRecordRaw, currentPath)"></span>
       {{ getMenuTitle(showingItem as RouteRecordRaw) }}
     </div>
@@ -95,18 +94,74 @@ export default {
   <el-sub-menu
     v-if="!isHidden && !renderMenuItem"
     :index="currentSubMenuPath"
-    :popper-class="submenuPopperClass"
+    popper-class="header-menu-popper"
   >
     <template #title>
       <span class="menu-icon" v-html="setIcon(menuItem, currentSubMenuPath)"></span>
-      {{ getMenuTitle(menuItem) }}
+      <span :class="{ 'sub-menu-text-active': currentRoutePath.startsWith(currentSubMenuPath) }">{{
+        getMenuTitle(menuItem)
+      }}</span>
     </template>
     <MenuItem
       v-for="(item, index) in menuItem.children"
       :key="index"
       :menu-item="item"
       :parent-path="resolvePath(menuItem)"
-      :submenu-popper-class="submenuPopperClass"
+      submenu-popper-class="header-menu-popper"
     />
   </el-sub-menu>
 </template>
+
+<style lang="less" scoped>
+.menu-icon {
+  display: inline-flex;
+  align-items: center;
+  > :deep(img) {
+    width: 20px;
+    margin-right: 10px;
+  }
+}
+.sub-menu-text-active {
+  color: var(--el-menu-active-color);
+}
+:deep(.external-link) {
+  color: var(--el-menu-text-color);
+  font-size: var(--el-menu-item-font-size);
+  height: var(--el-menu-item-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--el-menu-base-level-padding);
+  &:hover {
+    color: #ffffff;
+    background-color: #00000033;
+  }
+}
+</style>
+
+<style lang="less">
+.header-menu-popper {
+  background-color: #3b7abd;
+  .menu-icon {
+    display: inline-flex;
+    align-items: center;
+    > img {
+      width: 20px;
+      margin-right: 10px;
+    }
+  }
+  .external-link {
+    align-items: center;
+    background-color: var(--el-menu-bg-color);
+    color: var(--el-menu-text-color);
+    font-size: var(--el-menu-item-font-size);
+    display: flex;
+    height: var(--el-menu-horizontal-sub-item-height);
+    line-height: var(--el-menu-horizontal-sub-item-height);
+    padding: 0 10px;
+    &:hover {
+      color: #ffffff;
+      background-color: #00000033;
+    }
+  }
+}
+</style>

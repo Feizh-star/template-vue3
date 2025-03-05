@@ -140,14 +140,38 @@ function renderComponent(Component: any, route: any) {
     }
   }
 }
-.layout .ly-main .ly-main-menu :deep(.menu-icon) {
-  .iconfont {
-    &.icon-yitihuajiankong {
-      font-size: 20px;
+.layout {
+  // 菜单icon和外链样式在这里设置
+  :deep(.menu-icon) {
+    .iconfont {
+      &.icon-yitihuajiankong {
+        font-size: 20px;
+        margin-right: 10px;
+      }
+      &.icon-yuandianxiao-copy {
+        font-size: 20px;
+        margin-right: 10px;
+      }
+    }
+    > img {
+      height: 20px;
+    }
+  }
+}
+</style>
+
+<style lang="less">
+// 菜单弹出层的icon和外链样式在这里设置
+.header-menu-popper {
+  background-color: #3b7abd;
+  .menu-icon {
+    // display: inline-flex;
+    // align-items: center;
+    .icon-yitihuajiankong {
       margin-right: 10px;
     }
-    &.icon-yuandianxiao-copy {
-      font-size: 28px;
+    > img {
+      height: 20px;
     }
   }
 }

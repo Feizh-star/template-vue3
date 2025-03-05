@@ -5,7 +5,6 @@ import { useMenu } from '@/store/menu'
 import MenuItem from '@/layout/components/MenuItem.vue'
 const props = defineProps<{
   menuList: RouteRecordRaw[]
-  popperClass?: string
 }>()
 const emits = defineEmits<{
   (e: 'open', key: string, keyPath: string[]): void
@@ -59,7 +58,6 @@ const handleSelect = (key: string, keyPath: string[]) => {
           :key="index"
           :menu-item="item"
           parent-path=""
-          :submenu-popper-class="popperClass || ''"
         />
       </el-menu>
     </el-scrollbar>

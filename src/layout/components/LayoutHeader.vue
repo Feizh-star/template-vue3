@@ -15,7 +15,6 @@
           background-color="transparent"
           text-color="#ffffff"
           active-text-color="#ffd04b"
-          popper-class="header-menu-popper"
         ></LayoutMenu>
         <template #larrow>
           <el-icon color="#ffffff">
@@ -199,27 +198,6 @@ function logout() {
           color: #ffffff;
           background-color: #00000033;
         }
-        .menu-icon {
-          .icon-yitihuajiankong {
-            margin-right: 10px;
-          }
-          > img {
-            height: 20px;
-            margin-right: 8px;
-          }
-        }
-        .external-link {
-          color: var(--el-menu-text-color);
-          font-size: var(--el-menu-item-font-size);
-          height: var(--el-menu-item-height);
-          display: flex;
-          align-items: center;
-          padding: 0 var(--el-menu-base-level-padding);
-          &:hover {
-            color: #ffffff;
-            background-color: #00000033;
-          }
-        }
       }
     }
   }
@@ -265,37 +243,6 @@ function logout() {
           white-space: nowrap;
         }
       }
-    }
-  }
-}
-</style>
-
-<style lang="less">
-.header-menu-popper {
-  background-color: #3b7abd;
-  .menu-icon {
-    display: inline-flex;
-    align-items: center;
-    .icon-yitihuajiankong {
-      margin-right: 10px;
-    }
-    > img {
-      height: 20px;
-      margin-right: 8px;
-    }
-  }
-  .external-link {
-    align-items: center;
-    background-color: var(--el-menu-bg-color);
-    color: var(--el-menu-text-color);
-    font-size: var(--el-menu-item-font-size);
-    display: flex;
-    height: var(--el-menu-horizontal-sub-item-height);
-    line-height: var(--el-menu-horizontal-sub-item-height);
-    padding: 0 10px;
-    &:hover {
-      color: #ffffff;
-      background-color: #00000033;
     }
   }
 }
