@@ -1,3 +1,7 @@
+/**
+ * 自动缩放目标元素，需内部存在resize逻辑
+ * 已知问题，直接父元素不能使用display: flex；可以嵌套一层高度100%或flex: 1都行
+ */
 import * as lodashLib from 'lodash'
 
 export interface IAdaptRatio {
