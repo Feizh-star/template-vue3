@@ -131,9 +131,22 @@
     "children": [
       {
         "path": "mapmodel",
-        "component": "MapLibre/MapModel/MapModel.vue",
+        "component": "MapLibre/subpage/MapModel/MapModel.vue",
         "meta": {
           "title": "加载模型",
+          "hidden": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
+      },
+      {
+        "path": "extendthree",
+        "component": "MapLibre/subpage/ExtendThree/ExtendThree.vue",
+        "meta": {
+          "title": "继承Three",
           "hidden": false,
           "isLeaf": true,
           "icon": {
