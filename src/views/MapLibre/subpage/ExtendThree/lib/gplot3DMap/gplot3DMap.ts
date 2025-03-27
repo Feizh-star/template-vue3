@@ -1,4 +1,3 @@
-
 import maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
 import * as lodashLib from 'lodash'
@@ -109,7 +108,7 @@ const defaultOption: IGplot3DLayerOption = {
     animation: true,
     axesHelper: {
       enable: true,
-      size: 60
+      size: 60,
     },
     ambientLight: {
       enable: true,
@@ -125,8 +124,8 @@ const defaultOption: IGplot3DLayerOption = {
     },
   },
   layerOption: {
-    center: [115, 40]
-  }
+    center: [115, 40],
+  },
 }
 
 export class Gplot3DMap {
@@ -138,8 +137,14 @@ export class Gplot3DMap {
   private devicePixelRatio!: number
   private map!: maplibregl.Map
   constructor(option?: DeepPartial<IGplot3DLayerOption>) {
-    this.threeOption = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption.threeOption), option?.threeOption || {})
-    this.layerOption = lodashLib.mergeWith(lodashLib.cloneDeep(defaultOption.layerOption), option?.layerOption || {})
+    this.threeOption = lodashLib.mergeWith(
+      lodashLib.cloneDeep(defaultOption.threeOption),
+      option?.threeOption || {}
+    )
+    this.layerOption = lodashLib.mergeWith(
+      lodashLib.cloneDeep(defaultOption.layerOption),
+      option?.layerOption || {}
+    )
   }
   /* ************************************************************************************************************ */
   private domElement!: HTMLCanvasElement
@@ -160,10 +165,16 @@ export class Gplot3DMap {
   public setLight(option?: Partial<Pick<IThreeOption, 'ambientLight' | 'directionalLight'>>) {
     if (!this.scene) throw new Error('Attempt to init Light before scene inited')
     if (option?.ambientLight) {
-      this.threeOption.ambientLight = lodashLib.mergeWith(lodashLib.cloneDeep(this.threeOption.ambientLight ), option.ambientLight)
+      this.threeOption.ambientLight = lodashLib.mergeWith(
+        lodashLib.cloneDeep(this.threeOption.ambientLight),
+        option.ambientLight
+      )
     }
     if (option?.directionalLight) {
-      this.threeOption.directionalLight = lodashLib.mergeWith(lodashLib.cloneDeep(this.threeOption.directionalLight ), option.directionalLight)
+      this.threeOption.directionalLight = lodashLib.mergeWith(
+        lodashLib.cloneDeep(this.threeOption.directionalLight),
+        option.directionalLight
+      )
     }
     const { ambientLight: ambientOpt, directionalLight: directionalOpt } = this.threeOption
     if (ambientOpt.enable) {
@@ -188,14 +199,14 @@ export class Gplot3DMap {
         .fill(200)
         .map((v, i) => directionalOpt.position?.[i] || v) as number[]
       directionalLight.position.set(position[0], position[1], position[2])
-      if (directionalOpt.target.some(item => item !== 0)) {
-        const targetObject = new THREE.Object3D();
-        this.scene.add(targetObject);
+      if (directionalOpt.target.some((item) => item !== 0)) {
+        const targetObject = new THREE.Object3D()
+        this.scene.add(targetObject)
         const target = new Array(3)
           .fill(0)
           .map((v, i) => directionalOpt.target?.[i] || v) as number[]
         targetObject.position.set(target[0], target[1], target[2])
-        directionalLight.target = targetObject;
+        directionalLight.target = targetObject
       }
       if (!this.scene.getObjectById(directionalLight.id)) this.scene.add(directionalLight)
     }
@@ -203,7 +214,10 @@ export class Gplot3DMap {
   public setAxesHelper(option?: Partial<IThreeOption['axesHelper']>) {
     if (!this.scene) throw new Error('Attempt to add AxesHelper before scene inited')
     if (option) {
-      this.threeOption.axesHelper = lodashLib.mergeWith(lodashLib.cloneDeep(this.threeOption.axesHelper ), option)
+      this.threeOption.axesHelper = lodashLib.mergeWith(
+        lodashLib.cloneDeep(this.threeOption.axesHelper),
+        option
+      )
     }
     const axesHelperOption = this.threeOption.axesHelper
     if (axesHelperOption.enable) {
@@ -783,7 +797,10 @@ export class Gplot3DMap {
   onRemove() {
     this.threeDestory()
   }
-  render(gl: WebGL2RenderingContext | WebGLRenderingContext, args: maplibregl.CustomRenderMethodInput) {
+  render(
+    gl: WebGL2RenderingContext | WebGLRenderingContext,
+    args: maplibregl.CustomRenderMethodInput
+  ) {
     const offsetFromCenterElevation = this.map.queryTerrainElevation(this.layerOption.center) || 0
     const sceneOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(
       this.layerOption.center,
@@ -795,14 +812,8 @@ export class Gplot3DMap {
 
     const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix)
     const l = new THREE.Matrix4()
-      .makeTranslation(
-        sceneOriginMercator.x,
-        sceneOriginMercator.y,
-        sceneOriginMercator.z,
-      )
-      .scale(
-        new THREE.Vector3(scale, -scale, scale)
-      )
+      .makeTranslation(sceneOriginMercator.x, sceneOriginMercator.y, sceneOriginMercator.z)
+      .scale(new THREE.Vector3(scale, -scale, scale))
       .multiply(rotationX)
 
     this.camera.projectionMatrix = m.multiply(l)

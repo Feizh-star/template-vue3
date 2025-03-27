@@ -11,7 +11,8 @@ const density = 10
 const centerPosition: [number, number, number] = [-27, 0, -27]
 const distance = 24
 const lineIntervalHalf = 1
-const scale = (sizeVal: number, index: number, length: number) => sizeVal * Math.min(1, (1 - (index / length) + 0.1))
+const scale = (sizeVal: number, index: number, length: number) =>
+  sizeVal * Math.min(1, 1 - index / length + 0.1)
 const straightway = (
   begin: [number, number, number],
   end: [number, number, number],
@@ -227,21 +228,9 @@ export const modelNodes = [
 
 // console.log(straightway([-10, 0, -10], [-10, 0, -50], { justify: 'Z' }))
 const testAutoTrack = [
-  [
-    centerPosition[0] + 1 * distance,
-    0,
-    centerPosition[2] + 2 * distance,
-  ],
-  [
-    centerPosition[0] + 1 * distance,
-    0,
-    centerPosition[2] + 3 * distance,
-  ],
-  [
-    centerPosition[0] + 0.5 * distance,
-    0,
-    centerPosition[2] + 3 * distance,
-  ],
+  [centerPosition[0] + 1 * distance, 0, centerPosition[2] + 2 * distance],
+  [centerPosition[0] + 1 * distance, 0, centerPosition[2] + 3 * distance],
+  [centerPosition[0] + 0.5 * distance, 0, centerPosition[2] + 3 * distance],
 ]
 const { track1, track2 } = doubleTrackByLine(testAutoTrack, { distance: lineIntervalHalf })
 export const lines: IFlowLineItem[] = [
