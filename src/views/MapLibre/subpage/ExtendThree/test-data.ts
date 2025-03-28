@@ -1,48 +1,144 @@
-import { doubleTrackByLine } from '@/libs/doubleTrackByLine/doubleTrackByLine'
-import type { IRailItem } from '@/libs/gplot3D/gplot3D'
-import type { IFlowLineItem } from '@/libs/gplot3D/flowLine3D'
+import type maplibregl from 'maplibre-gl'
 
-const color = ['#53ffc1', '#ff5600', '#f5b84a']
+export const lines = []
 
-const size = 0.3
-const elength = 15
-const speed = 20
-const density = 10
-const centerPosition: [number, number, number] = [-27, 0, -27]
-const distance = 24
-const lineIntervalHalf = 1
+type LngLatEle = [number, number, number]
+
+const gridUnit = 50 / 100000 // 50m的经纬度表示 0.0005度
+// 模型设定
+const modelScale = 0.04 // 0.04
+const modelFontScale = 7 // 7
+// 特效设定
+const size = 2 // 特效点尺寸
+const elength = 30 // 特效长度
+const speed = 50 // 特效速度
+const density = 10 // 点密度
+const lineIntervalHalf = 4 / 100000 // 线间隔
+// 点缩放
 const scale = (sizeVal: number, index: number, length: number) =>
   sizeVal * Math.min(1, 1 - index / length + 0.1)
-const straightway = (
+const color = ['#53ffc1', '#ff5600', '#f5b84a']
+
+// 模型节点
+const modelRelativePosition = [
+  {
+    name: '装置1',
+    coord: [-3, -3, 0] as LngLatEle,
+  },
+  {
+    name: '装置2',
+    coord: [-3, 0, 0] as LngLatEle,
+  },
+  {
+    name: '装置3',
+    coord: [3, 0, 0] as LngLatEle,
+  },
+  {
+    name: '装置4',
+    coord: [3, 3, 0] as LngLatEle,
+  },
+]
+
+// 根据偏移量计算经纬度
+function getLnglatByOffset(center: number[], offset: LngLatEle, unit: number) {
+  const centerWithElevation = new Array(3).fill(0).map((v, i) => center[i] || v) as LngLatEle
+  return [...centerWithElevation].map((v, i) => v + (offset[i] || 0) * unit) as LngLatEle
+}
+
+// 获取所有的模型节点
+function getModelNodes(center: number[]) {
+  return modelRelativePosition.map((info) => {
+    return {
+      src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
+      rotation: [0, -Math.PI / 2, 0],
+      scale: [modelScale, modelScale, modelScale],
+      position: getLnglatByOffset(center, info.coord, gridUnit),
+      offset: [0, 0, 0] as LngLatEle,
+      common: {
+        name: info.name,
+      },
+      text: genTextOpt('font1'),
+    }
+  })
+}
+
+// 获取所有模型之间的直线连线
+function getModelStraightLink(points: LngLatEle[]) {
+  const result = []
+  for (let i = 0; i < points.length - 1; i++) {
+    const start = points[i]
+    const end = points[i + 1]
+    const doubleLine = straightway(start, end, {
+      justify: Math.abs(start[0] - end[0]) < Number.EPSILON ? 'lat' : 'lng',
+    })
+    result.push(
+      ...doubleLine.map((item, index) => ({
+        id: i * 2 + index + 1,
+        path: item,
+        lineMaterial: { color: color[0], linewidth: 1 },
+        effect: {
+          enable: true,
+          size: size,
+          speed: speed,
+          density: density,
+          scale: scale,
+          length: elength,
+          colorStop: [
+            { color: '#ffffffff', percent: 0 },
+            { color: `${color[0]}ff`, percent: 0.15 },
+            { color: `${color[0]}80`, percent: 0.4 },
+            { color: `${color[0]}00`, percent: 1 },
+          ],
+        },
+      }))
+    )
+  }
+  return result
+}
+
+function getAreaRails(points: LngLatEle[]) {
+  const edge = gridUnit
+  const allLng = points.map((item) => item[0])
+  const allLat = points.map((item) => item[1])
+  const lngMax = Math.max(...allLng) + edge
+  const latMax = Math.max(...allLat) + edge
+  const lngMin = Math.min(...allLng) - edge
+  const latMin = Math.min(...allLat) - edge
+  const eastNorth = [lngMax, latMax, 0] as LngLatEle
+  const eastSouth = [lngMax, latMin, 0] as LngLatEle
+  const westSouth = [lngMin, latMin, 0] as LngLatEle
+  const westNorth = [lngMin, latMax, 0] as LngLatEle
+  return [
+    {
+      path: [eastNorth, eastSouth, westSouth, westNorth, eastNorth],
+      relative: 1,
+      lineMaterial: { color: '#2b90fa', linewidth: 3 },
+      text: genRailTextOpt('font1', [-40, 0, -20], '安全区1'),
+    },
+  ]
+}
+
+function straightway(
   begin: [number, number, number],
   end: [number, number, number],
-  option?: { justify?: 'X' | 'Z'; reverse?: boolean }
-) => {
-  const justify = option?.justify ?? 'X'
+  option?: { justify?: 'lng' | 'lat'; reverse?: boolean }
+) {
+  const justify = option?.justify ?? 'lng'
   const reverse = option?.reverse ?? false
   const goLine = [[...begin], [...end]] as [number, number, number][]
   const backLine = [[...end], [...begin]] as [number, number, number][]
   goLine.forEach((p) => {
-    const index = justify === 'X' ? 2 : 0
-    p[index] += lineIntervalHalf * (justify === 'X' ? -1 : 1)
+    const index = justify === 'lng' ? 1 : 0
+    p[index] += lineIntervalHalf * (justify === 'lng' ? -1 : 1)
   })
   backLine.forEach((p) => {
-    const index = justify === 'X' ? 2 : 0
-    p[index] -= lineIntervalHalf * (justify === 'X' ? -1 : 1)
+    const index = justify === 'lng' ? 1 : 0
+    p[index] -= lineIntervalHalf * (justify === 'lng' ? -1 : 1)
   })
-  return {
-    go: reverse ? backLine : goLine,
-    back: reverse ? goLine : backLine,
-  }
+  return [reverse ? backLine : goLine, reverse ? goLine : backLine]
 }
-const getTargetByInterval = (x: number = 0, z: number = 0) => {
-  return [centerPosition[0] + x * distance, 0, centerPosition[2] + z * distance] as [
-    number,
-    number,
-    number
-  ]
-}
-const genTextOpt = (font: string, content?: string) => {
+
+function genTextOpt(font: string, content?: string) {
   return {
     font: font,
     content:
@@ -61,814 +157,10 @@ const genTextOpt = (font: string, content?: string) => {
     },
     center: true,
     rotation: [0, 0, 0],
-    scale: [1, 1, 1],
-    position: [0, 1, 5],
+    scale: [modelFontScale, modelFontScale, modelFontScale],
+    position: [0, 10, 18],
   }
 }
-
-export const modelNodes = [
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: [...centerPosition],
-    offset: [0, 0, 0],
-    common: {
-      name: '',
-    },
-    text: genTextOpt('font1'),
-  },
-  // src/views/ThreeMenu/subpage/assets/smol_ame_in_an_upcycled_terrarium_hololiveen.glb
-  // src/views/ThreeMenu/subpage/assets/cat/scene.gltf
-  // src/views/ThreeMenu/subpage/assets/um_windmill_10_kw.glb
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(-2, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '电力监控系统',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(-1, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '内网防火墙',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(0, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '风功率预测交换机',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(1, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '风功率预测服务器',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(2, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '反向隔离装置',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(3, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '气象服务器',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(4, -1),
-    offset: [0, 0, 0],
-    common: {
-      name: '外网防火墙',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(4, 0),
-    offset: [0, 0, 0],
-    common: {
-      name: '互联网',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(-1, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时交换机一',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(0, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时纵向加密装置一',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(1, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时纵向加密装置二',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(2, 2),
-    offset: [0, 0, 0],
-    common: {
-      name: '平面非实时交换机二',
-    },
-    text: genTextOpt('font1'),
-  },
-  {
-    src: new URL('./assets/um_windmill_10_kw.glb', import.meta.url).href,
-    rotation: [0, -Math.PI / 2, 0],
-    scale: [0.005, 0.005, 0.005],
-    position: getTargetByInterval(0.5, 3),
-    offset: [0, 0, 0],
-    common: {
-      name: '调度数据网',
-    },
-    text: genTextOpt('font1'),
-  },
-]
-
-// console.log(straightway([-10, 0, -10], [-10, 0, -50], { justify: 'Z' }))
-const testAutoTrack = [
-  [centerPosition[0] + 1 * distance, 0, centerPosition[2] + 2 * distance],
-  [centerPosition[0] + 1 * distance, 0, centerPosition[2] + 3 * distance],
-  [centerPosition[0] + 0.5 * distance, 0, centerPosition[2] + 3 * distance],
-]
-const { track1, track2 } = doubleTrackByLine(testAutoTrack, { distance: lineIntervalHalf })
-export const lines: IFlowLineItem[] = [
-  {
-    id: 1,
-    path: straightway([...centerPosition], getTargetByInterval(0, -1), {
-      justify: 'Z',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 2,
-    path: straightway([...centerPosition], getTargetByInterval(0, -1), {
-      justify: 'Z',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 3,
-    path: [
-      [centerPosition[0] - 1 * distance, 0, centerPosition[2] - 1 * distance - lineIntervalHalf],
-      [
-        centerPosition[0] - 1 * distance - distance * 0.6,
-        0,
-        centerPosition[2] - 1 * distance - lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] - 1 * distance - distance * 0.6,
-        0,
-        centerPosition[2] - 1 * distance - distance * 0.75,
-      ],
-      [
-        centerPosition[0] - 1 * distance - distance,
-        0,
-        centerPosition[2] - 1 * distance - distance * 0.75,
-      ],
-      [centerPosition[0] - 1 * distance - distance, 0, centerPosition[2] - 1 * distance],
-    ],
-    lineMaterial: { color: color[2] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[2]}ff`, percent: 0.15 },
-        { color: `${color[2]}80`, percent: 0.4 },
-        { color: `${color[2]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 4,
-    path: [
-      [centerPosition[0] - 1 * distance - distance, 0, centerPosition[2] - 1 * distance],
-      [
-        centerPosition[0] - 1 * distance - distance,
-        0,
-        centerPosition[2] - 1 * distance + distance * 0.75,
-      ],
-      [
-        centerPosition[0] - 1 * distance - distance * 0.6,
-        0,
-        centerPosition[2] - 1 * distance + distance * 0.75,
-      ],
-      [
-        centerPosition[0] - 1 * distance - distance * 0.6,
-        0,
-        centerPosition[2] - 1 * distance + lineIntervalHalf,
-      ],
-      [centerPosition[0] - 1 * distance, 0, centerPosition[2] - 1 * distance + lineIntervalHalf],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 5,
-    path: straightway(getTargetByInterval(0, -1), getTargetByInterval(-1, -1), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 6,
-    path: straightway(getTargetByInterval(0, -1), getTargetByInterval(-1, -1), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 7,
-    path: straightway(getTargetByInterval(1, -1), getTargetByInterval(0, -1), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[1], dashed: true },
-    effect: {
-      enable: false,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[1]}ff`, percent: 0.15 },
-        { color: `${color[1]}80`, percent: 0.4 },
-        { color: `${color[1]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 8,
-    path: straightway(getTargetByInterval(1, -1), getTargetByInterval(0, -1), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 9,
-    path: straightway(getTargetByInterval(2, -1), getTargetByInterval(1, -1), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 10,
-    path: straightway(getTargetByInterval(2, -1), getTargetByInterval(1, -1), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 11,
-    path: straightway(getTargetByInterval(3, -1), getTargetByInterval(2, -1), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 12,
-    path: straightway(getTargetByInterval(3, -1), getTargetByInterval(2, -1), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 13,
-    path: straightway(getTargetByInterval(4, -1), getTargetByInterval(3, -1), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 14,
-    path: straightway(getTargetByInterval(4, -1), getTargetByInterval(3, -1), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 15,
-    path: straightway(getTargetByInterval(4, 0), getTargetByInterval(4, -1), {
-      justify: 'Z',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 16,
-    path: straightway(getTargetByInterval(4, 0), getTargetByInterval(4, -1), {
-      justify: 'Z',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 17,
-    path: [
-      [centerPosition[0] + 1 * lineIntervalHalf, 0, centerPosition[2]],
-      [
-        centerPosition[0] + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 1 * distance + 2 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 2 * distance - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 1 * distance + 2 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 2 * distance - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 2 * distance,
-      ],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 18,
-    path: [
-      [
-        centerPosition[0] + 2 * distance + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 2 * distance,
-      ],
-      [
-        centerPosition[0] + 2 * distance + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 1 * distance,
-      ],
-      [centerPosition[0] + 1 * lineIntervalHalf, 0, centerPosition[2] + 1 * distance],
-      [centerPosition[0] + 1 * lineIntervalHalf, 0, centerPosition[2]],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 19,
-    path: [
-      [centerPosition[0] - 1 * lineIntervalHalf, 0, centerPosition[2]],
-      [centerPosition[0] - 1 * lineIntervalHalf, 0, centerPosition[2] + 1 * distance],
-      [centerPosition[0] - 1 * distance - lineIntervalHalf, 0, centerPosition[2] + 1 * distance],
-      [centerPosition[0] - 1 * distance - lineIntervalHalf, 0, centerPosition[2] + 2 * distance],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 20,
-    path: [
-      [centerPosition[0] - 1 * distance + lineIntervalHalf, 0, centerPosition[2] + 2 * distance],
-      [
-        centerPosition[0] - 1 * distance + lineIntervalHalf,
-        0,
-        centerPosition[2] + 1 * distance + 2 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 1 * distance + 2 * lineIntervalHalf,
-      ],
-      [centerPosition[0] - 1 * lineIntervalHalf, 0, centerPosition[2]],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 21,
-    path: straightway(getTargetByInterval(0, 2), getTargetByInterval(-1, 2), {
-      justify: 'X',
-    }).go,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 22,
-    path: straightway(getTargetByInterval(0, 2), getTargetByInterval(-1, 2), {
-      justify: 'X',
-    }).back,
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 23,
-    path: [
-      [
-        centerPosition[0] + 0.5 * distance,
-        0,
-        centerPosition[2] + 3 * distance - 1 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 3 * distance - 1 * lineIntervalHalf,
-      ],
-      [centerPosition[0] + 1 * lineIntervalHalf, 0, centerPosition[2] + 2 * distance],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 24,
-    path: [
-      [centerPosition[0] - 1 * lineIntervalHalf, 0, centerPosition[2] + 2 * distance],
-      [
-        centerPosition[0] - 1 * lineIntervalHalf,
-        0,
-        centerPosition[2] + 3 * distance + 1 * lineIntervalHalf,
-      ],
-      [
-        centerPosition[0] + 0.5 * distance,
-        0,
-        centerPosition[2] + 3 * distance + 1 * lineIntervalHalf,
-      ],
-    ],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 25,
-    path: track1 as [number, number, number][],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-  {
-    id: 26,
-    path: track2.reverse() as [number, number, number][],
-    lineMaterial: { color: color[0] },
-    effect: {
-      enable: true,
-      size: size,
-      speed: speed,
-      density: density,
-      scale: scale,
-      length: elength,
-      colorStop: [
-        { color: '#ffffffff', percent: 0 },
-        { color: `${color[0]}ff`, percent: 0.15 },
-        { color: `${color[0]}80`, percent: 0.4 },
-        { color: `${color[0]}00`, percent: 1 },
-      ],
-    },
-  },
-]
 const genRailTextOpt = (font: string, position: number[], content?: string) => {
   return {
     font: font,
@@ -882,45 +174,9 @@ const genRailTextOpt = (font: string, position: number[], content?: string) => {
     },
     center: true,
     rotation: [-Math.PI / 2, 0, 0],
-    scale: [1, 1, 1],
+    scale: [modelFontScale, modelFontScale, modelFontScale],
     position: position,
   }
 }
-export const rails: IRailItem[] = [
-  {
-    path: [
-      [-62, 0, 57],
-      [-82, 0, 57],
-      [-82, 0, -72],
-      [-62, 0, -72],
-      [-62, 0, 57],
-    ],
-    relative: 0,
-    lineMaterial: { color: '#647186' },
-    text: genRailTextOpt('font1', [-6, 0, -2.5], '安全区1'),
-  },
-  {
-    path: [
-      [32, 0, 57],
-      [-59, 0, 57],
-      [-59, 0, -72],
-      [32, 0, -72],
-      [32, 0, 57],
-    ],
-    relative: 0,
-    lineMaterial: { color: '#647186' },
-    text: genRailTextOpt('font1', [-6, 0, -2.5], '安全区2'),
-  },
-  {
-    path: [
-      [57, 0, 57],
-      [35, 0, 57],
-      [35, 0, -72],
-      [57, 0, -72],
-      [57, 0, 57],
-    ],
-    relative: 0,
-    lineMaterial: { color: '#647186' },
-    text: genRailTextOpt('font1', [-8, 0, -2.5], '管理信息大区'),
-  },
-]
+
+export { getModelNodes, getModelStraightLink, getAreaRails }

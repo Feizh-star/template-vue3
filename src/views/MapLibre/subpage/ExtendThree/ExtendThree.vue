@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { Gplot3DMap } from './lib/gplot3DMap/gplot3DMap'
-import { lines, modelNodes, rails } from './test-data'
+import { Gplot3DLayer } from './lib/Gplot3DLayer/Gplot3DLayer'
+import { getModelNodes, getModelStraightLink, getAreaRails } from './test-data'
 
 const mapRef = ref<HTMLElement | null>(null)
+const tooltipEl = ref<HTMLElement | null>(null)
 onMounted(() => {
   if (!mapRef.value) return
   init(mapRef.value)
 })
 
-const mapCenter: maplibregl.LngLatLike = [117.134407, 38.325195]
+const mapCenter: [number, number] = [117.134407, 38.325195]
 
-function init(el: HTMLElement) {
+async function init(el: HTMLElement) {
   const map = new maplibregl.Map({
     container: el,
     center: mapCenter, // starting position
@@ -89,22 +90,41 @@ function init(el: HTMLElement) {
     },
   })
 
-  map.once('load', function (this: maplibregl.Map) {
-    const customLayer = new Gplot3DMap({
-      layerOption: {
-        center: mapCenter,
-      },
-    })
-    this.addLayer(customLayer)
-    // customLayer.addGltfNodes()
-    // customLayer.addFlowLines(lines)
+  await map.once('load')
+  const gplot3DLayer = new Gplot3DLayer({
+    origin: mapCenter,
+    axesHelper: {
+      enable: false,
+    },
+  })
+  map.addLayer(gplot3DLayer)
+  const models = getModelNodes(mapCenter)
+  const lines = getModelStraightLink(models.map((item) => item.position))
+  const rails = getAreaRails(models.map((item) => item.position))
 
-    customLayer
-      .addFont('font1', new URL('./font/Microsoft_YaHei_Regular.json', import.meta.url).href)
-      .then(() => {
-        customLayer?.addGltfNodes(modelNodes)
-        customLayer?.addRails(rails)
-      })
+  await gplot3DLayer.addFont(
+    'font1',
+    new URL('./font/Microsoft_YaHei_Regular.json', import.meta.url).href
+  )
+  gplot3DLayer.addFlowLinesLnglat(lines)
+  gplot3DLayer.addGltfNodesLngLat(models)
+  gplot3DLayer.addRailsLngLat(rails)
+  gplot3DLayer.onGltfNodes('mousemove', (type, e, models, datas) => {
+    console.log('mousemove')
+    if (!tooltipEl.value || !mapRef.value || !datas[0]?.common?.name) return
+    const mevent = e as MouseEvent
+    const left = mevent.clientX - mapRef.value.getBoundingClientRect().left
+    const top = mevent.clientY - mapRef.value.getBoundingClientRect().top
+    tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
+    tooltipEl.value.innerText = datas[0]?.common?.name || ''
+  })
+  gplot3DLayer?.onGltfNodes('mouseenter', (type, e, models, datas) => {
+    if (!tooltipEl.value || !datas[0]?.common?.name) return
+    tooltipEl.value.style.display = `block`
+  })
+  gplot3DLayer?.onGltfNodes('mouseleave', (type, e, models, datas) => {
+    if (!tooltipEl.value || !datas[0]?.common?.name) return
+    tooltipEl.value.style.display = `none`
   })
 }
 </script>
@@ -112,6 +132,7 @@ function init(el: HTMLElement) {
 <template>
   <div class="component-class">
     <div class="map" ref="mapRef"></div>
+    <div class="tooltip" ref="tooltipEl">123</div>
   </div>
 </template>
 
@@ -119,9 +140,22 @@ function init(el: HTMLElement) {
 .component-class {
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
   > .map {
     width: 100%;
     height: 100%;
+  }
+  .tooltip {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    padding: 8px;
+    top: 16px;
+    left: 16px;
+    background-color: #011a42;
+    color: #ffffff;
+    border: 1px solid #0a69d5;
   }
 }
 </style>
