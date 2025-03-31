@@ -97,23 +97,6 @@ export class Gplot3DLayer extends Gplot3DEffect implements maplibregl.CustomLaye
       })
     )
   }
-  raycast(point: any, isClick: boolean) {
-    const mouse = new THREE.Vector2()
-    // // scale mouse pixel position to a percentage of the screen's width and height
-    mouse.x = (point.x / this.map.transform.width) * 2 - 1
-    mouse.y = 1 - (point.y / this.map.transform.height) * 2
-
-    const camInverseProjection = this.camera.projectionMatrix.invert()
-    const cameraPosition = new THREE.Vector3().applyMatrix4(camInverseProjection)
-    const mousePosition = new THREE.Vector3(mouse.x, mouse.y, 1).applyMatrix4(camInverseProjection)
-    const viewDirection = mousePosition.clone().sub(cameraPosition).normalize()
-
-    this.raycaster.set(cameraPosition, viewDirection)
-
-    // calculate objects intersecting the picking ray
-    const intersects = this.raycaster.intersectObjects(this.scene.children, true)
-    console.log(intersects)
-  }
 
   /**
    * 图层生命周期：添加自定义图层时调用
@@ -122,10 +105,7 @@ export class Gplot3DLayer extends Gplot3DEffect implements maplibregl.CustomLaye
    */
   onAdd(map: maplibregl.Map) {
     this.map = map
-    this.initEffect(map.getCanvas())
-    map.on('click', (e) => {
-      this.raycast(e.point, true)
-    })
+    this.initEffect(map.getCanvas(), true)
   }
   /**
    * 图层生命周期：移除自定义图层时调用

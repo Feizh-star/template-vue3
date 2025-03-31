@@ -18,7 +18,7 @@ async function init(el: HTMLElement) {
     container: el,
     center: mapCenter, // starting position
     zoom: 16, // starting zoom
-    pitch: 45,
+    pitch: 60,
     canvasContextAttributes: { antialias: true },
     style: {
       version: 8,
@@ -110,7 +110,6 @@ async function init(el: HTMLElement) {
   gplot3DLayer.addGltfNodesLngLat(models)
   gplot3DLayer.addRailsLngLat(rails)
   gplot3DLayer.onGltfNodes('mousemove', (type, e, models, datas) => {
-    console.log('mousemove')
     if (!tooltipEl.value || !mapRef.value || !datas[0]?.common?.name) return
     const mevent = e as MouseEvent
     const left = mevent.clientX - mapRef.value.getBoundingClientRect().left

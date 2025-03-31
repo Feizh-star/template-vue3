@@ -7,16 +7,17 @@ import * as lodashLib from 'lodash'
 import { FlowLine3DEffect } from './FlowLine3DEffect'
 import { AnimationMixerUpdater } from './AnimationMixerUpdater'
 import { AnimationInitiator } from './AnimationInitiator'
+import { RaycasterController } from './RaycasterController'
 import {
-  loadGltfModel,
-  mapChildrenToModel,
-  updateMousePosition,
-  disposeModel,
-  disposeSprite,
   registerNodeEventHelper,
   recordOutEventToInnerHelper,
   removeNodeEventHelper,
-  throttle,
+} from './RaycasterController'
+import {
+  loadGltfModel,
+  mapChildrenToModel,
+  disposeModel,
+  disposeSprite,
   loadFont,
   createDomSizeObserver,
 } from '../tools/gplot3DTool'
@@ -81,7 +82,7 @@ export abstract class Gplot3DEffect {
    * 初始化，由派生类调用
    * @param canvas 画布
    */
-  protected initEffect(canvas: HTMLCanvasElement) {
+  protected initEffect(canvas: HTMLCanvasElement, manualUpdateRaycaster = false) {
     this.canvasEffect = canvas
     this.initScene() // 场景
     this.initCamera() // 相机
@@ -91,6 +92,7 @@ export abstract class Gplot3DEffect {
     this.registeResizeEffect() // 注册resize处理函数
     this.renderEffect() // 渲染场景（第一帧）
     this.initAnimationLoop() // 初始化动画管理器
+    this.initRaycasterController(manualUpdateRaycaster) // 初始化事件管理器
   }
   /**
    * 初始化渲染器
@@ -123,7 +125,7 @@ export abstract class Gplot3DEffect {
     this.removeSpriteNodes()
     this.removeGltfNodes()
     this.removeAllRails()
-    this.removeAllMouseEvent()
+    this.raycasterController.removeAllMouseEvent()
     this.clearFont()
     this.cancelResizeEffect()
   }
@@ -326,72 +328,16 @@ export abstract class Gplot3DEffect {
   }
 
   /* 事件监听器 */
-  protected raycaster: THREE.Raycaster = new THREE.Raycaster()
-  protected mousePosition: THREE.Vector2 = new THREE.Vector2()
-  protected mouseEvents: Map<string, ((event: Event, intersects: THREE.Intersection[]) => void)[]> =
-    new Map()
-  protected mouseEventHandlerMap = new WeakMap<
-    Function,
-    ReturnType<typeof registerNodeEventHelper>
-  >()
-  protected mouseEventCommonHandlerMap: Map<string, Function> = new Map()
-  protected registerMouseEvent(
-    eventType: string,
-    handler: (event: Event, intersects: THREE.Intersection[]) => void
-  ) {
-    const handlers = this.mouseEvents.get(eventType)
-    if (handlers && handlers.length > 0) {
-      handlers.push(handler)
-      this.mouseEvents.set(eventType, handlers)
-    } else {
-      const commonHandler = throttle((event: Event) => {
-        const { mousePosition: mouse, canvasEffect: canvas } = this
-        // 更新鼠标位置
-        updateMousePosition(mouse, event, canvas)
-        // 将鼠标位置转换为世界坐标
-        this.raycaster.setFromCamera(mouse, this.camera)
-        // 计算物体和鼠标的交点
-        const intersects = this.raycaster.intersectObjects(this.scene.children)
-        const eventHanlders = this.mouseEvents.get(eventType)
-        eventHanlders?.forEach((handler) => {
-          handler(event, intersects)
-        })
-      }, 16.7)
-      this.canvasEffect?.addEventListener(eventType, commonHandler)
-      this.mouseEvents.set(eventType, [handler])
-      this.mouseEventCommonHandlerMap.set(eventType, commonHandler)
-    }
-  }
-  protected removeMouseEvent(
-    eventType: string,
-    handler?: (event: Event, intersects: THREE.Intersection[]) => void
-  ) {
-    if (handler) {
-      const handlers = this.mouseEvents.get(eventType)
-      if (handlers) {
-        this.mouseEvents.set(
-          eventType,
-          handlers.filter((item) => item !== handler)
-        )
-      }
-    } else {
-      this.mouseEvents.delete(eventType)
-    }
-  }
-  // 把回调函数数组已经空了的事件关闭
-  protected removeNoHandlerMouseEvent() {
-    ;[...this.mouseEvents.entries()]
-      .filter((item) => item[1].length === 0)
-      .map((item) => item[0])
-      .forEach((eventType) => {
-        this.removeMouseEvent(eventType)
-      })
-  }
-  protected removeAllMouseEvent() {
-    this.mouseEvents.clear()
-    for (const [eventType, handler] of this.mouseEventCommonHandlerMap.entries()) {
-      this.canvasEffect?.removeEventListener(eventType, handler as (e: Event) => void)
-    }
+  private manualUpdateRaycaster: boolean = false
+  private raycasterController!: RaycasterController
+  private initRaycasterController(manualUpdateRaycaster: boolean) {
+    this.manualUpdateRaycaster = manualUpdateRaycaster
+    this.raycasterController = new RaycasterController({
+      manualUpdate: manualUpdateRaycaster,
+      canvas: this.canvasEffect,
+      scene: this.scene,
+      camera: this.camera,
+    })
   }
 
   /**
@@ -567,7 +513,7 @@ export abstract class Gplot3DEffect {
       'sprite',
       eventType,
       handler,
-      this.registerMouseEvent.bind(this),
+      this.raycasterController.registerMouseEvent.bind(this.raycasterController),
       (intersects) =>
         intersects
           .map((item) =>
@@ -581,7 +527,7 @@ export abstract class Gplot3DEffect {
       handler,
       eInfo,
       this.spriteNodesEventMap,
-      this.mouseEventHandlerMap
+      this.raycasterController.mouseEventHandlerMap
     )
     return this
   }
@@ -589,11 +535,11 @@ export abstract class Gplot3DEffect {
     removeNodeEventHelper(
       eventType,
       this.spriteNodesEventMap,
-      this.mouseEventHandlerMap,
-      this.removeMouseEvent.bind(this),
+      this.raycasterController.mouseEventHandlerMap,
+      this.raycasterController.removeMouseEvent.bind(this.raycasterController),
       handler
     )
-    this.removeNoHandlerMouseEvent()
+    this.raycasterController.removeNoHandlerMouseEvent()
     return this
   }
   public removeSpriteNodes() {
@@ -608,9 +554,9 @@ export abstract class Gplot3DEffect {
     })
     this.spriteNodes = []
     for (const eInfos of this.spriteNodesEventMap.values()) {
-      eInfos.forEach((item) => this.removeMouseEvent(item.name, item.callback))
+      eInfos.forEach((item) => this.raycasterController.removeMouseEvent(item.name, item.callback))
     }
-    this.removeNoHandlerMouseEvent()
+    this.raycasterController.removeNoHandlerMouseEvent()
     return this
   }
   /**
@@ -708,7 +654,7 @@ export abstract class Gplot3DEffect {
       'gltf',
       eventType,
       handler,
-      this.registerMouseEvent.bind(this),
+      this.raycasterController.registerMouseEvent.bind(this.raycasterController),
       (intersects) => {
         return intersects
           .map((item) => this.childrenModelMap.get(item.object))
@@ -721,7 +667,7 @@ export abstract class Gplot3DEffect {
       handler,
       eInfo,
       this.gltfNodesEventMap,
-      this.mouseEventHandlerMap
+      this.raycasterController.mouseEventHandlerMap
     )
     return this
   }
@@ -729,11 +675,11 @@ export abstract class Gplot3DEffect {
     removeNodeEventHelper(
       eventType,
       this.gltfNodesEventMap,
-      this.mouseEventHandlerMap,
-      this.removeMouseEvent.bind(this),
+      this.raycasterController.mouseEventHandlerMap,
+      this.raycasterController.removeMouseEvent.bind(this.raycasterController),
       handler
     )
-    this.removeNoHandlerMouseEvent()
+    this.raycasterController.removeNoHandlerMouseEvent()
     return this
   }
   public removeGltfNodes() {
@@ -749,9 +695,9 @@ export abstract class Gplot3DEffect {
     })
     this.gltfNodes = []
     for (const eInfos of this.gltfNodesEventMap.values()) {
-      eInfos.forEach((item) => this.removeMouseEvent(item.name, item.callback))
+      eInfos.forEach((item) => this.raycasterController.removeMouseEvent(item.name, item.callback))
     }
-    this.removeNoHandlerMouseEvent()
+    this.raycasterController.removeNoHandlerMouseEvent()
     return this
   }
 }
