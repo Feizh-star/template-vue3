@@ -1,10 +1,11 @@
 import type { Ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+// @ts-ignore
 import { KMZLoader } from 'three/addons/loaders/KMZLoader.js'
 
 export function useCatmullRomCurve3({ el }: { el: Ref<HTMLCanvasElement | null> }) {
-  let camera, scene, renderer
+  let camera: THREE.PerspectiveCamera, scene: THREE.Scene, renderer: THREE.WebGLRenderer
 
   onMounted(() => {
     init()
@@ -45,7 +46,7 @@ export function useCatmullRomCurve3({ el }: { el: Ref<HTMLCanvasElement | null> 
     )
 
     const loader = new KMZLoader()
-    loader.load(new URL('../assets/Box.kmz', import.meta.url).href, function (kmz) {
+    loader.load(new URL('../assets/Box.kmz', import.meta.url).href, function (kmz: any) {
       kmz.scene.position.y = 0.5
       scene.add(kmz.scene)
       render()
@@ -111,8 +112,8 @@ export function useCatmullRomCurve3({ el }: { el: Ref<HTMLCanvasElement | null> 
   function onWindowResize() {
     const canvas = el.value
     if (!canvas) return
-    canvas.width = canvas.parentElement.clientWidth - 32
-    canvas.height = canvas.parentElement.clientHeight - 32
+    canvas.width = (canvas.parentElement?.clientWidth || 0) - 32
+    canvas.height = (canvas.parentElement?.clientHeight || 0) - 32
     console.log(window.devicePixelRatio)
     camera.aspect = canvas.width / canvas.height
     camera.updateProjectionMatrix()

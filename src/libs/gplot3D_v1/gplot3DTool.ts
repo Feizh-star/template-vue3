@@ -2,12 +2,16 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { FontLoader } from 'three/addons/loaders/FontLoader.js'
 
+let gLTFLoaderObject: any = null
 export function loadGltfModel<T>(
   modelSrc: string,
   process?: (xhr: XMLHttpRequest) => void
 ): Promise<T> {
+  if (!gLTFLoaderObject) {
+    gLTFLoaderObject = new GLTFLoader()
+  }
   return new Promise((resolve, reject) => {
-    new GLTFLoader().load(
+    gLTFLoaderObject.load(
       modelSrc,
       (gltf: T) => {
         resolve(gltf)
@@ -76,8 +80,9 @@ export function getElInnerSize(el: HTMLElement) {
 /* 更新鼠标位置 */
 export function updateMousePosition(mouse: THREE.Vector2, event: Event, canvas: HTMLCanvasElement) {
   const mevent = event as MouseEvent
-  mouse.x = ((mevent.clientX - canvas.getBoundingClientRect().left) / canvas.clientWidth) * 2 - 1
-  mouse.y = -((mevent.clientY - canvas.getBoundingClientRect().top) / canvas.clientHeight) * 2 + 1
+  const canvasRect = canvas.getBoundingClientRect()
+  mouse.x = ((mevent.clientX - canvasRect.left) / canvasRect.width) * 2 - 1
+  mouse.y = -((mevent.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
 }
 
 export function disposeModel(node: THREE.Object3D): void {
@@ -269,10 +274,14 @@ export function throttle<T extends (...args: any[]) => void>(func: T, wait: numb
   }
 }
 
+let fontLoaderObject: any = null
 /* 加载字体 */
 export function loadFont(url: string, process?: (xhr: XMLHttpRequest) => void) {
+  if (!fontLoaderObject) {
+    fontLoaderObject = new FontLoader()
+  }
   return new Promise((resolve, reject) => {
-    new FontLoader().load(
+    fontLoaderObject.load(
       url,
       function (font: any) {
         resolve(font)

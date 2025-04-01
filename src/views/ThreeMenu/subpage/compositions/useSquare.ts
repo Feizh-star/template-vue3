@@ -1,7 +1,6 @@
 import type { Ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { KMZLoader } from 'three/addons/loaders/KMZLoader.js'
 import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
@@ -9,7 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createGradient, hexToRgb, rgbNormalized } from '@/utils/colorGradient'
 
 export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
-  let camera, scene, renderer
+  let camera: THREE.PerspectiveCamera, scene: THREE.Scene, renderer: THREE.WebGLRenderer
 
   onMounted(() => {
     init()
@@ -66,7 +65,7 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
     const loader = new GLTFLoader()
     loader.load(
       new URL('../assets/robot_playground.glb', import.meta.url).href,
-      function (gltf) {
+      function (gltf: any) {
         console.log(gltf)
         gltf.scene.scale.set(5, 5, 5)
         gltf.scene.rotation.set(0, 0, 0)
@@ -77,7 +76,7 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
         action.play()
       },
       undefined,
-      function (error) {
+      function (error: Error) {
         console.error(error)
       }
     )
@@ -122,6 +121,7 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
     const flowingLine = addFlowingLine(scene, points)
 
     function animate() {
+      if (!canvas) return
       // 一定要在此函数中调用
       if (flowingLine) flowingLine.update()
       trackLineMaterial.resolution.set(canvas.width, canvas.height)
@@ -144,8 +144,8 @@ export function useSquare({ el }: { el: Ref<HTMLCanvasElement | null> }) {
   function onWindowResize() {
     const canvas = el.value
     if (!canvas) return
-    canvas.width = canvas.parentElement.clientWidth - 32
-    canvas.height = canvas.parentElement.clientHeight - 32
+    canvas.width = (canvas.parentElement?.clientWidth || 0) - 32
+    canvas.height = (canvas.parentElement?.clientHeight || 0) - 32
     console.log(window.devicePixelRatio)
     camera.aspect = canvas.width / canvas.height
     camera.updateProjectionMatrix()

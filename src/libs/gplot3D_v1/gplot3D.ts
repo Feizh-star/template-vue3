@@ -100,6 +100,7 @@ export interface IGplot3DOption {
     enablePan: boolean
     enableRotate: boolean
     enableZoom: boolean
+    initialTarget: { x: number; y: number; z: number }
     mouseButtons: {
       LEFT: THREE.MOUSE
       MIDDLE: THREE.MOUSE
@@ -141,6 +142,7 @@ const defaultOption: IGplot3DOption = {
     enablePan: true,
     enableRotate: true,
     enableZoom: true,
+    initialTarget: { x: 0, y: 0, z: 0 },
     mouseButtons: {
       LEFT: THREE.MOUSE.PAN,
       MIDDLE: THREE.MOUSE.DOLLY,
@@ -189,7 +191,7 @@ export class Gplot3D {
     this.initOrbitControls()
 
     this.render()
-    this.animate()
+    this.startAnimation()
   }
   private render() {
     if (!this.renderer || !this.scene || !this.camera) {
@@ -274,7 +276,7 @@ export class Gplot3D {
     if (!canvas) return
     const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas })
     renderer.setPixelRatio(this.devicePixelRatio)
-    renderer.setSize(canvas.width / this.devicePixelRatio, canvas.height / this.devicePixelRatio)
+    renderer.setSize(canvas.width, canvas.height)
     this.renderer = renderer
   }
   /* 初始化轨道 */
@@ -284,10 +286,12 @@ export class Gplot3D {
     const camera = this.camera
     const { controls: controlsOpt } = this.option
     const controls = new OrbitControls(camera, canvas)
+    const { x: tx, y: ty, z: tz } = controlsOpt.initialTarget
     controls.enablePan = controlsOpt.enablePan
     controls.enableRotate = controlsOpt.enableRotate
     controls.enableZoom = controlsOpt.enableZoom
     controls.mouseButtons = controlsOpt.mouseButtons
+    controls.target = new THREE.Vector3(tx, ty, tz)
     controls.addEventListener('change', () => {
       this.render()
     })
@@ -304,6 +308,14 @@ export class Gplot3D {
     const { width, height } = setCanvasSize(el, canvas)
     camera.aspect = width / height
     camera.updateProjectionMatrix()
+    if (window.devicePixelRatio !== this.devicePixelRatio) {
+      this.devicePixelRatio = window.devicePixelRatio
+      this.renderer.setPixelRatio(this.devicePixelRatio)
+      this.flowLines.forEach((item) => {
+        item.resizeLine(this.devicePixelRatio)
+      })
+      this.resizeRails(this.devicePixelRatio)
+    }
     this.renderer.setSize(width, height)
   }
   private registeResize() {
@@ -317,24 +329,30 @@ export class Gplot3D {
     if (this.observer) this.observer.disconnect()
   }
 
-  private rafId!: number | null
-  private animate() {
-    if (this.flowEffectUpdate) this.flowEffectUpdate()
+  /* 处理动画循环 */
+  private clock!: THREE.Clock
+  private deltaTime: number = 0
+  private startAnimation() {
+    if (!this.clock) this.clock = new THREE.Clock()
+    this.renderer.setAnimationLoop(() => {
+      this.deltaTime = this.clock.getDelta()
+      this.tick()
+    })
+  }
+  private stopAnimation() {
+    this.renderer.setAnimationLoop(null)
+  }
+  private tick() {
+    this.flowLines.forEach((item) => {
+      item.effectRun(this.deltaTime)
+    })
     this.gltfNodes.forEach((item) => {
-      this.gltfNodesAnimationMixer.get(item)?.update()
+      this.gltfNodesAnimationMixer.get(item)?.update(this.deltaTime)
     })
     this.render()
-    // console.log('camera.position', this.camera.position)
-    this.rafId = requestAnimationFrame(() => {
-      this.animate()
-    })
   }
-  private cancelAnimate() {
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId)
-      this.rafId = null
-    }
-  }
+
+  /* 添加字体文件 */
   public addFont(name: string, url: string) {
     return loadFont(url).then((font) => {
       this.fontMap.set(name, font)
@@ -389,7 +407,7 @@ export class Gplot3D {
     this.removeGltfNodes()
     this.removeAllRails()
     this.cancelResize()
-    this.cancelAnimate()
+    this.stopAnimation()
     this.removeAllMouseEvent()
     this.clearFont()
     this.option.el?.removeChild(this.domElement)
@@ -466,28 +484,25 @@ export class Gplot3D {
    */
   private flowLines: FlowLine3D[] = []
   private flowLinesMap: WeakMap<FlowLine3D, DeepPartial<IFlowLineItem>> = new WeakMap()
-  private flowEffectUpdate!: (() => void) | null
   public addFlowLines(lineData: DeepPartial<IFlowLineItem>[]) {
     if (!this.scene || !this.domElement) return this
     this.flowLines = lineData.map((l) => {
       if (l.id && this.getFlowLineById(l.id)) {
         this.removeFlowLineById(l.id) // 如果此id已存在，则销毁重建
       }
-      const flowLine = new FlowLine3D({ ...l, canvas: this.domElement }).addTo(this.scene)
+      const flowLine = new FlowLine3D({
+        ...l,
+        canvas: this.domElement,
+        devicePixelRatio: this.devicePixelRatio,
+      }).addTo(this.scene)
       this.flowLinesMap.set(flowLine, l)
       return flowLine
     })
-    this.flowEffectUpdate = throttle(() => {
-      this.flowLines.forEach((item) => {
-        item.effectRun()
-      })
-    }, 16.7)
     return this
   }
   public removeFlowLines() {
     this.flowLines.forEach((item) => item.destory())
     this.flowLines = []
-    this.flowEffectUpdate = null
     return this
   }
   public getFlowLineById(id: number) {
@@ -504,9 +519,6 @@ export class Gplot3D {
     if (flowLine) {
       this.flowLines.splice(index, 1)
       flowLine.destory()
-    }
-    if (this.flowLines.length === 0) {
-      this.flowEffectUpdate = null
     }
     return this
   }
@@ -538,6 +550,17 @@ export class Gplot3D {
    */
   private railLine: Line2[] = []
   private railLineTextMap: Map<Line2, THREE.Mesh[]> = new Map()
+  private railLineDataMap: WeakMap<Line2, IRailItem> = new WeakMap()
+  /* 当devicePixelRatio变化时更新line2的宽度 */
+  private resizeRails(dpr: number) {
+    this.railLine.forEach((item) => {
+      const railLineOpt = this.railLineDataMap.get(item)
+      if (railLineOpt) {
+        ;(item.material as LineMaterial).linewidth =
+          (railLineOpt.lineMaterial?.linewidth ?? 1) / dpr
+      }
+    })
+  }
   public addRails(rails: IRailItem[]) {
     if (!this.scene || !this.domElement) return this
     this.railLine = rails.map((item) => {
@@ -551,7 +574,7 @@ export class Gplot3D {
         hexString2Number(lineMaterialOpt?.color || '#fffff')
       )
       trackLineMaterial.dashed = lineMaterialOpt?.dashed ?? true
-      trackLineMaterial.linewidth = lineMaterialOpt?.linewidth ?? 1
+      trackLineMaterial.linewidth = (lineMaterialOpt?.linewidth ?? 1) / this.devicePixelRatio
       trackLineMaterial.resolution.set(this.domElement.width, this.domElement.width)
 
       const line = new Line2(trackLine, trackLineMaterial)
@@ -560,6 +583,7 @@ export class Gplot3D {
       if (typeof text?.content === 'string' && positions) {
         this.railLineTextMap.set(line, this.setText(positions[relative || 0] || positions[0], text))
       }
+      this.railLineDataMap.set(line, item)
       return line
     })
     return this
@@ -819,9 +843,7 @@ export class Gplot3D {
  * 简单模型动画管理器
  */
 class AnimationMixerUpdater {
-  private clock: THREE.Clock = new THREE.Clock()
   private mixer: THREE.AnimationMixer
-  private previousTime: number = 0
   private animateClip: { clip: THREE.AnimationClip; action: THREE.AnimationAction }[] = []
   constructor(gltfModel: IGltfLoaderResult) {
     this.mixer = new THREE.AnimationMixer(gltfModel.scene)
@@ -831,12 +853,9 @@ class AnimationMixerUpdater {
       this.animateClip.push({ clip, action })
     })
   }
-  public update() {
+  public update(dt: number) {
     if (!this.mixer) return this
-    const elapsedTime = this.clock.getElapsedTime()
-    const deltaTime = elapsedTime - this.previousTime
-    this.previousTime = elapsedTime
-    this.mixer.update(deltaTime)
+    this.mixer.update(dt)
     return this
   }
   public distory() {

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { doubleTrackByLine } from '@/libs/doubleTrackByLine/doubleTrackByLine'
-// import { Gplot3D } from '@/libs/gplot3D/gplot3D'
-import { Gplot3D } from '@/views/MapLibre/subpage/ExtendThree/lib/Gplot3D/Gplot3D'
-import type { IRailItem } from '@/libs/gplot3D/gplot3D'
-import type { IFlowLineItem } from '@/libs/gplot3D/flowLine3D'
+import { Gplot3D } from '@/libs/gplot3D/Gplot3D/Gplot3D'
 
 const renderEl = ref<HTMLElement | null>(null)
 const tooltipEl = ref<HTMLElement | null>(null)
@@ -967,7 +964,7 @@ function testGplot3D() {
   gplot.value
     .addFont('font1', new URL('./font/Microsoft_YaHei_Regular.json', import.meta.url).href)
     .then(() => {
-      gplot.value?.addGltfNodes(modelNodes)
+      gplot.value?.addGltfNodes(modelNodes as any)
       gplot.value?.onGltfNodes('mousemove', (type, e, models, datas) => {
         if (!tooltipEl.value || !renderEl.value || !datas[0]?.common?.name) return
         const mevent = e as MouseEvent
