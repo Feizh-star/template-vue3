@@ -1,6 +1,10 @@
-# template-vue3
+# threejs 分支
 
-This template should help get you started developing with Vue 3 in Vite.
+threejs 功能研究，maplibre-gl-js 功能研究，在地图上展示 threejs 特效.
+
+## 版本说明
+
+libs 目录下的 gplot3D_v1 是旧版本（仅包含 threejs 场景），gplot3D 是新版本（threejs 特效与场景分离）
 
 ## Recommended IDE Setup
 
@@ -13,8 +17,8 @@ TypeScript cannot handle type information for `.vue` imports by default, so we r
 If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
 
 1. Disable the built-in TypeScript Extension
-    1) Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
+   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
+   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
 2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
 
 ## Customize configuration
