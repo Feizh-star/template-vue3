@@ -102,11 +102,11 @@ async function init(el: HTMLElement) {
   const lines = getModelStraightLink(models.map((item) => item.position))
   const rails = getAreaRails(models.map((item) => item.position))
 
+  gplot3DLayer.addFlowLinesLnglat(lines)
   await gplot3DLayer.addFont(
     'font1',
-    new URL('./font/Microsoft_YaHei_Regular.json', import.meta.url).href
+    new URL('./font/Microsoft_YaHei_Regular_2500.json', import.meta.url).href
   )
-  gplot3DLayer.addFlowLinesLnglat(lines)
   gplot3DLayer.addGltfNodesLngLat(models)
   gplot3DLayer.addRailsLngLat(rails)
   gplot3DLayer.onGltfNodes('mousemove', (type, e, models, datas) => {
