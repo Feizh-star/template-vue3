@@ -91,7 +91,7 @@
         "children": [
           {
             "path": "subpage1",
-            "component": "CustomSubMenu/subpage/Page1.vue",
+            "component": "CustomSubMenu/subpage/ThreeFont.vue",
             "meta": {
               "title": "提取字体",
               "hidden": false,

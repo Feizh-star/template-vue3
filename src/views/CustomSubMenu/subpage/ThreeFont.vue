@@ -4,7 +4,7 @@ import {
   decompressFromUint8Array,
 } from '@/libs/gplot3D/tools/pickCharacter/pickCharacter'
 import { symbol, character3500, character2500 } from '@/libs/gplot3D/tools/pickCharacter/presetFont'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Link } from '@element-plus/icons-vue'
 
 const characterTypeList = [
   { value: '3500', label: '3500常用字', character: character3500 },
@@ -89,7 +89,7 @@ function getDownloadFilename(filename: string, compress: boolean) {
         drag
         :disabled="!textarea"
         :show-file-list="false"
-        accept=".json"
+        accept=".json,.gz"
         :on-change="beforeUpload"
       >
         <el-icon class="el-icon--upload"><Plus /></el-icon>
@@ -99,6 +99,13 @@ function getDownloadFilename(filename: string, compress: boolean) {
       </el-upload>
     </div>
     <div class="control-area">
+      <div class="help-website">
+        <div class="link">
+          <a href="https://gero3.github.io/facetype.js/" target="_blank">
+            <el-icon><Link /></el-icon>&ensp;字体文件转json
+          </a>
+        </div>
+      </div>
       <el-form inline>
         <el-form-item>
           <el-radio-group v-model="characterType">
@@ -159,6 +166,19 @@ function getDownloadFilename(filename: string, compress: boolean) {
       .el-radio-group {
         .el-radio {
           margin-right: 12px;
+        }
+      }
+    }
+    .help-website {
+      padding: 4px;
+      .link {
+        padding-bottom: 4px;
+        display: flex;
+        align-items: center;
+        > a {
+          font-size: 12px;
+          text-decoration: none;
+          color: var(--el-color-primary);
         }
       }
     }
