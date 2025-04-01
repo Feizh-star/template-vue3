@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { FontLoader } from 'three/addons/loaders/FontLoader.js'
+import { decompressGZipFont } from './pickCharacter/pickCharacter'
 
 let gLTFLoaderObject: any = null
 export function loadGltfModel<T>(
@@ -147,15 +148,25 @@ export function loadFont(url: string, process?: (xhr: XMLHttpRequest) => void) {
     fontLoaderObject = new FontLoader()
   }
   return new Promise((resolve, reject) => {
-    fontLoaderObject.load(
-      url,
-      function (font: any) {
-        resolve(font)
-      },
-      process,
-      (error: any) => {
-        reject(error)
-      }
-    )
+    if (url.endsWith('.json')) {
+      fontLoaderObject.load(
+        url,
+        function (font: any) {
+          resolve(font)
+        },
+        process,
+        (error: any) => {
+          reject(error)
+        }
+      )
+    } else {
+      decompressGZipFont(url)
+        .then((json) => {
+          resolve(fontLoaderObject.parse(json))
+        })
+        .catch((error) => {
+          reject(error)
+        })
+    }
   })
 }

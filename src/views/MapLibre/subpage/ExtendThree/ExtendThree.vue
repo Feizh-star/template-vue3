@@ -105,7 +105,7 @@ async function init(el: HTMLElement) {
   gplot3DLayer.addFlowLinesLnglat(lines)
   await gplot3DLayer.addFont(
     'font1',
-    new URL('./font/Microsoft_YaHei_Regular_2500.json', import.meta.url).href
+    new URL('./font/Microsoft_YaHei_Regular_3500.gz', import.meta.url).href
   )
   gplot3DLayer.addGltfNodesLngLat(models)
   gplot3DLayer.addRailsLngLat(rails)
