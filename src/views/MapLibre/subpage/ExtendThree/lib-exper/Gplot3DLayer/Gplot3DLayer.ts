@@ -131,13 +131,17 @@ export class Gplot3DLayer extends Gplot3DEffect implements maplibregl.CustomLaye
 
     const scale = sceneOriginMercator.meterInMercatorCoordinateUnits()
 
-    const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix)
-    const l = new THREE.Matrix4()
+    // maplibre的球面墨卡托坐标系下的视图投影矩阵
+    const viewProjectionOfMercator = new THREE.Matrix4().fromArray(
+      args.defaultProjectionData.mainMatrix
+    )
+    // 将threejs世界（看作一个整体的模型）变换到墨卡托投影指定大小、角度和位置的模型矩阵
+    const modelOfThreeCoordinate = new THREE.Matrix4()
       .makeTranslation(sceneOriginMercator.x, sceneOriginMercator.y, sceneOriginMercator.z)
       .multiply(rotationX)
       .scale(new THREE.Vector3(scale, scale, -scale))
-
-    this.camera.projectionMatrix = m.multiply(l)
+    // 最终得到threejs的视图投影矩阵
+    this.camera.projectionMatrix = viewProjectionOfMercator.multiply(modelOfThreeCoordinate)
     this.renderer.resetState()
     this.tickEffect()
     this.map.triggerRepaint()
