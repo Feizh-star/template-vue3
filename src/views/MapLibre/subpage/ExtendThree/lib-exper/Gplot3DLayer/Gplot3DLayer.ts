@@ -134,8 +134,8 @@ export class Gplot3DLayer extends Gplot3DEffect implements maplibregl.CustomLaye
     const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix)
     const l = new THREE.Matrix4()
       .makeTranslation(sceneOriginMercator.x, sceneOriginMercator.y, sceneOriginMercator.z)
-      .scale(new THREE.Vector3(scale, -scale, scale))
       .multiply(rotationX)
+      .scale(new THREE.Vector3(scale, scale, -scale))
 
     this.camera.projectionMatrix = m.multiply(l)
     this.renderer.resetState()
