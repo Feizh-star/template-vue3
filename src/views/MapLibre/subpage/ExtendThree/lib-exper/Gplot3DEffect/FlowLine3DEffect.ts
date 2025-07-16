@@ -66,7 +66,7 @@ export class FlowLine3DEffect {
   public get lineMaterial() {
     return this.lineMaterialIns
   }
-  constructor(option: IFlowLineItem) {
+  constructor(option: IFlowLineClassItem) {
     this.option = lodashLib.merge(lodashLib.cloneDeep(defaultOption), option)
     this.setId()
     this.initFlowLine()

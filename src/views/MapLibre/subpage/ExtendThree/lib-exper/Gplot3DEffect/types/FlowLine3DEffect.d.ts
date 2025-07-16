@@ -25,4 +25,4 @@ interface IFlowLine3DEffectOption {
   }
 }
 
-type IFlowLineItem = DeepPartial<IFlowLine3DEffectOption>
+type IFlowLineClassItem = DeepPartial<IFlowLine3DEffectOption>
