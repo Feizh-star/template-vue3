@@ -107,7 +107,6 @@ export default {
       :key="index"
       :menu-item="item"
       :parent-path="resolvePath(menuItem)"
-      submenu-popper-class="header-menu-popper"
     />
   </el-sub-menu>
 </template>
