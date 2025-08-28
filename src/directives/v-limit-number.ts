@@ -59,7 +59,7 @@ function init(inputEl: HTMLInputElement, bindingArgs: BindingOption) {
       p: bindingArgs.p,
       min: bindingArgs.min,
       max: bindingArgs.max,
-      changeError: bindingArgs.changeError
+      changeError: bindingArgs.changeError,
     })
     inputEl.addEventListener('input', inputHandler)
     inputEl.addEventListener('change', changeHandler)
@@ -72,14 +72,19 @@ function inputHandler(e: Event) {
   const { data, key, type } = inputInfo
   let p = inputInfo.p
   p = p === undefined ? p : p < 1 ? 1 : p
-  const floatReg = new RegExp(`^[+-]?\\d*(\\.\\d${p ? `{0,${p}}` : '*'})?$`)
-  const intReg = new RegExp(`^[+-]?\\d*$`)
+  const floatRegStr = `^[+-]?\\d*(\\.\\d${p ? `{0,${p}}` : '*'})?`
+  const floatReg = new RegExp(`${floatRegStr}$`)
+  const failFloatReg = new RegExp(`(${floatRegStr}).+$`) // oldValue为空时，把value截断为最短符合值，而不是清空
+  const intRegStr = `^[+-]?\\d*`
+  const intReg = new RegExp(`${intRegStr}$`)
+  const failIntReg = new RegExp(`(${intRegStr})[^\\d].*$`) // oldValue为空时，把value截断为最短符合值，而不是清空
   const oldValue = inputInfo.oldValue || ''
   const reg = type === 'int' ? intReg : floatReg
+  const failReg = type === 'int' ? failIntReg : failFloatReg
   if (reg.test(value)) {
     data[key] = value
   } else {
-    data[key] = oldValue
+    data[key] = oldValue || (oldValue as any) === 0 ? oldValue : value.replace(failReg, '$1')
   }
   inputInfo.oldValue = data[key]
 }
