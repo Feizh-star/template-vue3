@@ -89,7 +89,7 @@ export default defineComponent({
           if (Object.prototype.toString.call(headerFormatter) === '[object Function]') {
             return headerFormatter(h, { ...column, deps: props.deps }, scope)
           } else {
-            return <span>{column.props?.label || ''}</span>
+            return <div>{column.props?.label || ''}</div>
           }
         }
         const scopedSlots = {
@@ -122,8 +122,11 @@ export default defineComponent({
       },
     }
     return () =>
-      withDirectives(h(ElTable, { ...attrs, key: tableKey.value }, tableScopedSlots), [
-        [resolveDirective('loading'), showLoading.value], // loading指令
-      ])
+      withDirectives(
+        h(ElTable, { ...attrs, ref: 'eltable', key: tableKey.value }, tableScopedSlots),
+        [
+          [resolveDirective('loading'), showLoading.value], // loading指令
+        ]
+      )
   },
 })

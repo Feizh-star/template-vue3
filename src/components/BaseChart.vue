@@ -16,8 +16,10 @@ const emits = defineEmits<{
 /* eslint-enable */
 
 const chartEl = ref<HTMLElement>()
+
 const chart = shallowReactive({
   echart: null as echarts.ECharts | null,
+  observerHandler: null as ReturnType<typeof useResizeObserver> | null,
 })
 
 watch(
@@ -33,6 +35,10 @@ onMounted(() => {
   init()
   resizeObserver()
 })
+onBeforeUnmount(() => {
+  destoryChart()
+  chart.observerHandler?.stop()
+})
 
 function init() {
   if (!chartEl.value || !chartEl.value?.clientHeight || !chartEl.value?.clientWidth) return
@@ -40,13 +46,24 @@ function init() {
   props.options && chart.echart.setOption(props.options)
   emits('data-change', chart.echart as echarts.ECharts, props.data, props.data, props.options)
 }
+function destoryChart() {
+  chart.echart?.dispose()
+}
+
+watch(
+  () => props.options,
+  () => {
+    destoryChart()
+    init()
+  }
+)
 
 // 监听图表容器尺寸变化
 function resizeObserver() {
   if (!chartEl.value) return
   let oldWidth = ''
   let oldHeight = ''
-  useResizeObserver(chartEl.value, (entries) => {
+  chart.observerHandler = useResizeObserver(chartEl.value, (entries) => {
     const entry = entries[0]
     const { width, height } = entry.contentRect
     const widthStr = width.toFixed(0)
