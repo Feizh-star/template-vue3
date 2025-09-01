@@ -37,14 +37,14 @@ export const menuRouters: IOriginRoute[] = [
     path: '/custommenu',
     component: 'CustomMenu/Index.vue',
     meta: {
-      title: '自定义首级子目录',
+      title: '自定义组件目录',
       hidden: false,
       alwaysShow: false,
       isLeaf: true,
       icon: {
         type: 'img',
         value: img1,
-        valueSel: img2
+        valueSel: img2,
       },
     },
     children: [
@@ -52,7 +52,7 @@ export const menuRouters: IOriginRoute[] = [
         path: 'cusmenupage1',
         component: 'CustomMenu/subpage/Page1.vue',
         meta: {
-          title: '自定义子级菜单1',
+          title: '自定义组件',
           hidden: false,
           icon: {
             type: 'class',
@@ -64,7 +64,7 @@ export const menuRouters: IOriginRoute[] = [
         path: 'cusmenupage2',
         component: 'CustomMenu/subpage/Page2.vue',
         meta: {
-          title: '自定义子级菜单2',
+          title: '宽高比组件',
           hidden: false,
           icon: {
             type: 'class',
@@ -97,7 +97,7 @@ export const menuRouters: IOriginRoute[] = [
           icon: {
             type: 'img',
             value: img1,
-            valueSel: img2
+            valueSel: img2,
           },
         },
         children: [

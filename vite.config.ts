@@ -15,7 +15,14 @@ export default defineConfig(({ command, mode }) => {
   return {
     base: env.VITE_APP_BASE_URL,
     plugins: [
-      vue(),
+      vue({
+        template: {
+          compilerOptions: {
+            // 将所有带短横线的标签名都视为自定义元素
+            isCustomElement: (tag) => tag.startsWith('customel-'),
+          },
+        },
+      }),
       vueJsx(),
       AutoImport({
         dts: 'auto-imports.d.ts', // 自动导入生成的声明文件名称，要写在tsconfig[.app].json的include包含进去

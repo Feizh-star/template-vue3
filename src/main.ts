@@ -13,6 +13,8 @@ import { defaultStylePlugin } from '@/style/variables' // 全局默认样式
 
 import 'leaflet/dist/leaflet.css'
 
+import '@/components/customel-keep-proportion'
+
 const app = createApp(App)
 
 app.use(createPinia())
