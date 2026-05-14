@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-// import { Gplot3DLayer } from '@/libs/gplot3D/Gplot3DLayer/Gplot3DLayer'
-import { Gplot3DLayer } from './lib-exper/Gplot3DLayer/Gplot3DLayer'
-import { getModelNodes, getModelStraightLink, getAreaRails } from './test-data'
 
 const mapRef = ref<HTMLElement | null>(null)
-const tooltipEl = ref<HTMLElement | null>(null)
 onMounted(() => {
   if (!mapRef.value) return
   init(mapRef.value)
@@ -18,30 +14,40 @@ async function init(el: HTMLElement) {
   const map = new maplibregl.Map({
     container: el,
     center: mapCenter, // starting position
-    zoom: 15, // starting zoom
-    maxZoom: 17,
+    zoom: 16, // starting zoom
+    maxZoom: 20,
     pitch: 0,
     canvasContextAttributes: { antialias: true },
     style: {
       version: 8,
       sources: {
-        // 1. 低分辨率卫星底图（原生切片 zoom 0~11，但 zoom 超过 11 时允许模糊放大）
+        // 1. 低分辨率卫星底图（原生切片 zoom 0~17）
         satellite: {
           type: 'raster',
           tiles: [
             'http://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=42139ec25fe7ae771affe917de5c9ecf',
           ],
-          maxzoom: 17,
+          maxzoom: 17, // 假设这是瓦片的最大放大范围
           tileSize: 256,
         },
-        // 2. 标注（同样原生 zoom 0~11，zoom 超过 11 时放大显示）
+        // 2. 标注（同样原生 zoom 0~17）
         labels: {
           type: 'raster',
           tiles: [
             // 假设标注瓦片的 URL 格式与卫星底图类似
             'http://t0.tianditu.gov.cn/cia_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=42139ec25fe7ae771affe917de5c9ecf',
           ],
-          maxzoom: 17,
+          maxzoom: 17, // 假设这是瓦片的最大放大范围
+          tileSize: 256,
+        },
+        // 3. 高清卫星底图（局部区域，原生切片 zoom 14~20）
+        satellite_hd: {
+          type: 'raster',
+          scheme: 'tms',
+          tiles: [
+            // 假设高清瓦片 URL 格式与前两者一致，只是路径不同
+            'http://localhost/cangzhoudianchang/{z}/{x}/{y}.png',
+          ],
           tileSize: 256,
         },
       },
@@ -52,7 +58,7 @@ async function init(el: HTMLElement) {
           type: 'raster',
           source: 'satellite',
           minzoom: 0,
-          maxzoom: 17.1,
+          maxzoom: 20.1, // 值等于高清图层的maxzoom，zoom 超过 17 时允许模糊放大
           paint: {
             'raster-resampling': 'linear', // 线性插值，保证放大时平滑模糊效果
           },
@@ -63,57 +69,39 @@ async function init(el: HTMLElement) {
           type: 'raster',
           source: 'labels',
           minzoom: 0,
-          maxzoom: 17.1,
+          maxzoom: 20.1, // 值等于高清图层的maxzoom，zoom 超过 17 时允许模糊放大
           paint: {
             'raster-resampling': 'linear',
           },
+        },
+        // // 高清卫星底图图层：仅在 zoom 11～18 时显示
+        {
+          id: 'satellite-hd-layer',
+          type: 'raster',
+          source: 'satellite_hd',
+          minzoom: 17, // zoom小于17就不显示这个图层了
+          maxzoom: 20.1, // 要比期望的最大缩放略大一点点，这个maxzoom好像是不包含最大值的，如果等于20会白屏
+          paint: {
+            'raster-resampling': 'linear',
+          },
+          // 若高清瓦片只在局部区域有效，可通过设置 bounds 属性限制其显示范围
         },
       ],
     },
   })
 
   await map.once('load')
-  const gplot3DLayer = new Gplot3DLayer({
-    origin: mapCenter,
-    axesHelper: {
-      enable: false,
-    },
-  })
-  map.addLayer(gplot3DLayer)
-  const models = getModelNodes(mapCenter)
-  const lines = getModelStraightLink(models.map((item) => item.position))
-  const rails = getAreaRails(models.map((item) => item.position))
 
-  gplot3DLayer.addFlowLinesLnglat(lines)
-  await gplot3DLayer.addFont(
-    'font1',
-    new URL('./font/Microsoft_YaHei_Regular_3500.gz', import.meta.url).href
-  )
-  gplot3DLayer.addGltfNodesLngLat(models)
-  gplot3DLayer.addRailsLngLat(rails)
-  gplot3DLayer.onGltfNodes('mousemove', (type, e, models, datas) => {
-    if (!tooltipEl.value || !mapRef.value || !datas[0]?.common?.name) return
-    const mevent = e as MouseEvent
-    const left = mevent.clientX - mapRef.value.getBoundingClientRect().left
-    const top = mevent.clientY - mapRef.value.getBoundingClientRect().top
-    tooltipEl.value.style.transform = `translate(${left + 16}px, ${top + 16}px)`
-    tooltipEl.value.innerText = datas[0]?.common?.name || ''
+  map.on('zoomend', () => {
+    console.log('zoom', map.getZoom())
   })
-  gplot3DLayer?.onGltfNodes('mouseenter', (type, e, models, datas) => {
-    if (!tooltipEl.value || !datas[0]?.common?.name) return
-    tooltipEl.value.style.display = `block`
-  })
-  gplot3DLayer?.onGltfNodes('mouseleave', (type, e, models, datas) => {
-    if (!tooltipEl.value || !datas[0]?.common?.name) return
-    tooltipEl.value.style.display = `none`
-  })
+  console.log('map-loaded')
 }
 </script>
 
 <template>
   <div class="component-class">
     <div class="map" ref="mapRef"></div>
-    <div class="tooltip" ref="tooltipEl">123</div>
   </div>
 </template>
 
@@ -126,17 +114,6 @@ async function init(el: HTMLElement) {
   > .map {
     width: 100%;
     height: 100%;
-  }
-  .tooltip {
-    position: absolute;
-    display: none;
-    pointer-events: none;
-    padding: 8px;
-    top: 16px;
-    left: 16px;
-    background-color: #011a42;
-    color: #ffffff;
-    border: 1px solid #0a69d5;
   }
 }
 </style>

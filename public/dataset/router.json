@@ -141,6 +141,19 @@
             "value": "Female"
           }
         }
+      },
+      {
+        "path": "partialhdtile",
+        "component": "MapLibre/subpage/PartialHdTile/PartialHdTile.vue",
+        "meta": {
+          "title": "局部高清瓦片",
+          "hidden": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
       }
     ]
   },
