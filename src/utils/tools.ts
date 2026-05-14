@@ -150,3 +150,17 @@ export function customFlat(arr: any[], depth = 1): any[] {
     return acc
   }, [])
 }
+
+/**
+ * 判断一个数字是否为有效的数值
+ * @param value
+ * @returns '' null undefined NaN false；number之外的类型； special给定的特殊空值列表包含value（使用==判断相等）--> true
+ */
+export function isEffectiveNumber(value: any, special: any[] = [999999, -999]): value is number {
+  try {
+    value = parseFloat(value)
+  } catch (error) {
+    /* empty */
+  }
+  return (value || value === 0) && typeof value === 'number' && special.every((sv) => sv != value)
+}

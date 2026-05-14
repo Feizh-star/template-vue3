@@ -154,6 +154,19 @@
             "value": "Female"
           }
         }
+      },
+      {
+        "path": "typhoon",
+        "component": "MapLibre/subpage/SelfMap/SelfMap.vue",
+        "meta": {
+          "title": "台风",
+          "hidden": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
       }
     ]
   },

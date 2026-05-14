@@ -1,0 +1,70 @@
+.cyd-map-baseCanvas,.cyd-map{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+.cyd-map-glCanvas{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+.cyd-map-uparCanvas{
+position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+/* .cyd-map-uparGl{
+position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+} */
+.cyd-map-ps{
+position: absolute;
+top: 20px;
+left: 20px;
+/* width: 120px; */
+line-height: 40px;
+background: rgba(100,100,100,0.3);
+font-weight: bold;
+border-radius: 5px;
+padding: 0px 10px;
+font-size: 20px;
+z-index: 1000;
+}
+.cyd-ele-content-min{
+position: absolute;
+left: 0;
+top: 0;
+transform: translate(-1000px,0);
+pointer-events: none;
+width: 0;
+height: 0;
+}
+.cyd-ele-content {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  /* overflow: hidden; */
+}
+/* .cyd-ele-content>img{
+    position: absolute;
+    left: -1000px;
+    top: 100px;
+} */

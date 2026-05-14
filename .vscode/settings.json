@@ -20,5 +20,6 @@
     "source.fixAll.eslint": "explicit"
   },
   "files.eol": "\n",
-  "editor.tabSize": 2
+  "editor.tabSize": 2,
+  "js/ts.tsdk.path": "node_modules\\typescript\\lib"
 }

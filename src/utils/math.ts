@@ -159,3 +159,13 @@ export function genColorIndicators(min: number, max: number, colors = colorsList
   }
   return res.reverse()
 }
+
+/**
+ * 四舍五入保留n位小数
+ */
+export function numberFixed(num: any, p = 0, defaultValue = 0) {
+  const parsedNumber = parseFloat(num)
+  if (isNaN(parsedNumber)) return defaultValue
+  const factor = Math.pow(10, p)
+  return Math.round(parsedNumber * factor) / factor
+}
