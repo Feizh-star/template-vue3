@@ -178,5 +178,6 @@ export function lnglatToWorldInMercator(
     centerMercator,
     pointMercator
   )
-  return [east, up, -north] as [number, number, number] // east => x, up => y, -north => z
+  // east => x, up => y, -north => z，这里的xyz还是threejs中的坐标系（x轴朝东，y轴朝上，z轴朝南），在render中经过绕x轴逆时针旋转90度（x轴朝东，y轴朝南，z轴朝下），再对z取反，才变换到maplibre坐标系（x轴朝东，y轴朝南，z轴朝上）
+  return [east, up, -north] as [number, number, number]
 }
