@@ -10,6 +10,7 @@ export {}
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
     BaseChart: typeof import('./src/components/BaseChart.vue')['default']
+    CollapsibleTimeline: typeof import('./src/components/CollapsibleTimeline/CollapsibleTimeline.vue')['default']
     ElBreadcrumb: typeof import('element-plus/es')['ElBreadcrumb']
     ElBreadcrumbItem: typeof import('element-plus/es')['ElBreadcrumbItem']
     ElButton: typeof import('element-plus/es')['ElButton']

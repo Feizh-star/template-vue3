@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import type { IMapInstance } from 'hxmap'
+import CollapsibleTimeline from '@/components/CollapsibleTimeline/CollapsibleTimeline.vue'
+import type { IMapInstance, IMapInstance2 } from 'hxmap'
 import { Map as HxMap, TileLayer } from 'hxmap'
 import { shallowRef, onMounted } from 'vue'
-import type { IMapInstance2 } from 'hxmap'
-import { homeTyphoonManager } from '@/compositions/typhoon/index'
 import './style/hxmap.css'
-// @ts-ignore
-import TyphoonDatas from './data/typhoon.json'
+import { useTyphoon } from './compositions/useTyphoon'
+import { useStainImg } from './compositions/useStainImg'
 
 const mapInstance = shallowRef<IMapInstance | null>(null)
 onMounted(() => {
@@ -25,14 +24,9 @@ onMounted(() => {
   }).addTo(mapInstance.value)
 })
 
-const testTyphoon = (type: number) => {
-  if (type === 1) {
-    homeTyphoonManager.addHomeTyphoons(mapInstance.value as IMapInstance2, TyphoonDatas, true)
-  }
-  if (type === 2) {
-    homeTyphoonManager.clearHomeTyphoons(mapInstance.value as IMapInstance2)
-  }
-}
+const { testTyphoon } = useTyphoon({ mapInstance: mapInstance as Ref<IMapInstance2> })
+
+const { selectedTime } = useStainImg({ mapIns: mapInstance as Ref<IMapInstance2 | null> })
 </script>
 
 <template>
@@ -43,13 +37,25 @@ const testTyphoon = (type: number) => {
       &ensp;
       <button @click="() => testTyphoon(2)">清除</button>
     </div>
+    <div class="timeline-container">
+      <CollapsibleTimeline
+        v-model:selected="selectedTime"
+        :origin="'202605170000'"
+        :start="'202605170000'"
+        :end-equal="false"
+        :days="1"
+        :division="60"
+        :label-interval="2"
+        :time-formatter="'YYYYMMDDHHmm'"
+      />
+    </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .map-page {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
 }
 #portal-map {
@@ -60,5 +66,31 @@ const testTyphoon = (type: number) => {
   position: absolute;
   left: 20px;
   top: 20px;
+}
+
+.timeline-container {
+  --float-element-padding: 12px;
+  --bottom-chart-height: 252px;
+  --timeline-bg: #ffffff; // #05397480
+  --common-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+  --wind-edge: var(--float-element-padding);
+  position: absolute;
+  left: 256px; // 248px
+  bottom: var(--wind-edge);
+  right: 256px;
+  box-shadow: var(--common-shadow);
+  :deep(.time-line) {
+    --tick-item-width: 8px;
+    --time-row-padding: 40px;
+    --time-text-color: #626b80;
+    --past-time-text-color: #eb8f52;
+    --time-tick-line-color: #c8d0df;
+    --past-time-tick-line-color: #eba15288;
+    --selected-color: #598af6;
+    --tips-text-color: #ffffff;
+    background-color: var(--timeline-bg);
+    border-radius: 8px;
+    overflow: hidden;
+  }
 }
 </style>
