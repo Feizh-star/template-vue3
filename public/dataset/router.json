@@ -167,6 +167,19 @@
             "value": "Female"
           }
         }
+      },
+      {
+        "path": "colorfulmap",
+        "component": "MapLibre/subpage/ColorfulMapTest/ColorfulMapTest.vue",
+        "meta": {
+          "title": "填色图测试",
+          "hidden": false,
+          "isLeaf": true,
+          "icon": {
+            "type": "class",
+            "value": "Female"
+          }
+        }
       }
     ]
   },
