@@ -3,31 +3,7 @@
     "allow": [
       "Bash(npx playwright *)",
       "Bash(npm i *)",
-      "Bash(npx vue-tsc *)",
-      "Bash(grep -oP '.{0,50}GlImg.{0,100}' \"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\")",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=334500 count=15000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=334500 count=1000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=334200 count=800)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=102700 count=10000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=102000 count=700)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=93700 count=5000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=93793 count=2000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=27400 count=12000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=102705 count=15000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=0 count=3000)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=99500 count=500)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=80850 count=400)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=26125 count=600)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=99700 count=400)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=98500 count=600)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=73590 count=800)",
-      "Bash(dd if=\"f:/frontend/studio/template-vue3/node_modules/hxmap/index.js\" bs=1 skip=20740 count=15000)",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const m=c.match\\(/\\\\\"\\(#version 300 es[\\\\\\\\s\\\\\\\\S]*?\\)\\\\\";/\\);if\\(m\\)console.log\\(m[1].slice\\(0,8000\\)\\);else console.log\\('not found'\\)\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const idx=c.indexOf\\('initSelfDraw'\\);if\\(idx>-1\\)console.log\\(c.slice\\(idx,idx+5000\\)\\);else console.log\\('not found'\\)\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const idx=c.indexOf\\('class et extends tt'\\);if\\(idx>-1\\){const section=c.slice\\(idx,idx+8000\\);const m=section.match\\(/\\\\\"\\(#version 300 es[^]*?\\)\\\\\";/\\);if\\(m\\)console.log\\(m[1]\\);else console.log\\('shader not found in section'\\)}\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const idx=c.indexOf\\('function Y\\('\\);if\\(idx>-1\\)console.log\\(c.slice\\(idx,idx+2000\\)\\);else{const idx2=c.indexOf\\('function Y\\('\\);console.log\\('not found'\\)}\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const idx=c.indexOf\\('class tt extends w'\\);if\\(idx>-1\\)console.log\\(c.slice\\(idx,idx+6000\\)\\);else console.log\\('not found'\\)\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('f:/frontend/studio/template-vue3/node_modules/hxmap/index.js','utf8'\\);const idx=c.indexOf\\('class w extends u'\\);if\\(idx>-1\\)console.log\\(c.slice\\(idx,idx+4000\\)\\);else console.log\\('not found'\\)\")"
+      "Bash(npx vue-tsc *)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl'
+import type maplibregl from 'maplibre-gl'
 import type { IColorfulMapImageOptions, IColorRange, IGridDataResult } from './types'
 
 // ========== GLSL Shaders ==========
@@ -116,7 +116,11 @@ void main() {
 
 // ========== Helper Functions ==========
 
-function createShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
+function createShader(
+  gl: WebGL2RenderingContext | WebGLRenderingContext,
+  type: number,
+  source: string
+): WebGLShader {
   const shader = gl.createShader(type)!
   gl.shaderSource(shader, source)
   gl.compileShader(shader)
@@ -128,7 +132,11 @@ function createShader(gl: WebGL2RenderingContext, type: number, source: string):
   return shader
 }
 
-function createProgram(gl: WebGL2RenderingContext, vs: WebGLShader, fs: WebGLShader): WebGLProgram {
+function createProgram(
+  gl: WebGL2RenderingContext | WebGLRenderingContext,
+  vs: WebGLShader,
+  fs: WebGLShader
+): WebGLProgram {
   const program = gl.createProgram()!
   gl.attachShader(program, vs)
   gl.attachShader(program, fs)
@@ -142,7 +150,7 @@ function createProgram(gl: WebGL2RenderingContext, vs: WebGLShader, fs: WebGLSha
 }
 
 function createTexture(
-  gl: WebGL2RenderingContext,
+  gl: WebGL2RenderingContext | WebGLRenderingContext,
   source: HTMLImageElement | HTMLCanvasElement,
   textureUnit: number,
   useNearest: boolean,
@@ -214,7 +222,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   renderingMode: '2d' = '2d'
 
   private map: maplibregl.Map | null = null
-  private gl: WebGL2RenderingContext | null = null
+  private gl: WebGL2RenderingContext | WebGLRenderingContext | null = null
   private program: WebGLProgram | null = null
   private vao: WebGLVertexArrayObject | null = null
   private vbuffer: WebGLBuffer | null = null
@@ -262,7 +270,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     }
   }
 
-  onAdd(map: maplibregl.Map, gl: WebGL2RenderingContext): void {
+  onAdd(map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
     this.map = map
     this.gl = gl
 
@@ -297,12 +305,12 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 
-    this.vao = gl.createVertexArray()
-    gl.bindVertexArray(this.vao)
+    this.vao = (gl as WebGL2RenderingContext).createVertexArray()
+    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
     const posLoc = gl.getAttribLocation(this.program, 'a_position')
     gl.enableVertexAttribArray(posLoc)
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
-    gl.bindVertexArray(null)
+    ;(gl as WebGL2RenderingContext).bindVertexArray(null)
 
     // Load resources
     this.loadImage(this.opts.img)
@@ -313,9 +321,9 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     }
   }
 
-  onRemove(_map: maplibregl.Map, gl: WebGL2RenderingContext): void {
+  onRemove(_map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
     if (this.program) gl.deleteProgram(this.program)
-    if (this.vao) gl.deleteVertexArray(this.vao)
+    if (this.vao) (gl as WebGL2RenderingContext).deleteVertexArray(this.vao)
     if (this.vbuffer) gl.deleteBuffer(this.vbuffer)
     if (this.dataTexture) gl.deleteTexture(this.dataTexture)
     if (this.colorTexture) gl.deleteTexture(this.colorTexture)
@@ -332,7 +340,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.ready = false
   }
 
-  render(gl: WebGL2RenderingContext, _options: unknown): void {
+  render(gl: WebGL2RenderingContext | WebGLRenderingContext, _options: unknown): void {
     if (!this.program || !this.ready) return
 
     const map = this.map!
@@ -349,7 +357,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     const mc = lngLatToMercator(center.lng, center.lat)
 
     gl.useProgram(this.program)
-    gl.bindVertexArray(this.vao)
+    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
 
     gl.uniform4f(
       this.u_oripx,
@@ -610,7 +618,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   }
 
   private handleImageLoaded(
-    gl: WebGL2RenderingContext,
+    gl: WebGL2RenderingContext | WebGLRenderingContext,
     img: HTMLImageElement | HTMLCanvasElement
   ): void {
     // Keep a canvas copy for getGridDataByLatLon pixel queries
