@@ -1,15 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Skill(figma-implement-design)",
-      "Skill(figma-implement-design:*)",
-      "mcp__plugin_figma_figma__get_design_context",
-      "mcp__plugin_figma_figma__get_screenshot",
-      "Bash(ls -la /tmp/figma_screenshot.png 2>/dev/null || echo \"not found\"; ls C:/Users/hx/AppData/Local/Temp/figma_screenshot.png 2>/dev/null || echo \"not in windows temp either\")",
-      "Read(//c/Users/hx/AppData/Local/Temp/**)",
-      "Bash(curl -o d:/workspace-hx/tjh/studio/template-vue3-empty/src/assets/images/stat-card/icon-peak.png \"https://www.figma.com/api/mcp/asset/2c4fad89-a406-48f0-8a2b-776854a83837\")",
-      "Bash(curl -o d:/workspace-hx/tjh/studio/template-vue3-empty/src/assets/images/stat-card/icon-energy.png \"https://www.figma.com/api/mcp/asset/80dd7c62-8cb7-4043-a3e9-ef814e465919\")",
-      "Bash(curl -o d:/workspace-hx/tjh/studio/template-vue3-empty/src/assets/images/stat-card/icon-capacity.png \"https://www.figma.com/api/mcp/asset/e7f70f3c-82ca-48c7-b53b-18a43508d76d\")"
+      "Bash(npx playwright *)",
+      "Bash(npm i *)",
+      "Bash(npx vue-tsc *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
 }
