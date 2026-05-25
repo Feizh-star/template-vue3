@@ -444,7 +444,8 @@ function generateColorRamp(
     // stop1: 当前台阶值的归一化位置
     const stop1 = (colors.v[i] - vmin) / (vmax - vmin)
     // stop2: 下一个台阶值的归一化位置减去 linear 偏移
-    //        linear > 0 时 stop2 左移，使颜色过渡更陡峭
+    //        linear > 0 时 stop2 左移，使颜色过渡更平滑。
+    //        对于某一个色段，实际：颜色i -------- 颜色i -linear- 颜色i+1
     const stop2 =
       (colors.v[i + 1] - (colors.v[i + 1] - colors.v[i]) * linear - vmin) / (vmax - vmin)
     const color = `rgba(${colors.r[i]},${colors.g[i]},${colors.b[i]},${colors.o[i]})`
