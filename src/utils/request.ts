@@ -115,4 +115,83 @@ service.interceptors.response.use(
   }
 )
 
+export type RequestExecutor<T> = (signal: AbortSignal) => Promise<T>
+// 不依赖token、无拦截器的，可自动取消旧请求的请求管理器，主要用于加载静态资源和第三方接口
+export class LatestRequestManager {
+  private requestId = 0
+
+  private controller: AbortController | null = null
+
+  /**
+   * 执行一个“仅保留最新结果”的请求
+   */
+  async run<T>(
+    executor: RequestExecutor<T>,
+    options?: {
+      timeout?: number
+    }
+  ): Promise<T | undefined> {
+    const requestId = ++this.requestId
+
+    // 取消旧请求
+    this.controller?.abort()
+
+    const controller = new AbortController()
+    this.controller = controller
+
+    const timeout = options?.timeout
+
+    const timeoutId =
+      timeout != null
+        ? setTimeout(() => {
+            controller.abort(new Error('timeout'))
+          }, timeout)
+        : null
+
+    try {
+      const result = await executor(controller.signal)
+
+      // 结果已过期
+      if (requestId !== this.requestId) {
+        return
+      }
+
+      return result
+    } catch (error) {
+      // 请求已取消
+      if (controller.signal.aborted) {
+        return
+      }
+
+      // 只抛出最新请求的错误
+      if (requestId === this.requestId) {
+        throw error
+      }
+    } finally {
+      if (timeoutId != null) {
+        clearTimeout(timeoutId)
+      }
+
+      // 只清理自己
+      if (this.controller === controller) {
+        this.controller = null
+      }
+    }
+  }
+
+  /**
+   * 手动取消当前请求
+   */
+  abort(reason?: any) {
+    this.controller?.abort(reason)
+  }
+
+  /**
+   * 当前是否存在请求中
+   */
+  get loading() {
+    return this.controller != null
+  }
+}
+
 export default service

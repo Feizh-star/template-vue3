@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import { useGithubMarkdownTheme } from '@/compositions/useGithubMarkdownTheme'
+
+const isDark = ref(false) // 暂不支持暗黑主题
+useGithubMarkdownTheme({ isDark })
 </script>
 
 <template>

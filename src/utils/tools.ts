@@ -150,3 +150,8 @@ export function customFlat(arr: any[], depth = 1): any[] {
     return acc
   }, [])
 }
+
+export function loadAssetsFromPublicDataSet(path: string) {
+  const url = (import.meta.env.DEV ? '' : import.meta.env.VITE_APP_BASE_URL) + `/dataset/${path}`
+  return url.replace(/\/\//g, '/')
+}
