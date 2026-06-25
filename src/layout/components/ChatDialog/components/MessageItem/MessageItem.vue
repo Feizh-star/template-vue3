@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IMessageItem } from './type'
-const props = defineProps<IMessageItem>()
+const props = defineProps<Pick<IMessageItem, 'role' | 'content' | 'thinking'>>()
 
 const isUserMessage = computed(() => props.role === 'user')
 </script>

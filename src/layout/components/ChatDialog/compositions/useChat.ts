@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import type { Ref, ShallowRef } from 'vue'
 import { ElMessage, type PopoverInstance } from 'element-plus'
 import type { IMessageItem } from '../components/MessageItem/type'
-import type MessageList from './components/MessageList/MessageList.vue'
+import type MessageList from '../components/MessageItem/MessageItem.vue'
 import sendDisabledIcon from '../assets/send-disabled.svg'
 import sendIcon from '../assets/send.svg'
 import sendPauseIcon from '../assets/send-pause.svg'
@@ -26,6 +26,7 @@ interface IUseChatReturn {
   sendMessage: () => Promise<void>
   sendMessageWithEnter: () => void
   selectSession: (item: ISessionItem) => Promise<void>
+  loadHistoryMessages: () => Promise<void>
   sessionClicked: (item: ISessionItem) => void
   cancelCurrentRequest: () => void
 }
@@ -55,28 +56,65 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
 
   const sessionId = ref('')
   const sessionInfo = ref<ISessionItem>()
+  const hasMoreHistory = computed(() => sessionInfo.value?.previousExist || false)
+  const historyBefore = computed(() => sessionInfo.value?.previous || null)
+  const loadingHistory = ref(false)
 
   // 选择会话，进入会话界面，查询会话详情，更新消息列表
   const selectSession = async (item: ISessionItem) => {
     intoChat()
     try {
-      const session = await getSessionById(item.id)
+      const session = await getSessionById({ sessionId: item.id, limit: 5 })
       sessionId.value = item.id
       sessionInfo.value = session
-      messageItems.value = session.messages.map((item) => {
-        return {
-          id: sessionId.value ?? undefined,
+      messageItems.value = ensureMessageIds(
+        session.messages.map((item) => {
+          return {
+            sessionId: sessionId.value ?? undefined,
+            id: item.id,
+            loading: false,
+            createdAt: session.createdAt,
+            status: 'success',
+            role: item.role,
+            thinking: false,
+            content: item.content,
+          }
+        })
+      )
+      recoverAutoScroll()
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  // 加载历史消息
+  const loadHistoryMessages = async () => {
+    if (loadingHistory.value || !hasMoreHistory.value || historyBefore.value === null) return
+    loadingHistory.value = true
+    const targetSessionId = sessionId.value
+    try {
+      const session = await getSessionById({
+        sessionId: targetSessionId,
+        limit: 5,
+        before: historyBefore.value,
+      })
+      if (targetSessionId !== sessionId.value) return
+      const newMessages = ensureMessageIds(
+        session.messages.map((item) => ({
+          sessionId: session.id ?? undefined,
+          id: item.id,
           loading: false,
           createdAt: session.createdAt,
           status: 'success',
           role: item.role,
           thinking: false,
           content: item.content,
-        }
-      })
-      recoverAutoScroll()
+        }))
+      )
+      messageItems.value = [...newMessages, ...messageItems.value]
     } catch (error) {
-      console.error(error)
+      console.error('加载历史消息失败:', error)
+    } finally {
+      loadingHistory.value = false
     }
   }
 
@@ -217,7 +255,21 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     sendMessage,
     sendMessageWithEnter,
     selectSession,
+    loadHistoryMessages,
     sessionClicked,
     cancelCurrentRequest,
   }
+}
+
+let messageIdCounter = 0
+function generateMessageId(): string {
+  return `${Date.now().toString(36)}-${++messageIdCounter}`
+}
+function ensureMessageIds(messages: IMessageItem[]): IMessageItem[] {
+  for (const msg of messages) {
+    if (!msg.id) {
+      msg.id = generateMessageId()
+    }
+  }
+  return messages
 }

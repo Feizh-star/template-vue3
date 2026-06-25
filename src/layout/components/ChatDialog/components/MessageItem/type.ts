@@ -1,9 +1,10 @@
 export interface IMessageItem {
-  id?: string
+  sessionId?: string
+  id: string
   role: 'user' | 'assistant'
+  content: string
   loading?: boolean
   status?: 'pending' | 'success' | 'error'
-  content?: string
   thinking?: boolean
   createdAt?: number
 }

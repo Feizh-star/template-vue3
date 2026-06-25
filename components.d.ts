@@ -34,6 +34,7 @@ declare module '@vue/runtime-core' {
     ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    Example: typeof import('./src/components/VirtualMessageList/example.vue')['default']
     Index: typeof import('./src/components/HorScroll/Index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
@@ -41,5 +42,7 @@ declare module '@vue/runtime-core' {
     TimeLine: typeof import('./src/components/TimeLine/TimeLine.vue')['default']
     TimeLineCom: typeof import('./src/components/company/TimeLineCom.vue')['default']
     Toolbar: typeof import('./src/components/ScreenShot/Toolbar/index.vue')['default']
+    VirtualMessageItem: typeof import('./src/components/VirtualMessageList/VirtualMessageItem.vue')['default']
+    VirtualMessageList: typeof import('./src/components/VirtualMessageList/VirtualMessageList.vue')['default']
   }
 }

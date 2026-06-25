@@ -53,6 +53,7 @@ const {
   insertQuestion,
   sendMessage,
   sessionClicked,
+  loadHistoryMessages,
   cancelCurrentRequest,
 } = useChat({
   robotSence: readonlyRobotSence,
@@ -114,8 +115,8 @@ const dialogClose = () => {
         <div class="chat-list" v-if="isChating">
           <MessageList ref="messageListRef">
             <MessageItem
-              v-for="(item, index) in messageItems"
-              :key="index"
+              v-for="item in messageItems"
+              :key="item.id"
               :role="item.role"
               :thinking="item.thinking"
               :content="item.content || ''"
