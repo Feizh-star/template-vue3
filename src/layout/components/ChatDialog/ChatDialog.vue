@@ -50,11 +50,13 @@ const {
   messageItems,
   messageListRef,
   popoverRef,
+  loadingHistory,
   insertQuestion,
   sendMessage,
+  sendMessageWithEnter,
   sessionClicked,
   loadHistoryMessages,
-  cancelCurrentRequest,
+  clearChatStatus,
 } = useChat({
   robotSence: readonlyRobotSence,
 })
@@ -69,7 +71,7 @@ const dialogOpen = () => {
   loadGithubMarkdownTheme(false)
 }
 const dialogClose = () => {
-  cancelCurrentRequest()
+  clearChatStatus()
 }
 </script>
 
@@ -113,13 +115,18 @@ const dialogClose = () => {
           </div>
         </div>
         <div class="chat-list" v-if="isChating">
-          <MessageList ref="messageListRef">
+          <MessageList
+            ref="messageListRef"
+            :isLoadingHistory="loadingHistory"
+            @reach-top="() => loadHistoryMessages(true)"
+          >
             <MessageItem
               v-for="item in messageItems"
               :key="item.id"
               :role="item.role"
               :thinking="item.thinking"
               :content="item.content || ''"
+              :data-anchor-id="item.id"
             >
               <MarkdownRenderer :content="item.content || ''" />
             </MessageItem>
@@ -165,7 +172,7 @@ const dialogClose = () => {
                 v-auto-textarea="{ minRows: 1 }"
                 rows="1"
                 v-model="inputText"
-                @keydown.exact.enter.prevent="sendMessage"
+                @keydown.exact.enter.prevent="sendMessageWithEnter"
                 placeholder="请向灵仔描述您的问题"
               ></textarea>
             </el-scrollbar>

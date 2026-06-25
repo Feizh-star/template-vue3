@@ -22,13 +22,15 @@ interface IUseChatReturn {
   messageItems: Ref<IMessageItem[]>
   messageListRef: ShallowRef<InstanceType<typeof MessageList>>
   popoverRef: ShallowRef<PopoverInstance>
+  loadingHistory: Ref<boolean>
   insertQuestion: (text: string) => void
   sendMessage: () => Promise<void>
   sendMessageWithEnter: () => void
-  selectSession: (item: ISessionItem) => Promise<void>
-  loadHistoryMessages: () => Promise<void>
+  // selectSession: (item: ISessionItem) => Promise<void>
+  loadHistoryMessages: (isReachTop: boolean) => Promise<void>
   sessionClicked: (item: ISessionItem) => void
   cancelCurrentRequest: () => void
+  clearChatStatus: () => void
 }
 
 export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
@@ -45,76 +47,76 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
   })
   const inputText = ref('')
   const messageItems = ref<IMessageItem[]>([])
-  const assistantMessageOutputing = computed(() => {
-    if (messageItems.value.length === 0) return false
-    const lastItem = messageItems.value[messageItems.value.length - 1]
-    return lastItem.role === 'assistant' && lastItem.status === 'pending'
-  })
+  const assistantMessageOutputing = ref(false)
   const sendIconUrl = computed(() =>
     assistantMessageOutputing.value ? sendPauseIcon : inputText.value ? sendIcon : sendDisabledIcon
   )
 
-  const sessionId = ref('')
   const sessionInfo = ref<ISessionItem>()
+  const sessionId = computed(() => sessionInfo.value?.id || '')
   const hasMoreHistory = computed(() => sessionInfo.value?.previousExist || false)
   const historyBefore = computed(() => sessionInfo.value?.previous || null)
   const loadingHistory = ref(false)
 
-  // 选择会话，进入会话界面，查询会话详情，更新消息列表
-  const selectSession = async (item: ISessionItem) => {
-    intoChat()
-    try {
-      const session = await getSessionById({ sessionId: item.id, limit: 5 })
-      sessionId.value = item.id
-      sessionInfo.value = session
-      messageItems.value = ensureMessageIds(
-        session.messages.map((item) => {
-          return {
-            sessionId: sessionId.value ?? undefined,
-            id: item.id,
-            loading: false,
-            createdAt: session.createdAt,
-            status: 'success',
-            role: item.role,
-            thinking: false,
-            content: item.content,
-          }
-        })
-      )
-      recoverAutoScroll()
-    } catch (error) {
-      console.error(error)
+  // 加载历史消息，选择历史会话，首次进入会话界面时也会触发加载历史消息
+  let loadHistoryToken = 0 // 加载历史消息token，用于判断是否是当前请求
+  const nextHistoryToken = () => ++loadHistoryToken
+  /**
+   * 加载历史消息
+   * @param isReachTop 是否触顶加载，不是触顶加载时，会清空消息列表，重新加载历史消息
+   * @returns
+   */
+  const loadHistoryMessages = async (isReachTop: boolean = false) => {
+    // 如果是触顶加载，loadingHistory.value保证了不可能出现重复请求
+    if (
+      (isReachTop &&
+        (loadingHistory.value || !hasMoreHistory.value || historyBefore.value === null)) ||
+      !sessionId.value
+    ) {
+      return
     }
-  }
-  // 加载历史消息
-  const loadHistoryMessages = async () => {
-    if (loadingHistory.value || !hasMoreHistory.value || historyBefore.value === null) return
+    if (!isReachTop) messageItems.value = [] // 非触顶加载，清空消息列表
+
     loadingHistory.value = true
-    const targetSessionId = sessionId.value
+    const currentToken = nextHistoryToken()
     try {
       const session = await getSessionById({
-        sessionId: targetSessionId,
+        sessionId: sessionId.value,
         limit: 5,
-        before: historyBefore.value,
+        before: isReachTop ? historyBefore.value || undefined : undefined,
       })
-      if (targetSessionId !== sessionId.value) return
+      if (currentToken !== loadHistoryToken) return
+      sessionInfo.value = session
+      if (session.messages.length === 0) {
+        sessionInfo.value.previousExist = false
+        sessionInfo.value.previous = null
+        return
+      }
       const newMessages = ensureMessageIds(
         session.messages.map((item) => ({
-          sessionId: session.id ?? undefined,
           id: item.id,
-          loading: false,
-          createdAt: session.createdAt,
-          status: 'success',
+          sessionId: session.id ?? undefined,
           role: item.role,
-          thinking: false,
           content: item.content,
+          createdAt: item.createdAt,
+          loading: false,
+          status: 'success',
+          hintType: undefined,
+          hint: undefined,
         }))
       )
+      const oldMessageCount = messageItems.value.length
+      popEmptyOrErrorMessage(newMessages)
       messageItems.value = [...newMessages, ...messageItems.value]
+      // 如果是第一次加载，需要滚动到最底部
+      if (!isReachTop && oldMessageCount === 0) {
+        resetListAnchor()
+        gotoBottom()
+      }
     } catch (error) {
       console.error('加载历史消息失败:', error)
     } finally {
-      loadingHistory.value = false
+      if (currentToken === loadHistoryToken) loadingHistory.value = false
     }
   }
 
@@ -129,6 +131,7 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
   // 发送消息，接收可读流数据
   const sendMessage = async () => {
     if (assistantMessageOutputing.value) {
+      assistantMessageOutputing.value = false
       latestFetch.abort()
       return
     }
@@ -163,10 +166,11 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
       content: '',
     })
     const assistantMessage: IMessageItem = messageItems.value[messageItems.value.length - 1]
-    recoverAutoScroll()
+    gotoBottom()
 
     try {
       assistantMessage.status = 'pending'
+      assistantMessageOutputing.value = true
       await latestFetch.run(async (signal) => {
         const response = await fetch('/assistant/chat', {
           signal: signal,
@@ -211,6 +215,8 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     } catch (error) {
       console.error(error)
       assistantMessage.status = 'error'
+    } finally {
+      assistantMessageOutputing.value = false
     }
   }
   const sendMessageWithEnter = () => {
@@ -226,13 +232,28 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
   }
   // 点击会话列表项，选择会话
   const sessionClicked = (item: ISessionItem) => {
-    selectSession(item)
     closePopover()
     cancelCurrentRequest()
+    sessionInfo.value = item
+    messageItems.value = []
+    intoChat()
+    loadHistoryMessages() // 不用考虑是否加载中，也不用考虑是否还有历史消息，内部已经执行nextHistoryToken()
   }
-  // 切换自动滚动
-  const recoverAutoScroll = () => {
-    messageListRef.value?.forceScrollToBottom()
+  // 清理对话状态
+  const clearChatStatus = () => {
+    cancelCurrentRequest()
+    sessionInfo.value = undefined
+    messageItems.value = []
+    isChating.value = false
+    nextHistoryToken() // 已经切换场景了，有延迟到达的历史消息也不要了
+  }
+  // 去底部
+  const gotoBottom = () => {
+    messageListRef.value?.scrollToBottom()
+  }
+  // 重新确定锚点
+  const resetListAnchor = () => {
+    messageListRef.value?.resetAnchor()
   }
   // 取消当前请求
   const cancelCurrentRequest = () => {
@@ -251,13 +272,15 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     messageItems,
     messageListRef,
     popoverRef: popoverRef as ShallowRef<PopoverInstance>,
+    loadingHistory,
     insertQuestion,
     sendMessage,
     sendMessageWithEnter,
-    selectSession,
+    // selectSession,
     loadHistoryMessages,
     sessionClicked,
     cancelCurrentRequest,
+    clearChatStatus,
   }
 }
 
