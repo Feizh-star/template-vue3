@@ -285,29 +285,31 @@ function detectGrowthDirection(scrollContent: HTMLElement): GrowthDirection {
   font-family: 'AlibabaPuHuiTi_2_55';
 }
 
-* {
-  @-moz-document url-prefix() {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(192, 197, 201, 0.75) rgba(0, 0, 0, 0);
-  }
-  /* 滚动条样式 */
-  &::-webkit-scrollbar {
-    width: 6px; /*  设置纵轴（y轴）轴滚动条 */
-    height: 6px; /*  设置横轴（x轴）轴滚动条 */
-  }
-  /* 滚动条滑块（里面小方块） */
-  &::-webkit-scrollbar-thumb {
-    border-radius: 3px;
-    background: rgba(192, 197, 201, 0.75);
-    cursor: pointer;
-  }
-  /* 滚动条轨道 */
-  &::-webkit-scrollbar-track {
-    border-radius: 3px;
-    background: transparent;
-  }
-  &::-webkit-scrollbar-corner {
-    display: none;
+.message-list {
+  * {
+    @-moz-document url-prefix() {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(192, 197, 201, 0.75) rgba(0, 0, 0, 0);
+    }
+    /* 滚动条样式 */
+    &::-webkit-scrollbar {
+      width: 6px; /*  设置纵轴（y轴）轴滚动条 */
+      height: 6px; /*  设置横轴（x轴）轴滚动条 */
+    }
+    /* 滚动条滑块（里面小方块） */
+    &::-webkit-scrollbar-thumb {
+      border-radius: 3px;
+      background: rgba(192, 197, 201, 0.75);
+      cursor: pointer;
+    }
+    /* 滚动条轨道 */
+    &::-webkit-scrollbar-track {
+      border-radius: 3px;
+      background: transparent;
+    }
+    &::-webkit-scrollbar-corner {
+      display: none;
+    }
   }
 }
 </style>
