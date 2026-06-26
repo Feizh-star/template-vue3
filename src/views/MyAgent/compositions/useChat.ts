@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import type { Ref, ShallowRef } from 'vue'
-import { ElMessage, type PopoverInstance } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { IMessageItem } from '../components/MessageItem/type'
 import type MessageList from '../components/MessageList/MessageList.vue'
 import sendDisabledIcon from '../assets/send-disabled.svg'
@@ -8,43 +8,14 @@ import sendIcon from '../assets/send.svg'
 import sendPauseIcon from '../assets/send-pause.svg'
 import { parseSSE } from '@/utils/sse/parseSSE'
 import { LatestRequestManager } from '@/utils/request'
-import { getSessionById, type ISessionItem } from '@/api/chat/data'
+import { getSessionById, createSession, type ISessionInfo, getSessionList } from '@/api/chat/data'
 
 export interface IUseChatProps {
-  robotSence: Ref<string>
+  getChatList: () => Promise<void>
 }
 
-interface IUseChatReturn {
-  isStart: Ref<boolean>
-  isChating: Ref<boolean>
-  inputText: Ref<string>
-  sendIconUrl: Ref<string>
-  messageItems: Ref<IMessageItem[]>
-  messageListRef: ShallowRef<InstanceType<typeof MessageList>>
-  popoverRef: ShallowRef<PopoverInstance>
-  loadingHistory: Ref<boolean>
-  insertQuestion: (text: string) => void
-  sendMessage: () => Promise<void>
-  sendMessageWithEnter: () => void
-  // selectSession: (item: ISessionItem) => Promise<void>
-  loadHistoryMessages: (isReachTop: boolean) => Promise<void>
-  sessionClicked: (item: ISessionItem) => void
-  cancelCurrentRequest: () => void
-  clearChatStatus: () => void
-}
-
-export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
+export function useChat({ getChatList }: IUseChatProps) {
   const latestFetch = new LatestRequestManager()
-  const isStart = ref(true) // 是否为初始页布局
-  const isChating = ref(false) // 是否为会话页布局，负责会话页和问题页切换
-  const intoChat = () => {
-    isStart.value = false
-    isChating.value = true
-  }
-  watch(robotSence, () => {
-    cancelCurrentRequest()
-    isChating.value = false
-  })
   const inputText = ref('')
   const messageItems = ref<IMessageItem[]>([])
   const assistantMessageOutputing = ref(false)
@@ -52,10 +23,10 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     assistantMessageOutputing.value ? sendPauseIcon : inputText.value ? sendIcon : sendDisabledIcon
   )
 
-  const sessionInfo = ref<ISessionItem>()
+  const sessionInfo = ref<ISessionInfo>()
   const sessionId = computed(() => sessionInfo.value?.id || '')
-  const hasMoreHistory = computed(() => sessionInfo.value?.previousExist || false)
-  const historyBefore = computed(() => sessionInfo.value?.previous || null)
+  const hasMoreHistory = ref(false)
+  const historyBefore = ref<number | null>(null)
   const loadingHistory = ref(false)
 
   // 加载历史消息，选择历史会话，首次进入会话界面时也会触发加载历史消息
@@ -82,16 +53,17 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     try {
       const session = await getSessionById({
         sessionId: sessionId.value,
-        limit: 5,
-        before: isReachTop ? historyBefore.value || undefined : undefined,
+        limit: 15,
+        before: isReachTop ? historyBefore.value ?? undefined : undefined,
       })
       if (currentToken !== loadHistoryToken) return
-      sessionInfo.value = session
       if (session.messages.length === 0) {
-        sessionInfo.value.previousExist = false
-        sessionInfo.value.previous = null
+        hasMoreHistory.value = false
+        historyBefore.value = null
         return
       }
+      hasMoreHistory.value = session.previousExist || false
+      historyBefore.value = session.previous || null
       const newMessages = ensureMessageIds(
         session.messages.map((item) => ({
           id: item.id,
@@ -141,36 +113,50 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
       return
     }
     cancelCurrentRequest()
-    intoChat()
 
     const inputMessage = inputText.value
     inputText.value = ''
 
     popEmptyOrErrorMessage(messageItems.value)
-    messageItems.value.push({
-      id: sessionId.value ?? undefined,
-      loading: false,
-      createdAt: Date.now(),
-      status: 'success',
-      role: 'user',
-      thinking: false,
-      content: inputMessage,
-    })
-    messageItems.value.push({
-      id: sessionId.value ?? undefined,
-      loading: false,
-      createdAt: Date.now(),
-      status: 'pending',
-      role: 'assistant',
-      thinking: true,
-      content: '',
-    })
+    messageItems.value.push(
+      ...ensureMessageIds([
+        {
+          sessionId: sessionId.value ?? undefined,
+          loading: false,
+          createdAt: Date.now(),
+          status: 'success',
+          role: 'user',
+          hintType: undefined,
+          hint: undefined,
+          content: inputMessage,
+        },
+      ])
+    )
+    messageItems.value.push(
+      ...ensureMessageIds([
+        {
+          sessionId: sessionId.value ?? undefined,
+          loading: false,
+          createdAt: Date.now(),
+          status: 'pending',
+          role: 'assistant',
+          hintType: 'thinking',
+          hint: '正在思考...',
+          content: '',
+        },
+      ])
+    )
     const assistantMessage: IMessageItem = messageItems.value[messageItems.value.length - 1]
     gotoBottom()
 
     try {
       assistantMessage.status = 'pending'
       assistantMessageOutputing.value = true
+      // 如果是首次创建会话，需要先创建会话
+      if (messageItems.value.length === 2) {
+        sessionInfo.value = await createSession({ prompt: inputMessage })
+        getChatList()
+      }
       await latestFetch.run(async (signal) => {
         const response = await fetch('/assistant/chat', {
           signal: signal,
@@ -187,15 +173,18 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
         const stream = parseSSE(response)
 
         for await (const event of stream) {
-          let isThinking = false
           switch (event.event) {
             case 'text':
+              assistantMessage.hintType = 'none'
+              assistantMessage.hint = ''
               assistantMessage.content += event.data.delta
               break
 
             case 'reasoning':
-              console.log('thinking:', event.data)
-              isThinking = true
+              // 一般是思考/分析中状态
+              console.log('reasoning:', event.data) // {"message":"正在理解问题..."}
+              assistantMessage.hintType = 'thinking'
+              assistantMessage.hint = event.data.delta
               break
 
             case 'tool_call':
@@ -204,12 +193,13 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
 
             case 'done':
               assistantMessage.status = 'success'
+              assistantMessage.hintType = undefined
+              assistantMessage.hint = undefined
               break
 
             case 'error':
               throw new Error(event.data || 'agent response error')
           }
-          assistantMessage.thinking = isThinking
         }
       })
     } catch (error) {
@@ -226,17 +216,11 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
 
   // 组件操作
   const messageListRef = shallowRef<InstanceType<typeof MessageList>>()
-  const popoverRef = shallowRef<PopoverInstance>()
-  const closePopover = () => {
-    popoverRef.value?.hide()
-  }
   // 点击会话列表项，选择会话
-  const sessionClicked = (item: ISessionItem) => {
-    closePopover()
+  const sessionClicked = (item: ISessionInfo) => {
     cancelCurrentRequest()
     sessionInfo.value = item
     messageItems.value = []
-    intoChat()
     loadHistoryMessages() // 不用考虑是否加载中，也不用考虑是否还有历史消息，内部已经执行nextHistoryToken()
   }
   // 清理对话状态
@@ -244,7 +228,6 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     cancelCurrentRequest()
     sessionInfo.value = undefined
     messageItems.value = []
-    isChating.value = false
     nextHistoryToken() // 已经切换场景了，有延迟到达的历史消息也不要了
   }
   // 去底部
@@ -259,21 +242,17 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
   const cancelCurrentRequest = () => {
     if (latestFetch.loading) latestFetch.abort()
   }
-  // 插入问题
-  const insertQuestion = (text: string) => {
-    inputText.value = text
+  // 创建新对话
+  const createNewChat = async () => {
+    clearChatStatus()
   }
 
   return {
-    isStart,
-    isChating,
     inputText,
     sendIconUrl,
     messageItems,
     messageListRef,
-    popoverRef: popoverRef as ShallowRef<PopoverInstance>,
     loadingHistory,
-    insertQuestion,
     sendMessage,
     sendMessageWithEnter,
     // selectSession,
@@ -281,6 +260,7 @@ export function useChat({ robotSence }: IUseChatProps): IUseChatReturn {
     sessionClicked,
     cancelCurrentRequest,
     clearChatStatus,
+    createNewChat,
   }
 }
 

@@ -130,6 +130,18 @@ export const menuRouters: IOriginRoute[] = [
     ],
   },
   {
+    path: '/myagent',
+    component: 'MyAgent/MyAgent.vue',
+    meta: {
+      title: '智能体',
+      hidden: false,
+      icon: {
+        type: 'class',
+        value: 'iconfont icon-yuandianxiao-copy',
+      },
+    },
+  },
+  {
     path: '/test3',
     meta: {
       title: 'Test3',

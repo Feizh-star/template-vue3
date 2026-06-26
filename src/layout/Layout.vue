@@ -26,8 +26,6 @@
         </div>
       </div>
     </div>
-    <AgentModule v-model="robotShow" @open-chat-dialog="openChatDialog"></AgentModule>
-    <ChatDialog v-model="chatShow" v-model:assistant-key="assistantKey"></ChatDialog>
   </div>
 </template>
 
@@ -59,8 +57,6 @@ export default defineComponent({
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { useMenu } from '@/store/menu'
-import AgentModule from './components/AgentModule/AgentModule.vue'
-import ChatDialog from './components/ChatDialog/ChatDialog.vue'
 const menu = useMenu()
 const menuList = computed(() => menu.getMenuList)
 
@@ -73,14 +69,6 @@ function renderComponent(Component: any, route: any) {
     new Set(route.matched.map((item: any) => item.name)).has(props.containerName)
     ? Component
     : undefined
-}
-
-const robotShow = ref(true)
-const chatShow = ref(false)
-const assistantKey = ref('')
-const openChatDialog = (key: string) => {
-  assistantKey.value = key
-  chatShow.value = true
 }
 </script>
 
