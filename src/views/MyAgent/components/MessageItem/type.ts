@@ -7,5 +7,5 @@ export interface IMessageItem {
   status?: 'pending' | 'success' | 'error'
   createdAt?: number
   hint?: string
-  hintType?: 'thinking' | 'tool_call' | 'none'
+  hintType?: 'thinking' | 'tool_call' | 'tool_result' | 'none'
 }

@@ -53,7 +53,7 @@ export function useChat({ getChatList }: IUseChatProps) {
     try {
       const session = await getSessionById({
         sessionId: sessionId.value,
-        limit: 15,
+        limit: 10,
         before: isReachTop ? historyBefore.value ?? undefined : undefined,
       })
       if (currentToken !== loadHistoryToken) return
@@ -184,11 +184,15 @@ export function useChat({ getChatList }: IUseChatProps) {
               // 一般是思考/分析中状态
               console.log('reasoning:', event.data) // {"message":"正在理解问题..."}
               assistantMessage.hintType = 'thinking'
-              assistantMessage.hint = event.data.delta
+              assistantMessage.hint += event.data.delta
               break
 
             case 'tool_call':
               console.log('tool:', event.data)
+              break
+
+            case 'tool_result':
+              console.log('tool_result:', event.data)
               break
 
             case 'done':
