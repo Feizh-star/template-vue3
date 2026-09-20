@@ -4,11 +4,13 @@ import type { IColorfulMapImageOptions, IColorRange, IGridDataResult } from './t
 // ========== GLSL Shaders ==========
 
 const VERTEX_SHADER = `#version 300 es
-in vec4 a_position;
-out vec2 point;
+in vec2 a_position;
+uniform mat4 u_matrix;
+uniform float u_worldOffset;
+out vec2 mercatorPosition;
 void main() {
-    gl_Position = a_position;
-    point = a_position.xy;
+    gl_Position = u_matrix * vec4(a_position.x + u_worldOffset, a_position.y, 0.0, 1.0);
+    mercatorPosition = a_position;
 }`
 
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
@@ -17,20 +19,16 @@ const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 #define useCut true
 precision highp float;
 
-vec2 pxToLatlng(vec3 px) {
-    float x = (px.x * px.z - 0.5) * 360.0;
-    float y = -(px.y * px.z - 0.5) * PI * 2.0;
+vec2 mercatorToLatlng(vec2 mercator) {
+    float x = (mercator.x - 0.5) * 360.0;
+    float y = -(mercator.y - 0.5) * PI * 2.0;
     float lat = (2.0 * atan(exp(y)) - (PI / 2.0)) * PID;
-    float lon = x;
-    lon = mod(lon, 360.0);
-    return vec2(lat, lon);
+    return vec2(lat, x);
 }
 
-in vec2 point;
+in vec2 mercatorPosition;
 uniform sampler2D u_color;
 uniform sampler2D u_img;
-uniform vec4 oripx;
-uniform float rto;
 uniform vec4 tbound;
 uniform vec4 scale;
 uniform vec2 vrange;
@@ -40,9 +38,7 @@ uniform vec4 cutArea;
 out vec4 outColor;
 
 void main() {
-    float x = oripx.x + gl_FragCoord.x / rto;
-    float y = oripx.y + (oripx.w - gl_FragCoord.y) / rto;
-    vec2 latlng = pxToLatlng(vec3(x, y, oripx.z));
+    vec2 latlng = mercatorToLatlng(mercatorPosition);
     float cuta = (latlng.x - cutArea.x) / (cutArea.y - cutArea.x);
     float cutb = (latlng.y - cutArea.z) / (cutArea.w - cutArea.z);
     float cutValue = texture(cutImg, vec2(cutb, cuta)).r;
@@ -70,20 +66,16 @@ const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PID 57.29577951308232
 precision highp float;
 
-vec2 pxToLatlng(vec3 px) {
-    float x = (px.x * px.z - 0.5) * 360.0;
-    float y = -(px.y * px.z - 0.5) * PI * 2.0;
+vec2 mercatorToLatlng(vec2 mercator) {
+    float x = (mercator.x - 0.5) * 360.0;
+    float y = -(mercator.y - 0.5) * PI * 2.0;
     float lat = (2.0 * atan(exp(y)) - (PI / 2.0)) * PID;
-    float lon = x;
-    lon = mod(lon, 360.0);
-    return vec2(lat, lon);
+    return vec2(lat, x);
 }
 
-in vec2 point;
+in vec2 mercatorPosition;
 uniform sampler2D u_color;
 uniform sampler2D u_img;
-uniform vec4 oripx;
-uniform float rto;
 uniform vec4 tbound;
 uniform vec4 scale;
 uniform vec2 vrange;
@@ -91,9 +83,7 @@ uniform bool tminOpacity;
 out vec4 outColor;
 
 void main() {
-    float x = oripx.x + gl_FragCoord.x / rto;
-    float y = oripx.y + (oripx.w - gl_FragCoord.y) / rto;
-    vec2 latlng = pxToLatlng(vec3(x, y, oripx.z));
+    vec2 latlng = mercatorToLatlng(mercatorPosition);
     float value = 0.0;
     if (latlng.x >= tbound.x && latlng.x <= tbound.y && latlng.y >= tbound.z && latlng.y <= tbound.w) {
         float b = (latlng.x - tbound.x) / (tbound.y - tbound.x);
@@ -230,11 +220,11 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   private colorTexture: WebGLTexture | null = null
   private cutTexture: WebGLTexture | null = null
 
-  private u_oripx: WebGLUniformLocation | null = null
+  private u_matrix: WebGLUniformLocation | null = null
+  private u_worldOffset: WebGLUniformLocation | null = null
   private u_tbound: WebGLUniformLocation | null = null
   private u_scale: WebGLUniformLocation | null = null
   private u_tminOpacity: WebGLUniformLocation | null = null
-  private u_rto: WebGLUniformLocation | null = null
   private u_vrange: WebGLUniformLocation | null = null
   private u_img: WebGLUniformLocation | null = null
   private u_color: WebGLUniformLocation | null = null
@@ -252,6 +242,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   private vmax = 0
 
   private rawImageCanvas: HTMLCanvasElement | null = null
+  private projectionMatrix = new Float32Array(16)
 
   constructor(options: IColorfulMapImageOptions) {
     this.id =
@@ -286,11 +277,11 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     gl.deleteShader(vs)
     gl.deleteShader(fs)
 
-    this.u_oripx = gl.getUniformLocation(this.program, 'oripx')
+    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix')
+    this.u_worldOffset = gl.getUniformLocation(this.program, 'u_worldOffset')
     this.u_tbound = gl.getUniformLocation(this.program, 'tbound')
     this.u_scale = gl.getUniformLocation(this.program, 'scale')
     this.u_tminOpacity = gl.getUniformLocation(this.program, 'tminOpacity')
-    this.u_rto = gl.getUniformLocation(this.program, 'rto')
     this.u_vrange = gl.getUniformLocation(this.program, 'vrange')
     this.u_img = gl.getUniformLocation(this.program, 'u_img')
     this.u_color = gl.getUniformLocation(this.program, 'u_color')
@@ -299,14 +290,14 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       this.u_cutArea = gl.getUniformLocation(this.program, 'cutArea')
     }
 
-    // Full-screen quad VAO
-    const vertices = new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1])
+    // Geographic data bounds in normalized Web Mercator coordinates.
     this.vbuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+    this.updateGeometry()
 
     this.vao = (gl as WebGL2RenderingContext).createVertexArray()
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
     const posLoc = gl.getAttribLocation(this.program, 'a_position')
     gl.enableVertexAttribArray(posLoc)
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
@@ -340,32 +331,19 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.ready = false
   }
 
-  render(gl: WebGL2RenderingContext | WebGLRenderingContext, _options: unknown): void {
+  render(
+    gl: WebGL2RenderingContext | WebGLRenderingContext,
+    options: maplibregl.CustomRenderMethodInput
+  ): void {
     if (!this.program || !this.ready) return
 
     const map = this.map!
-    const transform = (map as any).transform
-
-    const center = transform.center
-    const zoom = transform.zoom
-    const width = transform.width
-    const height = transform.height
-    const tileSize = transform.tileSize || 512
-    const worldSize = tileSize * Math.pow(2, zoom)
-    const dpr = window.devicePixelRatio || 1
-
-    const mc = lngLatToMercator(center.lng, center.lat)
 
     gl.useProgram(this.program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
 
-    gl.uniform4f(
-      this.u_oripx,
-      mc.x * worldSize - width / 2,
-      mc.y * worldSize - height / 2,
-      1 / worldSize,
-      height
-    )
+    this.projectionMatrix.set(options.defaultProjectionData.mainMatrix)
+    gl.uniformMatrix4fv(this.u_matrix, false, this.projectionMatrix)
 
     gl.uniform4f(
       this.u_tbound,
@@ -383,8 +361,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       this.opts.scale.a
     )
 
-    gl.uniform1f(this.u_tminOpacity, this.opts.minOpacity ? 1.0 : 0.0)
-    gl.uniform1f(this.u_rto, dpr)
+    gl.uniform1i(this.u_tminOpacity, this.opts.minOpacity ? 1 : 0)
     gl.uniform2f(this.u_vrange, this.vmin, this.vmax)
 
     gl.activeTexture(gl.TEXTURE0)
@@ -408,9 +385,15 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       )
     }
 
-    // MapLibre default blend is (ONE, ONE_MINUS_SRC_ALPHA), expects premultiplied alpha.
-    // The shader already premultiplies (outColor.rgb *= outColor.a), so no override needed.
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    // Draw the nearest wrapped copies so behavior follows MapLibre's renderWorldCopies setting.
+    const centerWorld = Math.floor((map.getCenter().lng + 180) / 360)
+    const worldOffsets = map.getRenderWorldCopies()
+      ? [centerWorld - 1, centerWorld, centerWorld + 1]
+      : [0]
+    for (const worldOffset of worldOffsets) {
+      gl.uniform1f(this.u_worldOffset, worldOffset)
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    }
   }
 
   // ============ Public API ============
@@ -475,6 +458,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.opts.latmax = latmax
     this.opts.lonmin = lonmin
     this.opts.lonmax = lonmax
+    this.updateGeometry()
 
     if (extra?.flipy !== undefined) this.opts.flipy = extra.flipy
     if (extra?.interval !== undefined) this.opts.interval = extra.interval
@@ -580,6 +564,27 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   }
 
   // ============ Private Methods ============
+
+  private updateGeometry(): void {
+    if (!this.gl || !this.vbuffer) return
+
+    const northWest = lngLatToMercator(this.opts.lonmin, this.opts.latmax)
+    const southEast = lngLatToMercator(this.opts.lonmax, this.opts.latmin)
+    const vertices = new Float32Array([
+      northWest.x,
+      northWest.y,
+      northWest.x,
+      southEast.y,
+      southEast.x,
+      northWest.y,
+      southEast.x,
+      southEast.y,
+    ])
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbuffer)
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW)
+    this.requestRepaint()
+  }
 
   private loadImage(img: string | HTMLImageElement | HTMLCanvasElement): void {
     const gl = this.gl!

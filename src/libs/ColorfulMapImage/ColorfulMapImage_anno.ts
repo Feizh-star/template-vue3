@@ -3,9 +3,9 @@
  * ColorfulMapImage — MapLibre 开源地图库自定义图层插件
  * ============================================================================
  *
- * 功能：将一张使用特殊算法编码的数据纹理 PNG 叠加到 MapLibre 地图上，以全屏四边形+
- *       Fragment Shader 逐像素逆投影的方式，将每个屏幕像素映射到地理坐标，解码数据
- *       值后按颜色查找表渲染。
+ * 功能：将一张使用特殊算法编码的数据纹理 PNG 叠加到 MapLibre 地图上。数据经纬度范围
+ *       被转换成 Web Mercator 地面矩形，通过 MapLibre 相机矩阵投影；Fragment Shader
+ *       再按原协议解码数据值并通过颜色查找表渲染。
  *
  * ----------------------------------------------------------------------------
  * 整体渲染管线（从上到下，标注了对应的代码位置）
@@ -13,53 +13,46 @@
  *
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ 1. 构造 & 初始化                                                        │
- * │    constructor()                              → [L248]                  │
+ * │    constructor()                              → [L589]                  │
  * │    merge 默认选项 + 用户选项                                            │
- * │    MapLibre 调用 onAdd(map, gl)                → [L265]                  │
- * │      ├─ 编译 Vertex Shader                    → VERTEX_SHADER [L6]      │
+ * │    MapLibre 调用 onAdd(map, gl)                → [L623]                  │
+ * │      ├─ 编译 Vertex Shader                    → VERTEX_SHADER [L115]    │
  * │      ├─ 编译 Fragment Shader                                        │
- * │      │    ├─ cut=true  → FRAGMENT_SHADER_WITH_CUT  [L14]               │
- * │      │    └─ cut=false → FRAGMENT_SHADER_NO_CUT   [L68]                │
- * │      ├─ link Program                          → createProgram() [L131]  │
+ * │      │    ├─ cut=true  → FRAGMENT_SHADER_WITH_CUT  [L137]              │
+ * │      │    └─ cut=false → FRAGMENT_SHADER_NO_CUT   [L229]               │
+ * │      ├─ link Program                          → createProgram() [L326]  │
  * │      ├─ 获取所有 uniform location                                    │
- * │      ├─ 创建全屏四边形 VAO（[-1,1]×[-1,1] 的 Triangle Strip）            │
- * │      ├─ 加载数据纹理图片 → loadImage()          → [L576]                 │
- * │      ├─ 生成颜色渐变查找纹理 → updateColorRamp() → [L663]                │
- * │      └─ 加载裁剪遮罩图片（可选）→ loadCutImage()  → [L637]               │
+ * │      ├─ 创建地理范围矩形 VAO（Mercator [0,1] 的 Triangle Strip）          │
+ * │      ├─ 加载数据纹理图片 → loadImage()          → [L1172]                │
+ * │      ├─ 生成颜色渐变查找纹理 → updateColorRamp() → [L1312]               │
+ * │      └─ 加载裁剪遮罩图片（可选）→ loadCutImage()  → [L1276]              │
  * └─────────────────────────────────────────────────────────────────────────┘
  *                                     │
  *                                     ▼
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ 2. 每帧渲染                                                             │
- * │    MapLibre 调用 render(gl, options)           → [L335]                  │
- * │      ├─ 计算 oripx 视口参数（世界像素偏移 + Mercator 缩放）              │
- * │      │    ├─ 中心 Mercator 坐标 → lngLatToMercator() → [L203]           │
- * │      │    ├─ worldSize = tileSize * 2^zoom                              │
- * │      │    └─ rto = devicePixelRatio                                     │
- * │      ├─ 传入所有 uniform                                            │
- * │      │    ├─ u_oripx: 视口世界像素原点 / Mercator缩放因子 / Canvas高       │
+ * │    MapLibre 调用 render(gl, options)           → [L732]                  │
+ * │      ├─ 读取 defaultProjectionData.mainMatrix                          │
+ * │      │    └─ 矩阵包含 zoom / center / bearing / pitch / perspective     │
+ * │      ├─ 传入所有 uniform                                                │
+ * │      │    ├─ u_matrix: Mercator 世界坐标 → clip-space                   │
+ * │      │    ├─ u_worldOffset: 横向世界副本编号                              │
  * │      │    ├─ u_tbound: 数据地理边界 [latmin, latmax, lonmin, lonmax]      │
  * │      │    ├─ u_scale:  数据解码比例 [r, g, b, a]                        │
  * │      │    ├─ u_tminOpacity: 低值透明度淡化开关                           │
- * │      │    ├─ u_rto: 设备像素比                                          │
  * │      │    └─ u_vrange: 颜色映射值域 [vmin, vmax]                        │
  * │      ├─ 绑定三张纹理                                                │
  * │      │    ├─ TEXTURE0: 数据纹理（u_img）                                │
  * │      │    ├─ TEXTURE1: 颜色渐变纹理（u_color）                            │
  * │      │    └─ TEXTURE2: 裁剪遮罩纹理（cutImg，可选）                       │
- * │      └─ 绘制全屏四边形 → drawArrays(TRIANGLE_STRIP, 0, 4)                │
+ * │      └─ 绘制地面矩形及世界副本 → drawArrays(TRIANGLE_STRIP, 0, 4)         │
  * └─────────────────────────────────────────────────────────────────────────┘
  *                                     │
  *                                     ▼
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ 3. Fragment Shader 逐像素处理（GPU）                                     │
- * │    gl_FragCoord → 世界像素坐标                                          │
- * │      x = oripx.x + gl_FragCoord.x / rto                                │
- * │      y = oripx.y + (oripx.w - gl_FragCoord.y) / rto  （Y 轴翻转）       │
- * │                                                                 │
- * │    pxToLatlng(vec3(x, y, oripx.z)) → 经纬度                           │
- * │      世界像素 × oripx.z → Mercator [0,1]                                │
- * │      Mercator 逆投影 → (lat, lon)                                      │
+ * │    顶点 Mercator 坐标经透视校正插值 → mercatorPosition                    │
+ * │    mercatorToLatlng(mercatorPosition) → 经纬度                          │
  * │                                                                 │
  * │    cut 路径：检查遮罩纹理，遮罩区域 discard                               │
  * │    no-cut 路径：检查是否在 tbound 范围内，范围外 discard                    │
@@ -80,21 +73,21 @@
  *                                     ▼
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ 4. 运行时更新 API                                                        │
- * │    changeImage()        → [L415]  更新数据纹理图片                        │
- * │    changeAll()          → [L420]  批量更新 scale/colors/img/minOpacity   │
- * │    changeImageArea()    → [L453]  更新图片 + 地理范围 + grid + colors     │
- * │    changeColors()       → [L498]  更新颜色映射                           │
- * │    changeLinear()       → [L503]  更新颜色渐变线性度                       │
- * │    changeGrid()         → [L508]  切换最近邻/线性纹理采样                  │
- * │    setGetGrid()         → [L527]  启用/禁用像素值查询                    │
- * │    getGridDataByLatLon()→ [L535]  读取指定经纬度的解码数值                 │
- * │    destroy()            → [L566]  从地图移除图层                         │
+ * │    changeImage()        → [L848]   更新数据纹理图片                       │
+ * │    changeAll()          → [L864]   批量更新 scale/colors/img/minOpacity  │
+ * │    changeImageArea()    → [L918]   更新图片 + 地理范围 + grid + colors    │
+ * │    changeColors()       → [L976]   更新颜色映射                          │
+ * │    changeLinear()       → [L989]   更新颜色渐变线性度                     │
+ * │    changeGrid()         → [L1004]  切换最近邻/线性纹理采样                │
+ * │    setGetGrid()         → [L1035]  启用/禁用像素值查询                   │
+ * │    getGridDataByLatLon()→ [L1062]  读取指定经纬度的解码数值               │
+ * │    destroy()            → [L1105]  从地图移除图层                        │
  * └─────────────────────────────────────────────────────────────────────────┘
  *                                     │
  *                                     ▼
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ 5. 清理                                                                 │
- * │    MapLibre 调用 onRemove(map, gl)          → [L316]                    │
+ * │    MapLibre 调用 onRemove(map, gl)          → [L696]                    │
  * │    删除 Program / VAO / Buffer / 所有 Texture，置空引用                   │
  * └─────────────────────────────────────────────────────────────────────────┘
  */
@@ -107,17 +100,26 @@ import type { IColorfulMapImageOptions, IColorRange, IGridDataResult } from './t
 // ============================================================================
 
 /**
- * Vertex Shader — 全屏四边形
- * 将 clip-space 坐标 [-1,1]×[-1,1] 直接输出为 gl_Position。
- * a_position 为 2 分量顶点（VAO 中配置），z 默认为 0，w 默认为 1。
- * point varying 用于传递坐标到 Fragment Shader（当前未使用，保留兼容）。
+ * Vertex Shader — 地理范围矩形
+ *
+ * a_position 存储数据边界四角的归一化 Web Mercator 坐标：
+ * x=0/1 分别代表世界最西/最东，y=0/1 分别代表世界最北/最南。
+ *
+ * u_matrix 来自 MapLibre 每帧传入的 defaultProjectionData.mainMatrix，负责完整处理
+ * zoom、平移、bearing、pitch、相机透视和视口偏移。因此这里不再假设屏幕像素与地面坐标
+ * 是简单的线性关系，地图倾斜后仍能把矩形正确投影到地面。
+ *
+ * u_worldOffset 是横向世界副本偏移。Web Mercator 每个世界宽度为 1，偏移 ±1 即可把
+ * 同一个数据矩形绘制到相邻世界；传给片元着色器的仍是原始坐标，保证纹理 UV 不变。
  */
 const VERTEX_SHADER = `#version 300 es
-in vec4 a_position;
-out vec2 point;
+in vec2 a_position;
+uniform mat4 u_matrix;
+uniform float u_worldOffset;
+out vec2 mercatorPosition;
 void main() {
-    gl_Position = a_position;
-    point = a_position.xy;
+    gl_Position = u_matrix * vec4(a_position.x + u_worldOffset, a_position.y, 0.0, 1.0);
+    mercatorPosition = a_position;
 }`
 
 /**
@@ -139,37 +141,24 @@ const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 precision highp float;
 
 /**
- * 世界像素坐标 → 经纬度 转换
+ * 归一化 Web Mercator 坐标 → 经纬度转换
  *
- * @param px.x  世界像素 X 坐标（CSS 像素）
- * @param px.y  世界像素 Y 坐标（CSS 像素，原点在顶部）
- * @param px.z  世界像素 → Mercator [0,1] 的缩放因子 = 1 / worldSize
- *              其中 worldSize = tileSize * 2^zoom
+ * @param mercator.x Web Mercator X，0=西经 180°，1=东经 180°
+ * @param mercator.y Web Mercator Y，0=北，1=南
  *
- * 步骤：
- *   mercatorX = px.x * px.z        // 世界像素 X → Mercator [0,1]
- *   mercatorY = px.y * px.z        // 世界像素 Y → Mercator [0,1]
- *   lng = (mercatorX - 0.5) * 360  // Mercator → 经度
- *   lat = atan(exp(π - mercatorY*2π)) * 180/π - 90  // Mercator → 纬度（逆投影）
- *
- * 为什么在 Shader 里转换而非用 MapLibre 的投影矩阵？
- *   原 hxmap GlImg 将图层渲染到独立 Canvas，无法访问 MapLibre 投影矩阵，
- *   只能通过像素坐标反算经纬度。ColorfulMapImage 保持此方式以确保渲染一致性。
+ * 顶点位置已经由 MapLibre 的矩阵投影到屏幕；片元着色器只需把 GPU 插值得到的
+ * Mercator 坐标转回经纬度，以继续复用原有的 tbound/cutArea 纹理寻址协议。
  */
-vec2 pxToLatlng(vec3 px) {
-    float x = (px.x * px.z - 0.5) * 360.0;
-    float y = -(px.y * px.z - 0.5) * PI * 2.0;
+vec2 mercatorToLatlng(vec2 mercator) {
+    float x = (mercator.x - 0.5) * 360.0;
+    float y = -(mercator.y - 0.5) * PI * 2.0;
     float lat = (2.0 * atan(exp(y)) - (PI / 2.0)) * PID;
-    float lon = x;
-    lon = mod(lon, 360.0);
-    return vec2(lat, lon);
+    return vec2(lat, x);
 }
 
-in vec2 point;
+in vec2 mercatorPosition;
 uniform sampler2D u_color;     // 颜色渐变查找纹理（1D 纹理，作为 2D 传入）
 uniform sampler2D u_img;       // 数据纹理 PNG（RGBA 通道编码数据值）
-uniform vec4 oripx;            // (视口左边界世界像素X, 视口上边界世界像素Y, 1/worldSize, Canvas高度)
-uniform float rto;             // 设备像素比 devicePixelRatio（物理像素→CSS像素）
 uniform vec4 tbound;           // 数据地理边界 (latmin, latmax, lonmin, lonmax)
 uniform vec4 scale;            // 数据解码比例 (r, g, b, a)
 uniform vec2 vrange;           // 颜色映射值域 (vmin, vmax)
@@ -179,16 +168,11 @@ uniform vec4 cutArea;          // 遮罩地理范围 (cutlatmin, cutlatmax, cutl
 out vec4 outColor;             // 最终输出颜色（预乘 alpha）
 
 void main() {
-    // ---- 步骤 1: 屏幕像素 → 世界像素坐标 ----
-    // gl_FragCoord 是物理像素（framebuffer 坐标），除以 rto 转为 CSS 像素
-    // oripx.y + (oripx.w - gl_FragCoord.y)/rto 实现 Y 轴翻转（屏幕 Y 向下 → 世界 Y 向上）
-    float x = oripx.x + gl_FragCoord.x / rto;
-    float y = oripx.y + (oripx.w - gl_FragCoord.y) / rto;
+    // ---- 步骤 1: GPU 插值后的 Web Mercator 坐标 → 经纬度 ----
+    // 透视校正插值由光栅化阶段完成，pitch/bearing 不需要在片元阶段单独处理。
+    vec2 latlng = mercatorToLatlng(mercatorPosition);
 
-    // ---- 步骤 2: 世界像素 → 经纬度 ----
-    vec2 latlng = pxToLatlng(vec3(x, y, oripx.z));
-
-    // ---- 步骤 3: 裁剪遮罩检查 ----
+    // ---- 步骤 2: 裁剪遮罩检查 ----
     // 将经纬度映射到遮罩纹理 UV 空间
     float cuta = (latlng.x - cutArea.x) / (cutArea.y - cutArea.x);  // lat → U
     float cutb = (latlng.y - cutArea.z) / (cutArea.w - cutArea.z);  // lon → V
@@ -197,7 +181,7 @@ void main() {
         discard;  // 被遮罩的区域直接丢弃
     }
 
-    // ---- 步骤 4: 采样数据纹理 + 解码数值 ----
+    // ---- 步骤 3: 采样数据纹理 + 解码数值 ----
     float value = 0.0;
     // 将经纬度映射到数据纹理 UV 空间
     // b: 经度方向 (lonmin→lonmax)
@@ -210,13 +194,13 @@ void main() {
     // scale 的典型值为 1（各通道等权重），也可设为其他值调整权重
     value = color.r / scale.x + color.g / scale.y + color.b / scale.z + color.a / scale.w;
 
-    // ---- 步骤 5: 值域归一化 + 颜色查找 ----
+    // ---- 步骤 4: 值域归一化 + 颜色查找 ----
     // 将解码值映射到颜色查找纹理的 [0,1] 范围
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     // 颜色查找纹理是 1D 渐变（存储为 2D 纹理），采样 Y 坐标 0.5 处的颜色
     outColor = texture(u_color, vec2(vin, 0.5));
 
-    // ---- 步骤 6: minOpacity 低值淡化（smoothstep 路径） ----
+    // ---- 步骤 5: minOpacity 低值淡化（smoothstep 路径） ----
     // 对于小于颜色映射最小值的像素，通过淡化 alpha 使其透明
     // smoothstep(minv, maxv, value): value<minv→0, value>maxv→1, 中间 Hermite 插值
     if (tminOpacity) {
@@ -226,7 +210,7 @@ void main() {
         outColor.a = outColor.a * o;   // 乘以淡化系数
     }
 
-    // ---- 步骤 7: 预乘 alpha ----
+    // ---- 步骤 6: 预乘 alpha ----
     // MapLibre 默认 blend 模式为 (ONE, ONE_MINUS_SRC_ALPHA)，期望预乘 alpha 输入。
     // 必须在 shader 中预乘，否则 RGB 和 A 的混合结果不一致。
     outColor.rgb *= outColor.a;
@@ -247,20 +231,16 @@ const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PID 57.29577951308232
 precision highp float;
 
-vec2 pxToLatlng(vec3 px) {
-    float x = (px.x * px.z - 0.5) * 360.0;
-    float y = -(px.y * px.z - 0.5) * PI * 2.0;
+vec2 mercatorToLatlng(vec2 mercator) {
+    float x = (mercator.x - 0.5) * 360.0;
+    float y = -(mercator.y - 0.5) * PI * 2.0;
     float lat = (2.0 * atan(exp(y)) - (PI / 2.0)) * PID;
-    float lon = x;
-    lon = mod(lon, 360.0);
-    return vec2(lat, lon);
+    return vec2(lat, x);
 }
 
-in vec2 point;
+in vec2 mercatorPosition;
 uniform sampler2D u_color;
 uniform sampler2D u_img;
-uniform vec4 oripx;
-uniform float rto;
 uniform vec4 tbound;
 uniform vec4 scale;
 uniform vec2 vrange;
@@ -268,17 +248,15 @@ uniform bool tminOpacity;
 out vec4 outColor;
 
 void main() {
-    // ---- 步骤 1-2: 屏幕像素 → 经纬度（同上） ----
-    float x = oripx.x + gl_FragCoord.x / rto;
-    float y = oripx.y + (oripx.w - gl_FragCoord.y) / rto;
-    vec2 latlng = pxToLatlng(vec3(x, y, oripx.z));
+    // ---- 步骤 1: GPU 插值后的 Web Mercator 坐标 → 经纬度（同上） ----
+    vec2 latlng = mercatorToLatlng(mercatorPosition);
 
-    // ---- 步骤 3: 边界裁剪 ----
+    // ---- 步骤 2: 边界裁剪 ----
     // 无遮罩时直接用地理边界判断，范围外的像素丢弃
     float value = 0.0;
     if (latlng.x >= tbound.x && latlng.x <= tbound.y &&
         latlng.y >= tbound.z && latlng.y <= tbound.w) {
-        // ---- 步骤 4: 采样 + 解码 ----
+        // ---- 步骤 3: 采样 + 解码 ----
         float b = (latlng.x - tbound.x) / (tbound.y - tbound.x);
         float a = (latlng.y - tbound.z) / (tbound.w - tbound.z);
         vec4 color = texture(u_img, vec2(a, b)) * 255.0;
@@ -287,11 +265,11 @@ void main() {
         discard;
     }
 
-    // ---- 步骤 5: 颜色查找 ----
+    // ---- 步骤 4: 颜色查找 ----
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
 
-    // ---- 步骤 6: minOpacity 低值淡化（线性 clamp 路径） ----
+    // ---- 步骤 5: minOpacity 低值淡化（线性 clamp 路径） ----
     // 线性过渡：value 在 [vmin*0.8, vmin*1.3] 之间时 alpha 从 0 线性过渡到 1
     // o = (value - vmin*0.8) / (0.5 * vmin)
     //   当 value = vmin*0.8  → o = 0
@@ -303,7 +281,7 @@ void main() {
         outColor.a = outColor.a * o;
     }
 
-    // ---- 步骤 7: 预乘 alpha ----
+    // ---- 步骤 6: 预乘 alpha ----
     outColor.rgb *= outColor.a;
 }`
 
@@ -478,7 +456,7 @@ function generateColorRamp(
  *   (0, 0) = 地图左上角（180°W, ~85.05°N）
  *   (1, 1) = 地图右下角（180°E, ~85.05°S）
  *
- * 用途：计算地图中心在世界像素坐标中的位置，进而推算视口左上角的世界像素偏移(oripx)。
+ * 用途：计算数据范围四角的归一化坐标，填入地面矩形 VBO；随后由 MapLibre 的矩阵投影。
  *       之所以不用 maplibregl.MercatorCoordinate.fromLngLat()，是为了避免对 maplibre
  *       库内部 API 的依赖，保持纯数学实现。
  */
@@ -495,8 +473,9 @@ function lngLatToMercator(lng: number, lat: number): { x: number; y: number } {
 /**
  * ColorfulMapImage — MapLibre 自定义图层插件
  *
- * 实现 maplibregl.CustomLayerInterface 接口，以 WebGL2 全屏四边形 + Fragment Shader
- * 逐像素逆投影的方式，将编码的数据纹理叠加渲染到地图上。
+ * 实现 maplibregl.CustomLayerInterface 接口，把数据经纬度范围转换为 Web Mercator 地面矩形，
+ * 再通过 MapLibre 提供的投影矩阵渲染。矩阵包含平移、缩放、旋转和透视信息，因此图层在
+ * pitch/bearing 变化时会和底图保持一致；片元着色器继续负责数据解码和颜色映射。
  *
  * 使用方式：
  *   const layer = new ColorfulMapImage({ img, scale, colors, latmin, latmax, lonmin, lonmax, ... })
@@ -528,9 +507,9 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   // ---- WebGL 资源 ----
   /** 链接好的 Shader Program */
   private program: WebGLProgram | null = null
-  /** Vertex Array Object：封装全屏四边形的顶点属性绑定 */
+  /** Vertex Array Object：封装地理范围矩形的顶点属性绑定 */
   private vao: WebGLVertexArrayObject | null = null
-  /** Vertex Buffer Object：存储全屏四边形的 4 个顶点坐标 */
+  /** Vertex Buffer Object：存储数据边界四角的 Web Mercator 坐标 */
   private vbuffer: WebGLBuffer | null = null
   /** 数据纹理（TEXTURE0）：编码了数据值的 PNG 图片 */
   private dataTexture: WebGLTexture | null = null
@@ -541,11 +520,11 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
 
   // ---- Uniform 位置缓存 ----
   // 在 onAdd 时通过 getUniformLocation 获取并缓存，避免每帧查询
-  private u_oripx: WebGLUniformLocation | null = null // 视口像素参数
+  private u_matrix: WebGLUniformLocation | null = null // MapLibre Mercator → clip-space 投影矩阵
+  private u_worldOffset: WebGLUniformLocation | null = null // 横向世界副本偏移
   private u_tbound: WebGLUniformLocation | null = null // 数据地理边界
   private u_scale: WebGLUniformLocation | null = null // 数据解码比例
   private u_tminOpacity: WebGLUniformLocation | null = null // 低值淡化开关
-  private u_rto: WebGLUniformLocation | null = null // 设备像素比
   private u_vrange: WebGLUniformLocation | null = null // 颜色值域
   private u_img: WebGLUniformLocation | null = null // 数据纹理采样器
   private u_color: WebGLUniformLocation | null = null // 颜色纹理采样器
@@ -579,6 +558,12 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
    * 避免依赖 WebGL readPixels（需要 framebuffer，且 MapLibre 管线中难以注入）。
    */
   private rawImageCanvas: HTMLCanvasElement | null = null
+  /**
+   * 上传投影矩阵用的 Float32 缓冲。
+   * MapLibre 的矩阵可能以 Float64Array 提供，而 WebGL uniformMatrix4fv 要求 Float32Array；
+   * 每帧复用该对象可避免不断分配临时数组。
+   */
+  private projectionMatrix = new Float32Array(16)
 
   /**
    * 构造函数
@@ -627,7 +612,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
    * 完成所有 WebGL 资源初始化：
    *   1. 编译 Shader、链接 Program
    *   2. 获取所有 Uniform 位置并缓存
-   *   3. 创建全屏四边形 VAO
+   *   3. 根据数据经纬度范围创建 Web Mercator 地面矩形 VAO
    *   4. 加载数据纹理图片
    *   5. 生成颜色渐变查找纹理
    *   6. 加载裁剪遮罩（如果启用）
@@ -657,11 +642,11 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
 
     // ---- 缓存所有 Uniform 位置 ----
     // 提前获取并缓存，避免每帧重复调用 getUniformLocation（减少 CPU 开销）
-    this.u_oripx = gl.getUniformLocation(this.program, 'oripx')
+    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix')
+    this.u_worldOffset = gl.getUniformLocation(this.program, 'u_worldOffset')
     this.u_tbound = gl.getUniformLocation(this.program, 'tbound')
     this.u_scale = gl.getUniformLocation(this.program, 'scale')
     this.u_tminOpacity = gl.getUniformLocation(this.program, 'tminOpacity')
-    this.u_rto = gl.getUniformLocation(this.program, 'rto')
     this.u_vrange = gl.getUniformLocation(this.program, 'vrange')
     this.u_img = gl.getUniformLocation(this.program, 'u_img')
     this.u_color = gl.getUniformLocation(this.program, 'u_color')
@@ -670,18 +655,18 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       this.u_cutArea = gl.getUniformLocation(this.program, 'cutArea')
     }
 
-    // ---- 创建全屏四边形 VAO ----
-    // 4 个顶点构成 Triangle Strip，覆盖整个 clip-space [-1,1]×[-1,1]
-    // 顶点顺序：左上(-1,1) → 左下(-1,-1) → 右上(1,1) → 右下(1,-1)
-    // 作为 Triangle Strip 渲染为 2 个三角形覆盖全屏
-    const vertices = new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1])
+    // ---- 创建数据地理范围矩形 VAO ----
+    // VBO 创建后由 updateGeometry() 根据 lat/lon 边界填入归一化 Mercator 坐标。
+    // 4 个顶点仍按 Triangle Strip 排列：西北 → 西南 → 东北 → 东南。
     this.vbuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW) // 静态数据，上传一次即可
+    this.updateGeometry()
 
     // VAO 封装了顶点属性绑定：position 属性 → a_position location
     this.vao = (gl as WebGL2RenderingContext).createVertexArray()
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
+    // updateGeometry() 在 VAO 创建前绑定了 VBO；这里显式重绑，避免依赖外部 GL 状态。
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
     const posLoc = gl.getAttribLocation(this.program, 'a_position')
     gl.enableVertexAttribArray(posLoc)
     // stride=0, offset=0：顶点数据紧密排列 (x,y) (x,y) ...
@@ -733,59 +718,36 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
    *
    * 在 MapLibre 渲染管线中，自定义图层的 render() 在每个动画帧被调用。
    * 此方法完成：
-   *   1. 从 map.transform 计算视口在世界像素坐标中的偏移（oripx）
-   *   2. 传入所有 uniform（地理边界、解码比例、颜色值域等）
+   *   1. 上传 MapLibre 当前帧的 Web Mercator 投影矩阵
+   *   2. 传入地理边界、解码比例、颜色值域等 uniform
    *   3. 绑定 3 张纹理（数据 / 颜色 / 遮罩）
-   *   4. 绘制全屏四边形（实际工作由 Fragment Shader 完成）
+   *   4. 按 renderWorldCopies 设置绘制当前世界及相邻世界的数据矩形
    *
    * MapLibre 默认 blend 模式为 (ONE, ONE_MINUS_SRC_ALPHA)，期望预乘 alpha。
    * Fragment Shader 中已做预乘（outColor.rgb *= outColor.a），无需覆盖 blend。
    *
-   * @param gl       WebGL2 渲染上下文
-   * @param _options MapLibre 传入的投影矩阵等参数（本实现不使用，用像素反算替代）
+   * @param gl      WebGL2 渲染上下文
+   * @param options MapLibre 当前帧的相机及投影数据
    */
-  render(gl: WebGL2RenderingContext | WebGLRenderingContext, _options: unknown): void {
+  render(
+    gl: WebGL2RenderingContext | WebGLRenderingContext,
+    options: maplibregl.CustomRenderMethodInput
+  ): void {
     // 未就绪（图片未加载完毕）或已销毁时跳过渲染
     if (!this.program || !this.ready) return
 
     const map = this.map!
-    // map.transform 是 MapLibre 内部属性，包含视口状态
-    // 类型定义中可能未暴露，通过 as any 访问
-    const transform = (map as any).transform
-
-    // ---- 计算 oripx 视口参数 ----
-    // 目标：计算当前视口左上角在世界像素坐标中的位置，以及像素到 Mercator 的缩放因子
-    const center = transform.center // 地图中心点 LngLat
-    const zoom = transform.zoom // 当前缩放级别
-    const width = transform.width // Canvas CSS 宽度
-    const height = transform.height // Canvas CSS 高度
-    const tileSize = transform.tileSize || 512 // MapLibre 瓦片大小（通常 512）
-    // 世界像素大小：zoom 级别下整个 Mercator 世界占多少 CSS 像素
-    const worldSize = tileSize * Math.pow(2, zoom)
-    const dpr = window.devicePixelRatio || 1 // 设备像素比
-
-    // 地图中心在 Mercator [0,1] 空间中的坐标
-    const mc = lngLatToMercator(center.lng, center.lat)
-
     // ---- 绑定 Program & VAO ----
     gl.useProgram(this.program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
 
     // ---- 设置 Uniform ----
 
-    // u_oripx: (视口左边界世界像素X, 视口上边界世界像素Y, 像素→Mercator缩放, Canvas高度)
-    //   组成部分：
-    //     oripx.x = 地图中心世界像素X - 视口宽度的一半
-    //     oripx.y = 地图中心世界像素Y - 视口高度的一半
-    //     oripx.z = 1 / worldSize  （世界像素 → Mercator [0,1] 的缩放因子）
-    //     oripx.w = Canvas CSS 高度（用于 Y 轴翻转计算）
-    gl.uniform4f(
-      this.u_oripx,
-      mc.x * worldSize - width / 2, // 视口左边界世界像素 X
-      mc.y * worldSize - height / 2, // 视口上边界世界像素 Y
-      1 / worldSize, // 世界像素 → Mercator 缩放
-      height // Canvas CSS 高度
-    )
+    // defaultProjectionData.mainMatrix 接受 [0,1] Web Mercator 世界坐标，输出 clip-space。
+    // 它已经包含当前 pitch、bearing、zoom、center 和透视参数，是倾斜渲染正确的关键。
+    // 复制到复用的 Float32Array 后再上传，兼容 MapLibre 内部提供的 64 位矩阵。
+    this.projectionMatrix.set(options.defaultProjectionData.mainMatrix)
+    gl.uniformMatrix4fv(this.u_matrix, false, this.projectionMatrix)
 
     // u_tbound: 数据地理边界 (latmin, latmax, lonmin, lonmax)
     //   Shader 中用于判断像素是否在数据范围内，以及计算纹理 UV
@@ -808,11 +770,8 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       this.opts.scale.a
     )
 
-    // u_tminOpacity: 低值淡化开关（bool 转为 float 1.0/0.0）
-    gl.uniform1f(this.u_tminOpacity, this.opts.minOpacity ? 1.0 : 0.0)
-
-    // u_rto: 设备像素比，用于 gl_FragCoord（物理像素）→ CSS 像素的转换
-    gl.uniform1f(this.u_rto, dpr)
+    // GLSL bool uniform 应通过 uniform1i 传递 0/1。
+    gl.uniform1i(this.u_tminOpacity, this.opts.minOpacity ? 1 : 0)
 
     // u_vrange: 颜色映射的值域 [vmin, vmax]
     //   由 generateColorRamp() 计算，vmax = 最后台阶值 + 5
@@ -844,9 +803,18 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       )
     }
 
-    // ---- 绘制 ----
-    // 全屏四边形（4 个顶点），Fragment Shader 对每个像素执行着色
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    // ---- 绘制当前世界及横向副本 ----
+    // 经度每增加 360°，Mercator X 增加 1。先根据中心经度找出相机所在的世界编号，
+    // 开启 renderWorldCopies 时再绘制左右相邻世界，确保跨越 ±180° 平移时图层连续。
+    // 片元 varying 始终使用未偏移的 a_position，所以所有副本采样相同的数据纹理。
+    const centerWorld = Math.floor((map.getCenter().lng + 180) / 360)
+    const worldOffsets = map.getRenderWorldCopies()
+      ? [centerWorld - 1, centerWorld, centerWorld + 1]
+      : [0]
+    for (const worldOffset of worldOffsets) {
+      gl.uniform1f(this.u_worldOffset, worldOffset)
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    }
   }
 
   // ========================================================================
@@ -966,6 +934,8 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.opts.latmax = latmax
     this.opts.lonmin = lonmin
     this.opts.lonmax = lonmax
+    // 边界同时决定 VBO 中地面矩形的位置；只更新 tbound 会导致纹理与几何范围不一致。
+    this.updateGeometry()
 
     // 更新附加选项
     if (extra?.flipy !== undefined) this.opts.flipy = extra.flipy
@@ -1143,6 +1113,44 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   // ========================================================================
   // Private Methods — 内部实现
   // ========================================================================
+
+  /**
+   * 根据当前经纬度边界创建地面矩形顶点
+   *
+   * 经纬度不能直接参与 MapLibre 的矩阵运算，需要先转换为归一化 Web Mercator：
+   *   x = lon / 360 + 0.5
+   *   y = 0.5 - ln(tan(π/4 + lat/2)) / (2π)
+   *
+   * 顶点按 Triangle Strip 排列：
+   *   西北(northWest) ───── 东北
+   *          │            / │
+   *          │  两个三角形  │
+   *          │ /            │
+   *   西南 ──────────── 东南(southEast)
+   *
+   * changeImageArea() 更新边界时会再次调用本方法，因此图像范围可以动态变化。
+   * VBO 使用 STATIC_DRAW 是因为边界相对每帧相机变化频率很低；相机变化只更新矩阵。
+   */
+  private updateGeometry(): void {
+    if (!this.gl || !this.vbuffer) return
+
+    const northWest = lngLatToMercator(this.opts.lonmin, this.opts.latmax)
+    const southEast = lngLatToMercator(this.opts.lonmax, this.opts.latmin)
+    const vertices = new Float32Array([
+      northWest.x,
+      northWest.y,
+      northWest.x,
+      southEast.y,
+      southEast.x,
+      northWest.y,
+      southEast.x,
+      southEast.y,
+    ])
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbuffer)
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW)
+    this.requestRepaint()
+  }
 
   /**
    * 加载数据纹理图片
