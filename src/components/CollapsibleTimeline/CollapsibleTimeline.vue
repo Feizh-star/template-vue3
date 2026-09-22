@@ -31,6 +31,7 @@ const props = withDefaults(
     labelSpaceScale?: number
     blur?: string // 背景模糊程度，不应根据vw变化
     useVw?: boolean // 不使用vw时，要设置为false，开启尺寸变化监听，自动处理标签间距
+    playInterval?: number
   }>(),
   {
     timeFormatter: defaultTimeFormatter,
@@ -42,6 +43,7 @@ const props = withDefaults(
     labelSpaceScale: 0.4,
     blur: '6px',
     useVw: true,
+    playInterval: 500,
   }
 )
 const cssBlur = computed(() => `blur(${props.blur})`)
@@ -351,7 +353,7 @@ function clickRuning() {
     nextAndPrevTick('next')
     runingTimer = setInterval(() => {
       nextAndPrevTick('next')
-    }, 500)
+    }, props.playInterval)
   } else {
     runingTimer && clearInterval(runingTimer)
   }

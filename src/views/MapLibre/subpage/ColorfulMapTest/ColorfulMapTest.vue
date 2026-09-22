@@ -68,7 +68,8 @@ const { selectedTime } = useStainImg({ mapIns })
         :start="'202605170000'"
         :end-equal="false"
         :days="1"
-        :division="60"
+        :interval="15"
+        :play-interval="100"
         :label-interval="2"
         :time-formatter="'YYYYMMDDHHmm'"
       />
