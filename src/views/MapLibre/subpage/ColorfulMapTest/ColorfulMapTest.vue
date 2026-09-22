@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import CollapsibleTimeline from '@/components/CollapsibleTimeline/CollapsibleTimeline.vue'
 import { shallowRef, onMounted } from 'vue'

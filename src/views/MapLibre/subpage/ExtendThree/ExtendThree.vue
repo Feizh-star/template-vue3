@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 // import { Gplot3DLayer } from '@/libs/gplot3D/Gplot3DLayer/Gplot3DLayer'
 import { Gplot3DLayer } from './lib-exper/Gplot3DLayer/Gplot3DLayer'

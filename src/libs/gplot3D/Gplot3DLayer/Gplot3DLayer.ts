@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
 import * as lodashLib from 'lodash'
 import { Gplot3DEffect } from '../Gplot3DEffect/Gplot3DEffect'
