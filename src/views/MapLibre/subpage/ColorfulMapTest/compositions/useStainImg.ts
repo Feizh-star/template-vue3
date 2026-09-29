@@ -9,10 +9,10 @@ interface IUseStainImgProps {
   mapIns: Ref<maplibregl.Map | null>
 }
 
-const pngUrl = 'http://localhost/tiansetu'
+export const pngUrl = 'http://localhost:8085/tiansetu'
 
 const opacity = 0.8
-const imgColor: IColorRange = {
+export const imgColor: IColorRange = {
   r: [235, 111, 124, 129, 155, 209, 250, 252, 252, 249, 247, 245, 235, 194, 158, 110],
   g: [235, 117, 150, 169, 226, 245, 247, 238, 214, 188, 158, 136, 100, 58, 40, 20],
   b: [235, 209, 217, 218, 144, 93, 70, 61, 36, 28, 20, 20, 38, 97, 115, 95],
@@ -21,13 +21,13 @@ const imgColor: IColorRange = {
   ),
   o: new Array(16).fill(opacity) as number[],
 }
-const imgScale: IScaleProps = {
+export const imgScale: IScaleProps = {
   r: 1,
   g: 1,
   b: 1,
   a: 1,
 }
-const defaultOption = {
+export const defaultOption = {
   linear: 1,
   latmin: 17,
   latmax: 55,
@@ -100,10 +100,14 @@ export function useStainImg({ mapIns }: IUseStainImgProps) {
   }
 
   function getUrl(time: string) {
-    return `${pngUrl}/${time}_ghi.png`
+    return getStainImageUrl(time)
   }
 
   return {
     selectedTime,
   }
+}
+
+export function getStainImageUrl(time: string) {
+  return `${pngUrl}/${time}_ghi.png`
 }
