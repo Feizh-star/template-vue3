@@ -38,6 +38,7 @@ const options: IColorfulMapImageExportOptions = {
       data: [provinceFeatureCollection, cityFeatureCollection],
       color: '#55394f',
       lineWidth: 1.5,
+      label: { font: '14px Arial, sans-serif', color: '#1f2a36' },
     },
   ],
   axes: {
@@ -67,6 +68,10 @@ size. PNG keeps the outside of the cut transparent; JPG uses a white background 
 
 `axes.margin` accepts the CSS shorthand forms `number`, `[vertical, horizontal]`, or
 `[top, right, bottom, left]`. When omitted, the renderer keeps its default axis layout margins.
+
+A boundary layer can also draw region names: set `label` to render each feature's
+`properties.name` at `properties.center`, horizontally and vertically centered on that point.
+`label.enabled` defaults to `true` when the option object is present, so omit `label` to skip names.
 
 The renderer batches each boundary style into one Canvas path. It can run on an
 `OffscreenCanvas` by setting `preferOffscreenCanvas: true`, so the same function can be called

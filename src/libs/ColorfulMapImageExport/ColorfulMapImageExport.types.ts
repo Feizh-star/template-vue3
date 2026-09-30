@@ -63,6 +63,14 @@ export type ColorfulMapGeometry =
 
 export type ColorfulMapGeometryArray = ColorfulMapGeometry | ColorfulMapGeometry[]
 
+/** Draws each feature's name (properties.name) at properties.center. */
+export interface IColorfulMapBoundaryLabelOptions {
+  /** Defaults to true when this option object is provided. */
+  enabled?: boolean
+  font?: string
+  color?: string
+}
+
 export interface IColorfulMapBoundaryLayer {
   data: ColorfulMapGeometryArray
   color?: string
@@ -72,6 +80,7 @@ export interface IColorfulMapBoundaryLayer {
   dash?: number[]
   dashOffset?: number
   opacity?: number
+  label?: IColorfulMapBoundaryLabelOptions
 }
 
 export type ColorfulMapMargin = number | [number, number] | [number, number, number, number]

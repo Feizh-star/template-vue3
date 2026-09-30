@@ -1,4 +1,4 @@
-import type { Position } from 'geojson'
+import type { Feature, Geometry, Position } from 'geojson'
 import { unzlibSync } from 'fflate'
 import type {
   ColorfulMapGeometry,
@@ -7,6 +7,7 @@ import type {
   ColorfulMapMargin,
   IColorRange,
   IColorfulMapAxesOptions,
+  IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
@@ -25,6 +26,8 @@ const DEFAULT_EXPORT_WIDTH = 1600
 const DEFAULT_AXIS_COLOR = '#566574'
 const DEFAULT_GRID_COLOR = '#aab6c2'
 const DEFAULT_AXIS_MARGIN: [number, number, number, number] = [10, 10, 56, 56]
+const DEFAULT_BOUNDARY_LABEL_FONT = '14px Arial, sans-serif'
+const DEFAULT_BOUNDARY_LABEL_COLOR = '#1f2a36'
 
 export const webMercatorProjection: IColorfulMapProjection = {
   id: 'EPSG:3857',
@@ -322,10 +325,74 @@ function drawBoundaries(
     ctx.beginPath()
     appendGeoJsonPath(ctx, layer.data, projection, projectedBounds, plot)
     ctx.stroke()
+
+    const label = normalizeBoundaryLabel(layer.label)
+    if (label) drawBoundaryLabels(ctx, layer, label, projection, projectedBounds, plot)
+
     ctx.restore()
   }
 
   ctx.restore()
+}
+
+function drawBoundaryLabels(
+  ctx: CanvasRenderingContext2D,
+  layer: IColorfulMapBoundaryLayer,
+  label: Required<IColorfulMapBoundaryLabelOptions>,
+  projection: IColorfulMapProjection,
+  projectedBounds: ProjectedBounds,
+  plot: PlotRect
+): void {
+  ctx.save()
+  ctx.fillStyle = label.color
+  ctx.font = label.font
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.setLineDash([])
+
+  forEachGeoJsonFeature(layer.data, (feature) => {
+    const name = readFeatureName(feature)
+    const center = readFeatureCenter(feature)
+    if (!name || !center) return
+    const point = projectedToPixel(projection.forward(center[0], center[1]), projectedBounds, plot)
+    ctx.fillText(name, point.x, point.y)
+  })
+
+  ctx.restore()
+}
+
+function forEachGeoJsonFeature(
+  input: ColorfulMapGeometryArray,
+  callback: (feature: Feature<Geometry | null>) => void
+): void {
+  if (Array.isArray(input)) {
+    for (const item of input) forEachGeoJsonFeature(item, callback)
+    return
+  }
+
+  if (!input) return
+
+  if (input.type === 'FeatureCollection') {
+    for (const feature of input.features) forEachGeoJsonFeature(feature, callback)
+    return
+  }
+
+  if (input.type === 'Feature') callback(input)
+}
+
+function readFeatureName(feature: Feature<Geometry | null>): string | null {
+  const name = (feature.properties as Record<string, unknown> | null | undefined)?.name
+  return typeof name === 'string' && name.trim() ? name : null
+}
+
+function readFeatureCenter(feature: Feature<Geometry | null>): Position | null {
+  const center = (feature.properties as Record<string, unknown> | null | undefined)?.centroid
+  return Array.isArray(center) &&
+    center.length >= 2 &&
+    Number.isFinite(center[0]) &&
+    Number.isFinite(center[1])
+    ? (center as Position)
+    : null
 }
 
 function drawAxes(
@@ -901,6 +968,17 @@ function normalizeAxes(input?: IColorfulMapAxesOptions): Required<IColorfulMapAx
   }
 }
 
+function normalizeBoundaryLabel(
+  input?: IColorfulMapBoundaryLabelOptions
+): Required<IColorfulMapBoundaryLabelOptions> | null {
+  if (!input || !(input.enabled ?? true)) return null
+  return {
+    enabled: true,
+    font: input.font || DEFAULT_BOUNDARY_LABEL_FONT,
+    color: input.color || DEFAULT_BOUNDARY_LABEL_COLOR,
+  }
+}
+
 function fitPlotRect(
   width: number,
   height: number,
@@ -1116,6 +1194,7 @@ export type {
   ColorfulMapImageSource,
   ColorfulMapMargin,
   IColorfulMapAxesOptions,
+  IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,

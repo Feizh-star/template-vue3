@@ -14,6 +14,7 @@ export type {
   ColorfulMapWorkerImageSource,
   IColorRange,
   IColorfulMapAxesOptions,
+  IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
