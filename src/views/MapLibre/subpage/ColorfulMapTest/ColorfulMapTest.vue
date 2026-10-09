@@ -117,7 +117,7 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
         color: '#4b3a58',
         lineWidth: 1.2,
         opacity: 0.95,
-        label: { enabled: true },
+        label: { enabled: true, labelMap: { 新疆维吾尔自治区: '新疆' } },
       },
       {
         data: chinaGeoJson,

@@ -350,12 +350,13 @@ function drawBoundaryLabels(
   ctx.textBaseline = 'middle'
   ctx.setLineDash([])
 
+  const labelMap = label.labelMap
   forEachGeoJsonFeature(layer.data, (feature) => {
     const name = readFeatureName(feature)
     const center = readFeatureCenter(feature)
     if (!name || !center) return
     const point = projectedToPixel(projection.forward(center[0], center[1]), projectedBounds, plot)
-    ctx.fillText(name, point.x, point.y)
+    ctx.fillText(labelMap[name] || name, point.x, point.y)
   })
 
   ctx.restore()
@@ -976,6 +977,7 @@ function normalizeBoundaryLabel(
     enabled: true,
     font: input.font || DEFAULT_BOUNDARY_LABEL_FONT,
     color: input.color || DEFAULT_BOUNDARY_LABEL_COLOR,
+    labelMap: input.labelMap || {},
   }
 }
 

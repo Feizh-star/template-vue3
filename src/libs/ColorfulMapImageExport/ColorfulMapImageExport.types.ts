@@ -69,6 +69,7 @@ export interface IColorfulMapBoundaryLabelOptions {
   enabled?: boolean
   font?: string
   color?: string
+  labelMap?: Record<string, string>
 }
 
 export interface IColorfulMapBoundaryLayer {
