@@ -23,6 +23,7 @@ const options: IColorfulMapImageExportOptions = {
   },
   scale: imgScale,
   colors: imgColor,
+  colorScale: { enabled: true, blockWidth: 12, blockHeight: 16, offset: 16, labelGap: 8 },
   linear: 1,
   flipy: 0,
   format: 'png',
@@ -72,6 +73,21 @@ size. PNG keeps the outside of the cut transparent; JPG uses a white background 
 A boundary layer can also draw region names: set `label` to render each feature's
 `properties.name` at `properties.center`, horizontally and vertically centered on that point.
 `label.enabled` defaults to `true` when the option object is present, so omit `label` to skip names.
+
+`colorScale` draws a vertical color scale in the right margin, outside the coordinate plot: one
+swatch per entry of `colors` (`blockWidth` default 12px, `blockHeight` default 16px), lowest value
+at the bottom, its stack bottom aligned with the plot bottom and its left edge `offset` px to the
+right of the plot (default 16). Each value label is vertically centered on its swatch's bottom edge
+and sits `labelGap` px to the right of the swatch (default 8); set `showFirstLabel: false` to hide
+the lowest value label. Labels default to `colors.v`; pass `values` to display a different value
+axis per swatch (useful when the coloring pipeline offsets the `v` component), falling back to
+`colors.v[i]` for any index without a finite value.
+`font` and `color` are configurable. The renderer measures the label text and reserves a band of
+`16 + blockWidth + 8 + widest label` to the right of the plot; this band is added to `axes.margin`,
+so `margin[1]` stays exactly as configured and remains as blank space to the right of the scale.
+The exported width becomes `left margin + axes.width + color scale band + right margin`.
+`colorScale.enabled` defaults to `true` when the object is present. Because the scale is anchored at
+the plot bottom and grows upward, it clips if its height exceeds the plot.
 
 The renderer batches each boundary style into one Canvas path. It can run on an
 `OffscreenCanvas` by setting `preferOffscreenCanvas: true`, so the same function can be called

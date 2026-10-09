@@ -132,7 +132,17 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
       latStep: 5,
       color: '#455464',
       labelColor: '#455464',
-      margin: [56, 56, 56, 64],
+      margin: [56, 16, 56, 64],
+    },
+    colorScale: {
+      enabled: true,
+      blockWidth: 16,
+      blockHeight: 22,
+      showFirstLabel: false,
+      font: '16px sans-serif',
+      color: '#ff0000',
+      offset: 16,
+      labelGap: 8,
     },
   }
 }

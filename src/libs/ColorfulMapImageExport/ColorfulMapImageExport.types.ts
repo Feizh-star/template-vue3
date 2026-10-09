@@ -86,6 +86,29 @@ export interface IColorfulMapBoundaryLayer {
 
 export type ColorfulMapMargin = number | [number, number] | [number, number, number, number]
 
+/** Vertical color scale drawn in the right margin, outside the coordinate plot. */
+export interface IColorfulMapColorScaleOptions {
+  /** Defaults to true when this option object is provided. */
+  enabled?: boolean
+  /** Swatch width in pixels. Defaults to 12. */
+  blockWidth?: number
+  /** Swatch height in pixels. Defaults to 16. */
+  blockHeight?: number
+  /** Gap in pixels between the plot and the swatches. Defaults to 16. */
+  offset?: number
+  /** Gap in pixels between a swatch and its label. Defaults to 8. */
+  labelGap?: number
+  /**
+   * Displayed value per swatch. Falls back to `colors.v[i]` per index when omitted.
+   * Use this when the value axis used for coloring has been offset from `colors.v`.
+   */
+  values?: number[]
+  /** Draw the lowest value label. Defaults to true. */
+  showFirstLabel?: boolean
+  font?: string
+  color?: string
+}
+
 export interface IColorfulMapCutTexture {
   image: ColorfulMapImageSource
   lonmin: number
@@ -136,6 +159,7 @@ export interface IColorfulMapImageExportOptions {
   outputBounds?: IColorfulMapGeoBounds
   scale: IScaleProps
   colors: IColorRange
+  colorScale?: IColorfulMapColorScaleOptions
   format?: 'png' | 'jpg' | 'jpeg'
   quality?: number
   flipy?: 0 | 1 | boolean

@@ -9,6 +9,7 @@ import type {
   IColorfulMapAxesOptions,
   IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
+  IColorfulMapColorScaleOptions,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
   IColorfulMapGeoBounds,
@@ -28,6 +29,12 @@ const DEFAULT_GRID_COLOR = '#aab6c2'
 const DEFAULT_AXIS_MARGIN: [number, number, number, number] = [10, 10, 56, 56]
 const DEFAULT_BOUNDARY_LABEL_FONT = '14px Arial, sans-serif'
 const DEFAULT_BOUNDARY_LABEL_COLOR = '#1f2a36'
+const DEFAULT_COLOR_SCALE_BLOCK_WIDTH = 12
+const DEFAULT_COLOR_SCALE_BLOCK_HEIGHT = 16
+const DEFAULT_COLOR_SCALE_FONT = '12px Arial, sans-serif'
+const DEFAULT_COLOR_SCALE_COLOR = '#1f2a36'
+const DEFAULT_COLOR_SCALE_OFFSET = 16
+const DEFAULT_COLOR_SCALE_LABEL_GAP = 8
 
 export const webMercatorProjection: IColorfulMapProjection = {
   id: 'EPSG:3857',
@@ -50,7 +57,10 @@ export function getColorfulMapExportSize(
   options: Pick<
     IColorfulMapImageExportOptions,
     'lonmin' | 'lonmax' | 'latmin' | 'latmax' | 'outputBounds' | 'axes' | 'projection'
-  >
+  > & {
+    colors?: IColorRange
+    colorScale?: IColorfulMapColorScaleOptions
+  }
 ): IColorfulMapExportSize {
   const projection = options.projection || webMercatorProjection
   const outputBounds = getOutputBounds(options)
@@ -66,9 +76,7 @@ export function getColorfulMapExportSize(
   const aspectRatio = projectedWidth / projectedHeight
 
   const axes = normalizeAxes(options.axes)
-  const [topMargin, rightMargin, bottomMargin, leftMargin] = axes.enabled
-    ? expandMargin(axes.margin)
-    : [0, 0, 0, 0]
+  const [topMargin, rightMargin, bottomMargin, leftMargin] = getEffectiveMargins(options)
   const plotWidth = Math.max(1, Math.round(finitePositive(axes.width) || DEFAULT_EXPORT_WIDTH))
   const plotHeight = Math.max(1, Math.round(plotWidth / aspectRatio))
 
@@ -100,7 +108,7 @@ export async function renderColorfulMapImage(
     ctx.clearRect(0, 0, size.width, size.height)
   }
 
-  const plot = fitPlotRect(size.width, size.height, axes)
+  const plot = fitPlotRect(size.width, size.height, getEffectiveMargins(options))
   const outputBounds = getOutputBounds(options)
   const projectedBounds = getProjectedBounds(
     projection,
@@ -135,6 +143,8 @@ export async function renderColorfulMapImage(
       outputBounds.latmax
     )
   }
+
+  drawColorScale(ctx, options, plot)
 
   return {
     canvas,
@@ -394,6 +404,40 @@ function readFeatureCenter(feature: Feature<Geometry | null>): Position | null {
     Number.isFinite(center[1])
     ? (center as Position)
     : null
+}
+
+function drawColorScale(
+  ctx: CanvasRenderingContext2D,
+  options: { colors?: IColorRange; colorScale?: IColorfulMapColorScaleOptions },
+  plot: PlotRect
+): void {
+  const scale = resolveColorScale(options)
+  const colors = options.colors
+  if (!scale || !colors) return
+
+  const { config, labels, count } = scale
+  const blockX = plot.right + config.offset
+  const labelX = blockX + config.blockWidth + config.labelGap
+
+  ctx.save()
+  ctx.font = config.font
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+
+  for (let i = 0; i < count; i += 1) {
+    const bottomY = plot.bottom - i * config.blockHeight
+    const [r, g, b, a] = colorAt(colors, i)
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`
+    ctx.fillRect(blockX, bottomY - config.blockHeight, config.blockWidth, config.blockHeight)
+
+    const text = labels[i]
+    if (text !== null) {
+      ctx.fillStyle = config.color
+      ctx.fillText(text, labelX, bottomY)
+    }
+  }
+
+  ctx.restore()
 }
 
 function drawAxes(
@@ -981,14 +1025,93 @@ function normalizeBoundaryLabel(
   }
 }
 
+interface ResolvedColorScale {
+  config: Required<IColorfulMapColorScaleOptions>
+  count: number
+  labels: (string | null)[]
+  totalWidth: number
+  requiredMargin: number
+}
+
+function normalizeColorScale(
+  input?: IColorfulMapColorScaleOptions
+): Required<IColorfulMapColorScaleOptions> | null {
+  if (!input || !(input.enabled ?? true)) return null
+  return {
+    enabled: true,
+    blockWidth: finitePositive(input.blockWidth) || DEFAULT_COLOR_SCALE_BLOCK_WIDTH,
+    blockHeight: finitePositive(input.blockHeight) || DEFAULT_COLOR_SCALE_BLOCK_HEIGHT,
+    offset: finiteNonNegative(input.offset, DEFAULT_COLOR_SCALE_OFFSET),
+    labelGap: finiteNonNegative(input.labelGap, DEFAULT_COLOR_SCALE_LABEL_GAP),
+    values: input.values ?? [],
+    showFirstLabel: input.showFirstLabel ?? true,
+    font: input.font || DEFAULT_COLOR_SCALE_FONT,
+    color: input.color || DEFAULT_COLOR_SCALE_COLOR,
+  }
+}
+
+function resolveColorScale(options: {
+  colors?: IColorRange
+  colorScale?: IColorfulMapColorScaleOptions
+}): ResolvedColorScale | null {
+  const config = normalizeColorScale(options.colorScale)
+  const colors = options.colors
+  if (!config || !colors) return null
+
+  const count = Math.min(colors.r.length, colors.g.length, colors.b.length, colors.v.length)
+  if (!count) return null
+
+  const measure = createTextMeasurer(config.font)
+  const labels: (string | null)[] = []
+  let maxLabelWidth = 0
+  for (let i = 0; i < count; i += 1) {
+    if (i === 0 && !config.showFirstLabel) {
+      labels.push(null)
+      continue
+    }
+    const override = config.values[i]
+    const value = Number.isFinite(override) ? override : colors.v[i]
+    const text = formatColorScaleValue(value)
+    labels.push(text)
+    maxLabelWidth = Math.max(maxLabelWidth, measure(text))
+  }
+
+  const totalWidth = config.blockWidth + config.labelGap + maxLabelWidth
+  return {
+    config,
+    count,
+    labels,
+    totalWidth,
+    requiredMargin: config.offset + totalWidth,
+  }
+}
+
+function createTextMeasurer(font: string): (text: string) => number {
+  try {
+    const ctx = get2dContext(createOutputCanvas(1, 1, false), true)
+    ctx.font = font
+    return (text) => ctx.measureText(text).width
+  } catch {
+    const size = parseFontSize(font)
+    return (text) => text.length * size * 0.6
+  }
+}
+
+function parseFontSize(font: string): number {
+  const match = font.match(/(\d+(?:\.\d+)?)\s*px/i)
+  return match ? Number(match[1]) : 12
+}
+
+function formatColorScaleValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)))
+}
+
 function fitPlotRect(
   width: number,
   height: number,
-  axes: Required<IColorfulMapAxesOptions>
+  margins: [number, number, number, number]
 ): PlotRect {
-  const [topMargin, rightMargin, bottomMargin, leftMargin] = axes.enabled
-    ? expandMargin(axes.margin)
-    : [0, 0, 0, 0]
+  const [topMargin, rightMargin, bottomMargin, leftMargin] = margins
   const plotWidth = Math.max(1, width - leftMargin - rightMargin)
   const plotHeight = Math.max(1, height - topMargin - bottomMargin)
   return {
@@ -1006,6 +1129,22 @@ function expandMargin(margin: ColorfulMapMargin): [number, number, number, numbe
   if (margin.length === 2) return [margin[0], margin[1], margin[0], margin[1]]
   if (margin.length === 4) return margin
   return [0, 0, 0, 0]
+}
+
+function getEffectiveMargins(
+  options: Pick<IColorfulMapImageExportOptions, 'axes'> & {
+    colors?: IColorRange
+    colorScale?: IColorfulMapColorScaleOptions
+  }
+): [number, number, number, number] {
+  const axes = normalizeAxes(options.axes)
+  const base: [number, number, number, number] = axes.enabled
+    ? expandMargin(axes.margin)
+    : [0, 0, 0, 0]
+  const [top, right, bottom, left] = base
+  const scale = resolveColorScale(options)
+  const rightMargin = scale ? right + scale.requiredMargin : right
+  return [top, rightMargin, bottom, left]
 }
 
 function getProjectedBounds(
@@ -1157,6 +1296,10 @@ function finitePositive(value?: number): number | null {
   return value !== undefined && Number.isFinite(value) && value > 0 ? value : null
 }
 
+function finiteNonNegative(value: number | undefined, fallback: number): number {
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? value : fallback
+}
+
 function safeDivide(value: number, divisor: number): number {
   return divisor === 0 ? 0 : value / divisor
 }
@@ -1198,6 +1341,7 @@ export type {
   IColorfulMapAxesOptions,
   IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
+  IColorfulMapColorScaleOptions,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
   IColorfulMapImageExportOptions,

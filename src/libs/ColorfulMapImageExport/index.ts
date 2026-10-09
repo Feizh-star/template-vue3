@@ -16,6 +16,7 @@ export type {
   IColorfulMapAxesOptions,
   IColorfulMapBoundaryLabelOptions,
   IColorfulMapBoundaryLayer,
+  IColorfulMapColorScaleOptions,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
   IColorfulMapGeoBounds,
