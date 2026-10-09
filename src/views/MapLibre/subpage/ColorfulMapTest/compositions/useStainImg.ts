@@ -4,6 +4,7 @@ import type maplibregl from 'maplibre-gl'
 import { ColorfulMapImage } from '@/libs/ColorfulMapImage'
 import type { IColorRange, IScaleProps } from '@/libs/ColorfulMapImage/types'
 import cutUrl from '../../SelfMap/assets/100000.png'
+import cutUrl65 from '../../SelfMap/assets/650000.png'
 
 interface IUseStainImgProps {
   mapIns: Ref<maplibregl.Map | null>
@@ -13,39 +14,37 @@ export const pngUrl = 'http://localhost:8085/tiansetu'
 
 const opacity = 0.8
 export const imgColor: IColorRange = {
-  r: [235, 111, 124, 129, 155, 209, 250, 252, 252, 249, 247, 245, 235, 194, 158, 110],
-  g: [235, 117, 150, 169, 226, 245, 247, 238, 214, 188, 158, 136, 100, 58, 40, 20],
-  b: [235, 209, 217, 218, 144, 93, 70, 61, 36, 28, 20, 20, 38, 97, 115, 95],
-  v: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500].map(
-    (item) => item / 2
-  ),
-  o: new Array(16).fill(opacity) as number[],
+  r: [0, 0, 0, 0, 2, 6, 37, 110, 182, 255, 255, 255, 255, 255, 255, 218],
+  g: [0, 77, 155, 232, 239, 197, 188, 210, 233, 255, 228, 200, 173, 130, 80, 26],
+  b: [255, 255, 255, 255, 204, 73, 13, 9, 4, 0, 0, 0, 0, 0, 0, 26],
+  v: [15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82, 88, 92],
+  o: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
 }
 export const imgScale: IScaleProps = {
-  r: 1,
-  g: 1,
-  b: 1,
+  r: 10,
+  g: 10,
+  b: 10,
   a: 1,
 }
 export const defaultOption = {
   linear: 1,
-  latmin: 17,
-  latmax: 55,
-  lonmin: 72,
-  lonmax: 136,
-  interval: 0.1,
+  latmin: 43.43,
+  latmax: 45.67,
+  lonmin: 87.32,
+  lonmax: 90.96,
+  interval: 0.01,
   flipy: 0 as const,
   grid: false,
-  minOpacity: false,
+  minOpacity: true,
   useCorrect: false,
   cut: true,
-  cutlatmin: 18.15,
-  cutlatmax: 53.57,
+  cutlatmin: 34.33,
+  cutlatmax: 49.19,
   cutlonmin: 73.49,
-  cutlonmax: 135.1,
+  cutlonmax: 96.4,
   useCros: true,
   preserveDrawingBuffer: false,
-  cutUrl: cutUrl,
+  cutUrl: cutUrl65,
 }
 
 export function useStainImg({ mapIns }: IUseStainImgProps) {
@@ -75,6 +74,7 @@ export function useStainImg({ mapIns }: IUseStainImgProps) {
 
   function drawStainImg(url: string) {
     if (!mapIns.value) return
+    url = 'http://localhost:3124/glimg/xjms/png/1km/2026010100/T2_C/202601010000_202601010000.png'
     try {
       if (stainImgLayer.value) {
         stainImgLayer.value.changeAll({
