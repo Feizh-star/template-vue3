@@ -24,10 +24,11 @@ export interface IColorfulMapImageOptions {
   beforeId?: string
   interval?: number
   grid?: boolean
+  /** Enable raw pixel queries through getGridDataByLatLon. */
+  getGrid?: boolean
   linear?: number
   flipy?: 0 | 1
   minOpacity?: boolean
-  useCorrect?: boolean
   cut?: boolean
   cutUrl?: string
   cutlatmin?: number
@@ -35,7 +36,6 @@ export interface IColorfulMapImageOptions {
   cutlonmin?: number
   cutlonmax?: number
   useCros?: boolean
-  preserveDrawingBuffer?: boolean
 }
 
 export interface IGridDataResult {

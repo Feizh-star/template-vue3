@@ -147,20 +147,25 @@ function createTexture(
   flipY: boolean
 ): WebGLTexture {
   const texture = gl.createTexture()!
-  gl.activeTexture(gl.TEXTURE0 + textureUnit)
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY ? 1 : 0)
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-  if (useNearest) {
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  } else {
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  try {
+    gl.activeTexture(gl.TEXTURE0 + textureUnit)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY ? 1 : 0)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    if (useNearest) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    } else {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    }
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    return texture
+  } catch (error) {
+    gl.deleteTexture(texture)
+    throw error
   }
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
-  return texture
 }
 
 function generateColorRamp(
@@ -206,6 +211,31 @@ function lngLatToMercator(lng: number, lat: number): { x: number; y: number } {
 
 // ========== Main Class ==========
 
+type OptionKey = keyof IColorfulMapImageOptions
+type ImageSource = HTMLImageElement | HTMLCanvasElement
+
+const CUT_KEYS = new Set<OptionKey>([
+  'cut',
+  'cutUrl',
+  'cutlatmin',
+  'cutlatmax',
+  'cutlonmin',
+  'cutlonmax',
+])
+
+// Both resource groups use the same loading and commit lifecycle.
+function createResourceGroup() {
+  return {
+    version: 0,
+    loading: false,
+    source: null as ImageSource | null,
+    cancel: null as (() => void) | null,
+    dirty: new Set<OptionKey>(),
+  }
+}
+
+type ResourceGroup = ReturnType<typeof createResourceGroup>
+
 export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   id: string
   type: 'custom' = 'custom'
@@ -219,6 +249,7 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   private dataTexture: WebGLTexture | null = null
   private colorTexture: WebGLTexture | null = null
   private cutTexture: WebGLTexture | null = null
+  private usesCut = false
 
   private u_matrix: WebGLUniformLocation | null = null
   private u_worldOffset: WebGLUniformLocation | null = null
@@ -231,95 +262,53 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   private u_cut: WebGLUniformLocation | null = null
   private u_cutArea: WebGLUniformLocation | null = null
 
+  // Target options may be ahead of the options used for drawing and pixel queries.
   private opts: IColorfulMapImageOptions
-
-  private ready = false
-  private hasData = false
-  private eventable = false
+  private applied: IColorfulMapImageOptions
+  private main = createResourceGroup()
+  private mask = createResourceGroup()
   private isDestroyed = false
-
   private vmin = 0
   private vmax = 0
-
   private rawImageCanvas: HTMLCanvasElement | null = null
+  private imageSource: ImageSource | null = null
   private projectionMatrix = new Float32Array(16)
 
   constructor(options: IColorfulMapImageOptions) {
-    this.id =
-      options.beforeId ||
-      `colorful-map-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    this.id = `colorful-map-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     this.opts = {
       linear: 0,
       flipy: 0,
       grid: false,
+      getGrid: false,
       minOpacity: false,
-      useCorrect: false,
       cut: false,
       useCros: false,
-      preserveDrawingBuffer: false,
-      ...options,
-    }
+      ...this.copyOptions(options),
+    } as IColorfulMapImageOptions
+    this.applied = { ...this.opts }
   }
 
   onAdd(map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+    if (this.isDestroyed) return
     this.map = map
     this.gl = gl
-
-    const useCut = this.opts.cut && this.opts.cutUrl
-
-    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
-    const fs = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      useCut ? FRAGMENT_SHADER_WITH_CUT : FRAGMENT_SHADER_NO_CUT
-    )
-    this.program = createProgram(gl, vs, fs)
-    gl.deleteShader(vs)
-    gl.deleteShader(fs)
-
-    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix')
-    this.u_worldOffset = gl.getUniformLocation(this.program, 'u_worldOffset')
-    this.u_tbound = gl.getUniformLocation(this.program, 'tbound')
-    this.u_scale = gl.getUniformLocation(this.program, 'scale')
-    this.u_tminOpacity = gl.getUniformLocation(this.program, 'tminOpacity')
-    this.u_vrange = gl.getUniformLocation(this.program, 'vrange')
-    this.u_img = gl.getUniformLocation(this.program, 'u_img')
-    this.u_color = gl.getUniformLocation(this.program, 'u_color')
-    if (useCut) {
-      this.u_cut = gl.getUniformLocation(this.program, 'cutImg')
-      this.u_cutArea = gl.getUniformLocation(this.program, 'cutArea')
-    }
-
-    // Geographic data bounds in normalized Web Mercator coordinates.
     this.vbuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    this.updateGeometry()
-
     this.vao = (gl as WebGL2RenderingContext).createVertexArray()
-    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    const posLoc = gl.getAttribLocation(this.program, 'a_position')
-    gl.enableVertexAttribArray(posLoc)
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
-    ;(gl as WebGL2RenderingContext).bindVertexArray(null)
-
-    // Load resources
-    this.loadImage(this.opts.img)
-    this.updateColorRamp()
-
-    if (useCut) {
-      this.loadCutImage(this.opts.cutUrl!)
-    }
+    this.updateProgram(false)
+    // Initialization is a full option update through the same resource pipeline.
+    this.setOption(this.opts)
   }
 
   onRemove(_map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+    this.resetGroup(this.main)
+    this.resetGroup(this.mask)
     if (this.program) gl.deleteProgram(this.program)
     if (this.vao) (gl as WebGL2RenderingContext).deleteVertexArray(this.vao)
     if (this.vbuffer) gl.deleteBuffer(this.vbuffer)
     if (this.dataTexture) gl.deleteTexture(this.dataTexture)
     if (this.colorTexture) gl.deleteTexture(this.colorTexture)
     if (this.cutTexture) gl.deleteTexture(this.cutTexture)
-
     this.map = null
     this.gl = null
     this.program = null
@@ -328,64 +317,49 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.dataTexture = null
     this.colorTexture = null
     this.cutTexture = null
-    this.ready = false
+    this.rawImageCanvas = null
+    this.imageSource = null
+    this.usesCut = false
   }
 
   render(
     gl: WebGL2RenderingContext | WebGLRenderingContext,
     options: maplibregl.CustomRenderMethodInput
   ): void {
-    if (!this.program || !this.ready) return
+    if (this.isDestroyed || gl !== this.gl) return
+    this.commitOptions()
+    if (!this.program || !this.dataTexture || !this.colorTexture) return
 
     const map = this.map!
-
+    const opts = this.applied
     gl.useProgram(this.program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
-
     this.projectionMatrix.set(options.defaultProjectionData.mainMatrix)
     gl.uniformMatrix4fv(this.u_matrix, false, this.projectionMatrix)
-
-    gl.uniform4f(
-      this.u_tbound,
-      this.opts.latmin,
-      this.opts.latmax,
-      this.opts.lonmin,
-      this.opts.lonmax
-    )
-
-    gl.uniform4f(
-      this.u_scale,
-      this.opts.scale.r,
-      this.opts.scale.g,
-      this.opts.scale.b,
-      this.opts.scale.a
-    )
-
-    gl.uniform1i(this.u_tminOpacity, this.opts.minOpacity ? 1 : 0)
+    gl.uniform4f(this.u_tbound, opts.latmin, opts.latmax, opts.lonmin, opts.lonmax)
+    gl.uniform4f(this.u_scale, opts.scale.r, opts.scale.g, opts.scale.b, opts.scale.a)
+    gl.uniform1i(this.u_tminOpacity, opts.minOpacity ? 1 : 0)
     gl.uniform2f(this.u_vrange, this.vmin, this.vmax)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
     gl.uniform1i(this.u_img, 0)
-
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
     gl.uniform1i(this.u_color, 1)
-
-    if (this.opts.cut && this.cutTexture && this.u_cut && this.u_cutArea) {
+    if (this.usesCut) {
       gl.activeTexture(gl.TEXTURE2)
       gl.bindTexture(gl.TEXTURE_2D, this.cutTexture)
       gl.uniform1i(this.u_cut, 2)
       gl.uniform4f(
         this.u_cutArea,
-        this.opts.cutlatmin!,
-        this.opts.cutlatmax!,
-        this.opts.cutlonmin!,
-        this.opts.cutlonmax!
+        opts.cutlatmin!,
+        opts.cutlatmax!,
+        opts.cutlonmin!,
+        opts.cutlonmax!
       )
     }
 
-    // Draw the nearest wrapped copies so behavior follows MapLibre's renderWorldCopies setting.
     const centerWorld = Math.floor((map.getCenter().lng + 180) / 360)
     const worldOffsets = map.getRenderWorldCopies()
       ? [centerWorld - 1, centerWorld, centerWorld + 1]
@@ -396,153 +370,51 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     }
   }
 
-  // ============ Public API ============
-
   addTo(map: maplibregl.Map, beforeId?: string): this {
-    map.addLayer(this, beforeId || this.opts.beforeId)
+    if (this.isDestroyed) return this
+    if (beforeId !== undefined) this.setOption({ beforeId })
+    map.addLayer(this, this.opts.beforeId)
     return this
   }
 
-  changeImage(img: string | HTMLImageElement | HTMLCanvasElement): void {
-    this.opts.img = img
-    this.loadImage(img)
-  }
-
-  changeAll(options: Partial<IColorfulMapImageOptions>): void {
-    const gl = this.gl
-    if (!gl || !this.program) return
-
-    gl.useProgram(this.program)
-
-    if ('minOpacity' in options) {
-      this.opts.minOpacity = options.minOpacity
+  /**
+   * Shallow option update. Main-image and mask options each wait for their own
+   * pending resource, then commit together at the start of a map render.
+   * Explicit img/cutUrl submissions reload even when the value is unchanged.
+   */
+  setOption(options: Partial<IColorfulMapImageOptions>): this {
+    if (this.isDestroyed) return this
+    const patch = this.copyOptions(options)
+    this.opts = { ...this.opts, ...patch }
+    for (const key of Object.keys(patch) as OptionKey[]) {
+      ;(CUT_KEYS.has(key) ? this.mask : this.main).dirty.add(key)
     }
-
-    if (options.scale) {
-      this.opts.scale = options.scale
-      gl.uniform4f(
-        this.u_scale!,
-        options.scale.r,
-        options.scale.g,
-        options.scale.b,
-        options.scale.a
-      )
-    }
-
-    if (options.colors) {
-      this.opts.colors = options.colors
-      this.updateColorRamp()
-    }
-
-    if (options.img !== undefined) {
-      this.changeImage(options.img)
-    } else {
-      this.requestRepaint()
-    }
-  }
-
-  changeImageArea(
-    url: string,
-    latmin: number,
-    latmax: number,
-    lonmin: number,
-    lonmax: number,
-    extra?: Partial<IColorfulMapImageOptions>
-  ): void {
-    if (!this.ready) {
-      requestAnimationFrame(() => this.changeImageArea(url, latmin, latmax, lonmin, lonmax, extra))
-      return
-    }
-
-    this.opts.latmin = latmin
-    this.opts.latmax = latmax
-    this.opts.lonmin = lonmin
-    this.opts.lonmax = lonmax
-    this.updateGeometry()
-
-    if (extra?.flipy !== undefined) this.opts.flipy = extra.flipy
-    if (extra?.interval !== undefined) this.opts.interval = extra.interval
-
-    const gl = this.gl!
-    gl.useProgram(this.program!)
-
-    if (extra?.grid !== undefined) {
-      this.opts.grid = extra.grid
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-      if (extra.grid) {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-      } else {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    if (this.gl) {
+      if (patch.img !== undefined) {
+        this.loadResource(this.main, patch.img, !!this.opts.useCros)
+      }
+      if (patch.cutUrl !== undefined) {
+        this.loadResource(this.mask, patch.cutUrl, true)
       }
     }
-
-    if (extra?.colors) {
-      this.opts.colors = extra.colors
-      this.updateColorRamp()
-    }
-
-    this.changeImage(url)
-  }
-
-  changeColors(colors: IColorRange): void {
-    this.opts.colors = colors
-    this.updateColorRamp()
-  }
-
-  changeLinear(n: number): void {
-    this.opts.linear = n
-    this.updateColorRamp()
-  }
-
-  changeGrid(enabled: boolean): void {
-    if (this.opts.grid === enabled) return
-    this.opts.grid = enabled
-
-    const gl = this.gl
-    if (!gl) return
-
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-    if (enabled) {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    } else {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    }
     this.requestRepaint()
-  }
-
-  setGetGrid(enabled: boolean): void {
-    if (!this.ready) {
-      requestAnimationFrame(() => this.setGetGrid(enabled))
-      return
-    }
-    this.eventable = enabled
+    return this
   }
 
   getGridDataByLatLon(lat: number, lon: number): IGridDataResult | null {
-    if (!this.eventable || !this.rawImageCanvas) return null
-
-    const { interval, latmin, latmax, lonmin, lonmax, scale } = this.opts
+    if (!this.applied.getGrid || !this.rawImageCanvas) return null
+    const { interval, latmin, latmax, lonmin, lonmax, scale } = this.applied
     if (!interval) {
       console.warn('启用获取数值，需要传入经纬度间隔')
       return null
     }
-
     if (lat < latmin || lat > latmax || lon < lonmin || lon > lonmax) {
       return { data: null, lat, lon }
     }
-
     const x = Math.round((lon - lonmin) / interval)
     const y = Math.round((lat - latmin) / interval)
-
     const ctx = this.rawImageCanvas.getContext('2d')
     if (!ctx) return { data: null, lat, lon }
-
     try {
       const pixel = ctx.getImageData(x, y, 1, 1).data
       return {
@@ -558,18 +430,233 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   destroy(): void {
     if (this.isDestroyed) return
     this.isDestroyed = true
-    if (this.map) {
-      this.map.removeLayer(this.id)
+    this.resetGroup(this.main)
+    this.resetGroup(this.mask)
+    if (this.map) this.map.removeLayer(this.id)
+  }
+
+  private copyOptions(options: Partial<IColorfulMapImageOptions>) {
+    const patch = Object.fromEntries(
+      Object.entries(options).filter(([, value]) => value !== undefined)
+    ) as Partial<IColorfulMapImageOptions>
+    if (patch.scale) patch.scale = { ...patch.scale }
+    if (patch.colors) {
+      const { r, g, b, v, o } = patch.colors
+      patch.colors = { r: [...r], g: [...g], b: [...b], v: [...v], o: [...o] }
+    }
+    return patch
+  }
+
+  private resetGroup(group: ResourceGroup): void {
+    group.version++
+    group.cancel?.()
+    group.cancel = null
+    group.source = null
+    group.loading = false
+    group.dirty.clear()
+  }
+
+  private discardGroup(group: ResourceGroup, error: unknown): void {
+    // Roll back only this group's target fields; the other group stays independent.
+    const restored = { ...this.opts }
+    for (const key of group.dirty) {
+      Object.assign(restored, { [key]: this.applied[key] })
+    }
+    this.opts = restored
+    this.resetGroup(group)
+    console.warn(group === this.main ? '数据图片更新失败' : '裁剪更新失败', error)
+    this.requestRepaint()
+  }
+
+  private loadResource(
+    group: ResourceGroup,
+    source: IColorfulMapImageOptions['img'],
+    crossOrigin: boolean
+  ): void {
+    group.cancel?.()
+    group.cancel = null
+    group.source = null
+    group.loading = true
+    const version = ++group.version
+    const isCurrent = () => !this.isDestroyed && !!this.gl && group.version === version
+    const succeed = (image: ImageSource) => {
+      if (!isCurrent()) return
+      group.cancel?.()
+      group.cancel = null
+      group.source = image
+      group.loading = false
+      this.requestRepaint()
+    }
+    const fail = () => {
+      if (isCurrent()) this.discardGroup(group, new Error('图片无法加载'))
+    }
+
+    if (source instanceof HTMLCanvasElement) {
+      succeed(source)
+      return
+    }
+    // An empty cutUrl clears the cached mask without starting a request.
+    if (source === '' && group === this.mask) {
+      group.loading = false
+      return
+    }
+    const image = typeof source === 'string' ? new Image() : source
+    const loaded = () => (image.naturalWidth > 0 ? succeed(image) : fail())
+    if (typeof source !== 'string' && image.complete) {
+      loaded()
+      return
+    }
+    image.addEventListener('load', loaded)
+    image.addEventListener('error', fail)
+    group.cancel = () => {
+      image.removeEventListener('load', loaded)
+      image.removeEventListener('error', fail)
+    }
+    if (typeof source === 'string') {
+      if (crossOrigin) image.crossOrigin = 'anonymous'
+      image.src = source
     }
   }
 
-  // ============ Private Methods ============
+  private commitOptions(): void {
+    for (const group of [this.main, this.mask]) {
+      if (group.loading || group.dirty.size === 0) continue
+      const next = { ...this.applied }
+      for (const key of group.dirty) Object.assign(next, { [key]: this.opts[key] })
+      try {
+        if (group === this.main) this.applyMain(next, group)
+        else this.applyCut(next, group)
+        this.applied = next
+        group.source = null
+        group.dirty.clear()
+      } catch (error) {
+        this.discardGroup(group, error)
+      }
+    }
+  }
 
-  private updateGeometry(): void {
-    if (!this.gl || !this.vbuffer) return
+  private applyMain(next: IColorfulMapImageOptions, group: ResourceGroup): void {
+    const gl = this.gl!
+    const dirty = group.dirty
+    let canvas = this.rawImageCanvas
+    let source = this.imageSource
+    let dataTexture: WebGLTexture | null = null
+    let colorTexture: WebGLTexture | null = null
+    let ramp: ReturnType<typeof generateColorRamp> | null = null
+    try {
+      if (group.source) {
+        canvas = document.createElement('canvas')
+        canvas.width =
+          group.source instanceof HTMLImageElement ? group.source.naturalWidth : group.source.width
+        canvas.height =
+          group.source instanceof HTMLImageElement
+            ? group.source.naturalHeight
+            : group.source.height
+        canvas.getContext('2d')!.drawImage(group.source, 0, 0)
+        // Upload Images directly to preserve encoded RGBA channels. Canvas inputs
+        // use the snapshot so later caller mutations do not change cached data.
+        source = group.source instanceof HTMLImageElement ? group.source : canvas
+      }
+      if (source && (group.source || dirty.has('flipy') || !this.dataTexture)) {
+        dataTexture = createTexture(gl, source, 0, !!next.grid, next.flipy === 1)
+      }
+      if (!this.colorTexture || dirty.has('colors') || dirty.has('linear')) {
+        ramp = generateColorRamp(next.colors, next.linear)
+        colorTexture = createTexture(gl, ramp.canvas, 1, false, false)
+      }
+      if (dirty.has('beforeId') && next.beforeId !== this.applied.beforeId) {
+        this.map!.moveLayer(this.id, next.beforeId)
+      }
+      if (
+        !this.dataTexture ||
+        ['latmin', 'latmax', 'lonmin', 'lonmax'].some((key) => dirty.has(key as OptionKey))
+      ) {
+        this.updateGeometry(next)
+      }
+    } catch (error) {
+      if (dataTexture) gl.deleteTexture(dataTexture)
+      if (colorTexture) gl.deleteTexture(colorTexture)
+      throw error
+    }
+    if (dataTexture) {
+      if (this.dataTexture) gl.deleteTexture(this.dataTexture)
+      this.dataTexture = dataTexture
+    } else if (this.dataTexture && dirty.has('grid')) {
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
+      const filter = next.grid ? gl.NEAREST : gl.LINEAR
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
+    }
+    if (colorTexture && ramp) {
+      if (this.colorTexture) gl.deleteTexture(this.colorTexture)
+      this.colorTexture = colorTexture
+      this.vmin = ramp.vmin
+      this.vmax = ramp.vmax
+    }
+    this.rawImageCanvas = canvas
+    this.imageSource = source
+  }
 
-    const northWest = lngLatToMercator(this.opts.lonmin, this.opts.latmax)
-    const southEast = lngLatToMercator(this.opts.lonmax, this.opts.latmin)
+  private applyCut(next: IColorfulMapImageOptions, group: ResourceGroup): void {
+    const gl = this.gl!
+    const texture = group.source ? createTexture(gl, group.source, 2, false, true) : null
+    const clear = group.dirty.has('cutUrl') && !next.cutUrl
+    try {
+      this.updateProgram(!!(next.cut && next.cutUrl && (texture || (!clear && this.cutTexture))))
+    } catch (error) {
+      if (texture) gl.deleteTexture(texture)
+      throw error
+    }
+    if (texture || clear) {
+      if (this.cutTexture) gl.deleteTexture(this.cutTexture)
+      this.cutTexture = texture
+    }
+  }
+
+  private updateProgram(useCut: boolean): void {
+    if (this.program && this.usesCut === useCut) return
+    const gl = this.gl!
+    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
+    let fs: WebGLShader | null = null
+    let program: WebGLProgram
+    try {
+      fs = createShader(
+        gl,
+        gl.FRAGMENT_SHADER,
+        useCut ? FRAGMENT_SHADER_WITH_CUT : FRAGMENT_SHADER_NO_CUT
+      )
+      program = createProgram(gl, vs, fs)
+    } finally {
+      gl.deleteShader(vs)
+      if (fs) gl.deleteShader(fs)
+    }
+    if (this.program) gl.deleteProgram(this.program)
+    this.program = program
+    this.usesCut = useCut
+    this.u_matrix = gl.getUniformLocation(program, 'u_matrix')
+    this.u_worldOffset = gl.getUniformLocation(program, 'u_worldOffset')
+    this.u_tbound = gl.getUniformLocation(program, 'tbound')
+    this.u_scale = gl.getUniformLocation(program, 'scale')
+    this.u_tminOpacity = gl.getUniformLocation(program, 'tminOpacity')
+    this.u_vrange = gl.getUniformLocation(program, 'vrange')
+    this.u_img = gl.getUniformLocation(program, 'u_img')
+    this.u_color = gl.getUniformLocation(program, 'u_color')
+    this.u_cut = gl.getUniformLocation(program, 'cutImg')
+    this.u_cutArea = gl.getUniformLocation(program, 'cutArea')
+    // Attribute locations can change when switching the mask shader.
+    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
+    const posLoc = gl.getAttribLocation(program, 'a_position')
+    gl.enableVertexAttribArray(posLoc)
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
+    ;(gl as WebGL2RenderingContext).bindVertexArray(null)
+  }
+
+  private updateGeometry(opts: IColorfulMapImageOptions): void {
+    const gl = this.gl!
+    const northWest = lngLatToMercator(opts.lonmin, opts.latmax)
+    const southEast = lngLatToMercator(opts.lonmax, opts.latmin)
     const vertices = new Float32Array([
       northWest.x,
       northWest.y,
@@ -580,122 +667,11 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       southEast.x,
       southEast.y,
     ])
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbuffer)
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW)
-    this.requestRepaint()
-  }
-
-  private loadImage(img: string | HTMLImageElement | HTMLCanvasElement): void {
-    const gl = this.gl!
-    if (typeof img === 'string') {
-      const image = new Image()
-      if (this.opts.useCros) image.crossOrigin = 'anonymous'
-      image.onload = () => {
-        if (this.isDestroyed) return
-        this.handleImageLoaded(gl, image)
-      }
-      image.onerror = () => {
-        if (this.isDestroyed) return
-        console.warn(`图片加载失败: ${img}`)
-        const c = document.createElement('canvas')
-        c.width = 1
-        c.height = 1
-        this.rawImageCanvas = c
-        this.ready = true
-        this.hasData = false
-        this.requestRepaint()
-      }
-      image.src = img
-    } else if (img instanceof HTMLCanvasElement) {
-      this.handleImageLoaded(gl, img)
-    } else {
-      // HTMLImageElement — may already be loaded
-      if (img.complete && img.naturalWidth > 0) {
-        this.handleImageLoaded(gl, img)
-      } else {
-        img.onload = () => {
-          if (this.isDestroyed) return
-          this.handleImageLoaded(gl, img as HTMLImageElement)
-        }
-      }
-    }
-  }
-
-  private handleImageLoaded(
-    gl: WebGL2RenderingContext | WebGLRenderingContext,
-    img: HTMLImageElement | HTMLCanvasElement
-  ): void {
-    // Keep a canvas copy for getGridDataByLatLon pixel queries
-    const canvas = document.createElement('canvas')
-    canvas.width = img.width
-    canvas.height = img.height
-    canvas.getContext('2d')!.drawImage(img, 0, 0)
-    this.rawImageCanvas = canvas
-
-    if (!this.dataTexture) {
-      this.dataTexture = createTexture(gl, img, 0, this.opts.grid!, this.opts.flipy === 1)
-    } else {
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.opts.flipy === 1 ? 1 : 0)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
-    }
-
-    this.ready = true
-    this.hasData = true
-    this.requestRepaint()
-  }
-
-  private loadCutImage(url: string): void {
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => {
-      if (this.isDestroyed || !this.gl || !this.program) return
-      const gl = this.gl
-      gl.useProgram(this.program)
-      this.cutTexture = createTexture(gl, image, 2, false, true)
-      if (this.u_cut) gl.uniform1i(this.u_cut, 2)
-      if (this.u_cutArea) {
-        gl.uniform4f(
-          this.u_cutArea,
-          this.opts.cutlatmin!,
-          this.opts.cutlatmax!,
-          this.opts.cutlonmin!,
-          this.opts.cutlonmax!
-        )
-      }
-      this.requestRepaint()
-    }
-    image.onerror = () => {
-      console.warn('裁剪图片加载失败')
-    }
-    image.src = url
-  }
-
-  private updateColorRamp(): void {
-    if (!this.gl || !this.program) return
-    const gl = this.gl
-
-    const { vmin, vmax, canvas } = generateColorRamp(this.opts.colors, this.opts.linear)
-    this.vmin = vmin
-    this.vmax = vmax
-
-    if (!this.colorTexture) {
-      this.colorTexture = createTexture(gl, canvas, 1, false, false)
-    } else {
-      gl.useProgram(this.program)
-      gl.activeTexture(gl.TEXTURE1)
-      gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
-      gl.uniform2f(this.u_vrange, vmin, vmax)
-    }
-    this.requestRepaint()
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
   }
 
   private requestRepaint(): void {
-    if (this.map) {
-      this.map.triggerRepaint()
-    }
+    this.map?.triggerRepaint()
   }
 }

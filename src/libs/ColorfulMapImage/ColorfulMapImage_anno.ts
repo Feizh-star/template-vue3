@@ -1,117 +1,47 @@
 /**
- * ============================================================================
- * ColorfulMapImage — MapLibre 开源地图库自定义图层插件
- * ============================================================================
+ * ColorfulMapImage：正式实现的完整副本与中文注释版本。
  *
- * 功能：将一张使用特殊算法编码的数据纹理 PNG 叠加到 MapLibre 地图上。数据经纬度范围
- *       被转换成 Web Mercator 地面矩形，通过 MapLibre 相机矩阵投影；Fragment Shader
- *       再按原协议解码数据值并通过颜色查找表渲染。
+ * 本文件保留正式版的所有代码、Shader 字符串和公开 API，只增加详细说明。
+ * 业务入口 index.ts 仍默认使用 ColorfulMapImage.ts；这里供逐段阅读和理解。
+ * 正式版后续更新时，应同步对应代码，保证两个版本的执行逻辑一致。
  *
- * ----------------------------------------------------------------------------
- * 整体渲染管线（从上到下，标注了对应的代码位置）
- * ----------------------------------------------------------------------------
+ * 渲染管线：
+ *   编码图片 → 数据纹理(TEXTURE0) → RGBA / scale 解码 → 色带(TEXTURE1) → 地图片元
+ *   裁剪图片 → 遮罩纹理(TEXTURE2) → R > 0.5 时丢弃片元
  *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ 1. 构造 & 初始化                                                        │
- * │    constructor()                              → [L589]                  │
- * │    merge 默认选项 + 用户选项                                            │
- * │    MapLibre 调用 onAdd(map, gl)                → [L623]                  │
- * │      ├─ 编译 Vertex Shader                    → VERTEX_SHADER [L115]    │
- * │      ├─ 编译 Fragment Shader                                        │
- * │      │    ├─ cut=true  → FRAGMENT_SHADER_WITH_CUT  [L137]              │
- * │      │    └─ cut=false → FRAGMENT_SHADER_NO_CUT   [L229]               │
- * │      ├─ link Program                          → createProgram() [L326]  │
- * │      ├─ 获取所有 uniform location                                    │
- * │      ├─ 创建地理范围矩形 VAO（Mercator [0,1] 的 Triangle Strip）          │
- * │      ├─ 加载数据纹理图片 → loadImage()          → [L1172]                │
- * │      ├─ 生成颜色渐变查找纹理 → updateColorRamp() → [L1312]               │
- * │      └─ 加载裁剪遮罩图片（可选）→ loadCutImage()  → [L1276]              │
- * └─────────────────────────────────────────────────────────────────────────┘
- *                                     │
- *                                     ▼
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ 2. 每帧渲染                                                             │
- * │    MapLibre 调用 render(gl, options)           → [L732]                  │
- * │      ├─ 读取 defaultProjectionData.mainMatrix                          │
- * │      │    └─ 矩阵包含 zoom / center / bearing / pitch / perspective     │
- * │      ├─ 传入所有 uniform                                                │
- * │      │    ├─ u_matrix: Mercator 世界坐标 → clip-space                   │
- * │      │    ├─ u_worldOffset: 横向世界副本编号                              │
- * │      │    ├─ u_tbound: 数据地理边界 [latmin, latmax, lonmin, lonmax]      │
- * │      │    ├─ u_scale:  数据解码比例 [r, g, b, a]                        │
- * │      │    ├─ u_tminOpacity: 低值透明度淡化开关                           │
- * │      │    └─ u_vrange: 颜色映射值域 [vmin, vmax]                        │
- * │      ├─ 绑定三张纹理                                                │
- * │      │    ├─ TEXTURE0: 数据纹理（u_img）                                │
- * │      │    ├─ TEXTURE1: 颜色渐变纹理（u_color）                            │
- * │      │    └─ TEXTURE2: 裁剪遮罩纹理（cutImg，可选）                       │
- * │      └─ 绘制地面矩形及世界副本 → drawArrays(TRIANGLE_STRIP, 0, 4)         │
- * └─────────────────────────────────────────────────────────────────────────┘
- *                                     │
- *                                     ▼
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ 3. Fragment Shader 逐像素处理（GPU）                                     │
- * │    顶点 Mercator 坐标经透视校正插值 → mercatorPosition                    │
- * │    mercatorToLatlng(mercatorPosition) → 经纬度                          │
- * │                                                                 │
- * │    cut 路径：检查遮罩纹理，遮罩区域 discard                               │
- * │    no-cut 路径：检查是否在 tbound 范围内，范围外 discard                    │
- * │                                                                 │
- * │    经纬度 → 纹理 UV → 采样数据纹理(u_img) × 255 → RGBA 原始字节             │
- * │    value = R/scale.r + G/scale.g + B/scale.b + A/scale.a  数据解码       │
- * │                                                                 │
- * │    vin = (value - vmin) / (vmax - vmin)     值域归一化                  │
- * │    outColor = texture(u_color, vec2(vin, 0.5))   颜色查找                │
- * │                                                                 │
- * │    minOpacity: 低值透明度淡化（两种路径不同的淡化区间）                      │
- * │      cut 路径:    smoothstep(vmin*0.5, vmin*2.0, value)                │
- * │      no-cut 路径: clamp((value-vmin*0.8)/(0.5*vmin), 0, 1) 线性淡化      │
- * │                                                                 │
- * │    outColor.rgb *= outColor.a   预乘 alpha，配合 MapLibre blend 模式     │
- * └─────────────────────────────────────────────────────────────────────────┘
- *                                     │
- *                                     ▼
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ 4. 运行时更新 API                                                        │
- * │    changeImage()        → [L848]   更新数据纹理图片                       │
- * │    changeAll()          → [L864]   批量更新 scale/colors/img/minOpacity  │
- * │    changeImageArea()    → [L918]   更新图片 + 地理范围 + grid + colors    │
- * │    changeColors()       → [L976]   更新颜色映射                          │
- * │    changeLinear()       → [L989]   更新颜色渐变线性度                     │
- * │    changeGrid()         → [L1004]  切换最近邻/线性纹理采样                │
- * │    setGetGrid()         → [L1035]  启用/禁用像素值查询                   │
- * │    getGridDataByLatLon()→ [L1062]  读取指定经纬度的解码数值               │
- * │    destroy()            → [L1105]  从地图移除图层                        │
- * └─────────────────────────────────────────────────────────────────────────┘
- *                                     │
- *                                     ▼
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ 5. 清理                                                                 │
- * │    MapLibre 调用 onRemove(map, gl)          → [L696]                    │
- * │    删除 Program / VAO / Buffer / 所有 Texture，置空引用                   │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * 统一更新管线：
+ *   constructor：保存默认配置与初始参数，不操作 GL。
+ *   onAdd：创建基础 GL 资源，再 setOption(完整目标配置)。
+ *   setOption：浅合并目标参数，按主图组 / 裁剪组累计 dirty。
+ *   loadResource：准备资源，加载回调只记录就绪，不直接操作 GL。
+ *   render → commitOptions：分别提交已就绪的组，再用已提交状态绘制。
+ *
+ * 两个独立资源组：
+ *   主图组：除 cut、cutUrl 和四个裁剪范围外的全部参数。
+ *   裁剪组：cut、cutUrl、cutlatmin、cutlatmax、cutlonmin、cutlonmax。
+ *   显式提交 img / cutUrl 时，该组全部待提交字段一起等待图片。
+ *   等待期间追加的同组修改继续合并，另一组可以独立提交。
+ *   Canvas 和已加载 Image 不等待网络，但仍在下一次 render 中统一生效。
+ *
+ * 三类状态：
+ *   opts：调用方期望的最新目标值，可能尚未生效。
+ *   applied：当前已提交配置，绘制与像素查询共同读取。
+ *   group：该组请求版本、加载标记、待上传来源和待提交字段集合。
+ *
+ * 生命周期：onRemove 可重新添加；destroy 后不再接受添加或更新。
+ * 实际使用 GLSL ES 3.00 和 VAO，需要 WebGL2 上下文。
+ * 参数说明与使用示例见同目录 explorer.md。
  */
-
 import type maplibregl from 'maplibre-gl'
 import type { IColorfulMapImageOptions, IColorRange, IGridDataResult } from './types'
 
-// ============================================================================
-// GLSL Shaders
-// ============================================================================
+// ========== GLSL Shaders ==========
 
-/**
- * Vertex Shader — 地理范围矩形
- *
- * a_position 存储数据边界四角的归一化 Web Mercator 坐标：
- * x=0/1 分别代表世界最西/最东，y=0/1 分别代表世界最北/最南。
- *
- * u_matrix 来自 MapLibre 每帧传入的 defaultProjectionData.mainMatrix，负责完整处理
- * zoom、平移、bearing、pitch、相机透视和视口偏移。因此这里不再假设屏幕像素与地面坐标
- * 是简单的线性关系，地图倾斜后仍能把矩形正确投影到地面。
- *
- * u_worldOffset 是横向世界副本偏移。Web Mercator 每个世界宽度为 1，偏移 ±1 即可把
- * 同一个数据矩形绘制到相邻世界；传给片元着色器的仍是原始坐标，保证纹理 UV 不变。
- */
+// 顶点着色器：a_position 是归一化 Web Mercator 地面坐标，不是图片 UV。
+// u_matrix 使用地图当前相机矩阵，负责缩放、旋转、倾斜等投影变换。
+// u_worldOffset 给 x 加整数，在不重复上传几何的情况下绘制世界副本。
+// mercatorPosition 保持原坐标，使每个世界副本沿用相同的经纬度采样规则。
+// GLSL 字符串保持正式版原样，下面的数学计算不受本文件注释影响。
 const VERTEX_SHADER = `#version 300 es
 in vec2 a_position;
 uniform mat4 u_matrix;
@@ -122,33 +52,21 @@ void main() {
     mercatorPosition = a_position;
 }`
 
-/**
- * Fragment Shader（有遮罩路径）
- *
- * 与 no-cut 版本的差异：
- *   1. 定义了 #define useCut true，引入 cutImg 和 cutArea uniform
- *   2. 先计算当前像素对应经纬度在遮罩纹理中的 UV，采样遮罩纹理 R 通道
- *   3. 若 cutValue > 0.5 → discard（该像素不渲染）
- *   4. minOpacity 使用 smoothstep 平滑过渡，区间 [vmin*0.5, vmin*2.0]
- *
- * 注意：cutArea 是按 (lat, lon) 顺序存储：(cutlatmin, cutlatmax, cutlonmin, cutlonmax)
- *       纹理采样时 UV 顺序是 (lon方向, lat方向) 即 (cutb, cuta)
- */
+// 遮罩版片元着色器：Mercator 反变换得到 vec2(纬度, 经度)。
+// 纬度通过 atan(exp(y)) 反算；经度通过单位世界坐标线性反算。
+// cutArea=[南纬,北纬,西经,东经]，将地理位置归一化为遮罩 UV。
+// 遮罩 R>0.5 的片元直接 discard，不再执行数据解码与色带取样。
+// tbound 同样按 [latmin,latmax,lonmin,lonmax] 排列，计算主图 UV。
+// texture 的 RGBA 在 0~1，乘 255 后逐通道除以 scale 得到数据值。
+// vrange=[vmin,vmax] 将值映射到色带横坐标，纵坐标固定为 0.5。
+// minOpacity 使用 smoothstep 淡化低值 alpha，最终输出预乘 alpha 的 RGB。
+// 主图范围由地面矩形约束；遮罩 UV 越界时 CLAMP_TO_EDGE 沿用边缘值。
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
 #define useCut true
 precision highp float;
 
-/**
- * 归一化 Web Mercator 坐标 → 经纬度转换
- *
- * @param mercator.x Web Mercator X，0=西经 180°，1=东经 180°
- * @param mercator.y Web Mercator Y，0=北，1=南
- *
- * 顶点位置已经由 MapLibre 的矩阵投影到屏幕；片元着色器只需把 GPU 插值得到的
- * Mercator 坐标转回经纬度，以继续复用原有的 tbound/cutArea 纹理寻址协议。
- */
 vec2 mercatorToLatlng(vec2 mercator) {
     float x = (mercator.x - 0.5) * 360.0;
     float y = -(mercator.y - 0.5) * PI * 2.0;
@@ -157,75 +75,44 @@ vec2 mercatorToLatlng(vec2 mercator) {
 }
 
 in vec2 mercatorPosition;
-uniform sampler2D u_color;     // 颜色渐变查找纹理（1D 纹理，作为 2D 传入）
-uniform sampler2D u_img;       // 数据纹理 PNG（RGBA 通道编码数据值）
-uniform vec4 tbound;           // 数据地理边界 (latmin, latmax, lonmin, lonmax)
-uniform vec4 scale;            // 数据解码比例 (r, g, b, a)
-uniform vec2 vrange;           // 颜色映射值域 (vmin, vmax)
-uniform bool tminOpacity;      // 低值透明度淡化开关
-uniform sampler2D cutImg;      // 裁剪遮罩纹理
-uniform vec4 cutArea;          // 遮罩地理范围 (cutlatmin, cutlatmax, cutlonmin, cutlonmax)
-out vec4 outColor;             // 最终输出颜色（预乘 alpha）
+uniform sampler2D u_color;
+uniform sampler2D u_img;
+uniform vec4 tbound;
+uniform vec4 scale;
+uniform vec2 vrange;
+uniform bool tminOpacity;
+uniform sampler2D cutImg;
+uniform vec4 cutArea;
+out vec4 outColor;
 
 void main() {
-    // ---- 步骤 1: GPU 插值后的 Web Mercator 坐标 → 经纬度 ----
-    // 透视校正插值由光栅化阶段完成，pitch/bearing 不需要在片元阶段单独处理。
     vec2 latlng = mercatorToLatlng(mercatorPosition);
-
-    // ---- 步骤 2: 裁剪遮罩检查 ----
-    // 将经纬度映射到遮罩纹理 UV 空间
-    float cuta = (latlng.x - cutArea.x) / (cutArea.y - cutArea.x);  // lat → U
-    float cutb = (latlng.y - cutArea.z) / (cutArea.w - cutArea.z);  // lon → V
-    float cutValue = texture(cutImg, vec2(cutb, cuta)).r;  // 采样遮罩 R 通道
+    float cuta = (latlng.x - cutArea.x) / (cutArea.y - cutArea.x);
+    float cutb = (latlng.y - cutArea.z) / (cutArea.w - cutArea.z);
+    float cutValue = texture(cutImg, vec2(cutb, cuta)).r;
     if (cutValue > 0.5) {
-        discard;  // 被遮罩的区域直接丢弃
+        discard;
     }
-
-    // ---- 步骤 3: 采样数据纹理 + 解码数值 ----
     float value = 0.0;
-    // 将经纬度映射到数据纹理 UV 空间
-    // b: 经度方向 (lonmin→lonmax)
-    // a: 纬度方向 (latmin→latmax)
     float b = (latlng.x - tbound.x) / (tbound.y - tbound.x);
     float a = (latlng.y - tbound.z) / (tbound.w - tbound.z);
-    // 纹理采样得到 0..1 的 RGBA，乘以 255 恢复原始字节值（0..255）
     vec4 color = texture(u_img, vec2(a, b)) * 255.0;
-    // 加权求和解码：每个通道除以对应的 scale 因子
-    // scale 的典型值为 1（各通道等权重），也可设为其他值调整权重
     value = color.r / scale.x + color.g / scale.y + color.b / scale.z + color.a / scale.w;
-
-    // ---- 步骤 4: 值域归一化 + 颜色查找 ----
-    // 将解码值映射到颜色查找纹理的 [0,1] 范围
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
-    // 颜色查找纹理是 1D 渐变（存储为 2D 纹理），采样 Y 坐标 0.5 处的颜色
     outColor = texture(u_color, vec2(vin, 0.5));
-
-    // ---- 步骤 5: minOpacity 低值淡化（smoothstep 路径） ----
-    // 对于小于颜色映射最小值的像素，通过淡化 alpha 使其透明
-    // smoothstep(minv, maxv, value): value<minv→0, value>maxv→1, 中间 Hermite 插值
     if (tminOpacity) {
-        float minv = vrange.x * 0.5;   // 下限 = vmin 的一半
-        float maxv = vrange.x * 2.0;   // 上限 = vmin 的两倍
+        float minv = vrange.x * 0.5;
+        float maxv = vrange.x * 2.0;
         float o = smoothstep(minv, maxv, value);
-        outColor.a = outColor.a * o;   // 乘以淡化系数
+        outColor.a = outColor.a * o;
     }
-
-    // ---- 步骤 6: 预乘 alpha ----
-    // MapLibre 默认 blend 模式为 (ONE, ONE_MINUS_SRC_ALPHA)，期望预乘 alpha 输入。
-    // 必须在 shader 中预乘，否则 RGB 和 A 的混合结果不一致。
     outColor.rgb *= outColor.a;
 }`
 
-/**
- * Fragment Shader（无遮罩路径）
- *
- * 与 cut 版本的差异：
- *   1. 没有 cutImg/cutArea uniform 和相关逻辑
- *   2. 用 if (latlng 在 tbound 范围内) ... else discard 替代遮罩
- *   3. minOpacity 使用线性 clamp 过渡，区间 [vmin*0.8, vmin*1.3]
- *
- * 两条路径的 minOpacity 区间不同是因为原 hxmap 代码中的既有差异，此处原样保留。
- */
+// 无遮罩版本省去遮罩取样，并显式检查经纬度是否位于 tbound 内。
+// 范围外直接 discard；范围内按相同 RGBA / scale 协议解码并查询色带。
+// 低值透明度沿用原实现的线性计算与限幅，和遮罩版本的 smoothstep 不同。
+// 更新流程仅切换这两种已有 Shader，不修改其既有数值行为。
 const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
@@ -248,15 +135,9 @@ uniform bool tminOpacity;
 out vec4 outColor;
 
 void main() {
-    // ---- 步骤 1: GPU 插值后的 Web Mercator 坐标 → 经纬度（同上） ----
     vec2 latlng = mercatorToLatlng(mercatorPosition);
-
-    // ---- 步骤 2: 边界裁剪 ----
-    // 无遮罩时直接用地理边界判断，范围外的像素丢弃
     float value = 0.0;
-    if (latlng.x >= tbound.x && latlng.x <= tbound.y &&
-        latlng.y >= tbound.z && latlng.y <= tbound.w) {
-        // ---- 步骤 3: 采样 + 解码 ----
+    if (latlng.x >= tbound.x && latlng.x <= tbound.y && latlng.y >= tbound.z && latlng.y <= tbound.w) {
         float b = (latlng.x - tbound.x) / (tbound.y - tbound.x);
         float a = (latlng.y - tbound.z) / (tbound.w - tbound.z);
         vec4 color = texture(u_img, vec2(a, b)) * 255.0;
@@ -264,41 +145,21 @@ void main() {
     } else {
         discard;
     }
-
-    // ---- 步骤 4: 颜色查找 ----
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
-
-    // ---- 步骤 5: minOpacity 低值淡化（线性 clamp 路径） ----
-    // 线性过渡：value 在 [vmin*0.8, vmin*1.3] 之间时 alpha 从 0 线性过渡到 1
-    // o = (value - vmin*0.8) / (0.5 * vmin)
-    //   当 value = vmin*0.8  → o = 0
-    //   当 value = vmin*1.3  → o = 1
     if (tminOpacity) {
         float o = (value - vrange.x * 0.8) / 0.5 / vrange.x;
-        o = max(o, 0.0);   // clamp 下界
-        o = min(o, 1.0);   // clamp 上界
+        o = max(o, 0.0);
+        o = min(o, 1.0);
         outColor.a = outColor.a * o;
     }
-
-    // ---- 步骤 6: 预乘 alpha ----
     outColor.rgb *= outColor.a;
 }`
 
-// ============================================================================
-// Helper Functions (WebGL 工具函数)
-// ============================================================================
+// ========== Helper Functions ==========
 
-/**
- * 编译单个 WebGL2 Shader
- * @param gl     WebGL2 渲染上下文
- * @param type   gl.VERTEX_SHADER 或 gl.FRAGMENT_SHADER
- * @param source GLSL 源码字符串
- * @returns 编译好的 WebGLShader
- * @throws  编译失败时抛出错误并附带着色器日志
- *
- * 此函数复刻 hxmap 中对应的 shader 编译逻辑（原压缩代码中的 b() 辅助函数）。
- */
+// 编译单个 Shader，失败时附带驱动日志抛出异常并删除失败对象。
+// 成功的 Shader 暂时返回给 updateProgram，链接完成后不再需要独立 Shader 对象。
 function createShader(
   gl: WebGL2RenderingContext | WebGLRenderingContext,
   type: number,
@@ -309,20 +170,14 @@ function createShader(
   gl.compileShader(shader)
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const info = gl.getShaderInfoLog(shader)
-    gl.deleteShader(shader) // 编译失败时清理，防止资源泄漏
+    gl.deleteShader(shader)
     throw new Error(`Shader compile error: ${info}`)
   }
   return shader
 }
 
-/**
- * 创建并链接 WebGL2 Program
- * @param gl WebGL2 渲染上下文
- * @param vs 顶点着色器
- * @param fs 片元着色器
- * @returns 链接好的 WebGLProgram
- * @throws  链接失败时抛出错误并附带程序日志
- */
+// 把顶点与片元 Shader 链接成 program。
+// 链接失败删除新 program 并抛出异常；调用方可以继续保留旧 program。
 function createProgram(
   gl: WebGL2RenderingContext | WebGLRenderingContext,
   vs: WebGLShader,
@@ -340,23 +195,9 @@ function createProgram(
   return program
 }
 
-/**
- * 创建 WebGL2 纹理并上传图像数据
- *
- * 此函数复刻 hxmap 中的 L() 辅助函数：
- *   - 激活指定纹理单元 (TEXTURE0 + textureUnit)
- *   - 设置 UNPACK_FLIP_Y_WEBGL 翻转 Y 轴（flipY 参数）
- *   - 设置纹理过滤（useNearest → NEAREST 最近邻，否则 → LINEAR 线性）
- *   - 设置环绕模式为 CLAMP_TO_EDGE
- *   - 以 RGBA/UNSIGNED_BYTE 格式上传图像数据
- *
- * @param gl          WebGL2 渲染上下文
- * @param source      图像源（Image 或 Canvas）
- * @param textureUnit 纹理单元偏移：0=数据纹理, 1=颜色纹理, 2=遮罩纹理
- * @param useNearest  是否使用最近邻采样（true=NEAREST 无插值，false=LINEAR 双线性插值）
- * @param flipY       是否垂直翻转图像
- * @returns 创建的 WebGLTexture
- */
+// 主图、色带和遮罩复用的纹理上传函数，textureUnit 分别为 0、1、2。
+// useNearest 控制最近邻/线性插值，flipY 控制上传方向。
+// 每次明确设置 pixelStorei，因为它属于共享 GL 状态，会被其他上传操作修改。
 function createTexture(
   gl: WebGL2RenderingContext | WebGLRenderingContext,
   source: HTMLImageElement | HTMLCanvasElement,
@@ -365,79 +206,67 @@ function createTexture(
   flipY: boolean
 ): WebGLTexture {
   const texture = gl.createTexture()!
-  gl.activeTexture(gl.TEXTURE0 + textureUnit)
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY ? 1 : 0)
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-  if (useNearest) {
-    // 最近邻采样：用于 grid 模式，数据纹理像素边界清晰，适合精确取值
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  } else {
-    // 线性采样：默认模式，纹理放大/缩小时双线性插值，画面平滑
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  try {
+    gl.activeTexture(gl.TEXTURE0 + textureUnit)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY ? 1 : 0)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    // 缩小与放大过滤器分别为 MIN_FILTER 和 MAG_FILTER。
+    // 主图 grid=true 使用 NEAREST 保留网格边界，色带和遮罩使用 LINEAR。
+    if (useNearest) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    } else {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    }
+    // UV 的 S/T 方向均钳制到边缘，不重复整张图片。
+    // texImage2D 才真正将像素上传到 GPU，DOM 来源与纹理对象不是同一份资源。
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    return texture
+  } catch (error) {
+    // 若上传因为跨域限制等抛出异常，释放新纹理后继续上抛，避免失败路径泄漏。
+    gl.deleteTexture(texture)
+    throw error
   }
-  // CLAMP_TO_EDGE：超出 [0,1] 的 UV 取边缘色，防止纹理边缘出现接缝
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
-  return texture
 }
 
-/**
- * 生成颜色渐变查找纹理（1D 颜色查找表，存储为 2D 纹理）
- *
- * 此函数复刻 hxmap 中的 Y() 函数。
- *
- * 原理：
- *   使用 Canvas 2D 的 createLinearGradient 在给定颜色台阶之间生成渐变，
- *   将结果画到宽度 25*n+5、高度 3 的 Canvas 上。
- *   在 Fragment Shader 中通过 decodedValue → normalizedVin → texture(vin, 0.5) 查找颜色。
- *
- * 参数说明：
- *   colors.v[]   — 数据值台阶（如 [0, 50, 100, ...]）
- *   colors.r/g/b/o[] — 每个台阶对应的 RGBA 颜色
- *   linear       — 渐变线性度（0=完全线性，每个台阶之间均匀过渡；
- *                  值越大，台阶之间的颜色过渡越陡峭/偏移）
- *
- * @param colors 颜色范围配置（台阶值数组 + 对应颜色）
- * @param linear 渐变线性度，默认 0
- * @returns { vmin, vmax, canvas }  值域范围和生成的 Canvas
- */
+// 生成横向 Canvas 色带，让 GPU 通过纹理查表，避免每个片元遍历颜色数组。
+// v 是阈值，r/g/b/o 是颜色与透明度；数组长度和阈值顺序由调用方保证。
+// vmin/vmax 必须和本次色带纹理一起提交，否则数据值对应的色带位置会错位。
+// 沿用最后阈值 + 5、宽度 25*len+5、高度 3 的原有色带设计。
 function generateColorRamp(
   colors: IColorRange,
   linear: number = 0
 ): { vmin: number; vmax: number; canvas: HTMLCanvasElement } {
   const len = colors.r.length
-  const vmin = colors.v[0] // 数据值最小值
-  const vmax = colors.v[len - 1] + 5 // 数据值最大值 + 5 像素余量
+  const vmin = colors.v[0]
+  const vmax = colors.v[len - 1] + 5
   const canvas = document.createElement('canvas')
-  canvas.width = 25 * len + 5 // 每个颜色台阶 25px 宽 + 5px 余量
-  canvas.height = 3 // 高度仅需 3px（1D 纹理）
+  canvas.width = 25 * len + 5
+  canvas.height = 3
   const ctx = canvas.getContext('2d')!
   const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
 
-  // 为每个相邻颜色对创建渐变片段
+  // 每段用同一种颜色添加两个 stop，控制该档颜色保持不变的范围。
+  // linear=0 时颜色保持到下一阈值，形成阶梯；linear=1 时保留完整渐变区间。
   for (let i = 0; i < len - 1; i++) {
-    // stop1: 当前台阶值的归一化位置
     const stop1 = (colors.v[i] - vmin) / (vmax - vmin)
-    // stop2: 下一个台阶值的归一化位置减去 linear 偏移
-    //        linear > 0 时 stop2 左移，使颜色过渡更平滑。
-    //        对于某一个色段，实际：颜色i -------- 颜色i -linear- 颜色i+1
     const stop2 =
       (colors.v[i + 1] - (colors.v[i + 1] - colors.v[i]) * linear - vmin) / (vmax - vmin)
     const color = `rgba(${colors.r[i]},${colors.g[i]},${colors.b[i]},${colors.o[i]})`
     gradient.addColorStop(stop1, color)
-    gradient.addColorStop(stop2, color) // start 和 end 都用同一颜色，形成"台阶"
+    gradient.addColorStop(stop2, color)
   }
 
-  // 最后一个颜色台阶
+  // 最后一档延伸到色带终点，覆盖数值上界的额外余量。
   const lastColor = `rgba(${colors.r[len - 1]},${colors.g[len - 1]},${colors.b[len - 1]},${
     colors.o[len - 1]
   })`
   const lastStop = (colors.v[len - 1] - vmin) / (vmax - vmin)
   gradient.addColorStop(lastStop, lastColor)
-  gradient.addColorStop(1, lastColor) // 填充到末端
+  gradient.addColorStop(1, lastColor)
 
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -445,263 +274,149 @@ function generateColorRamp(
   return { vmin, vmax, canvas }
 }
 
-/**
- * 经纬度 → Web Mercator 坐标转换
- *
- * 公式：
- *   x = lng/360 + 0.5                    经度线性映射到 [0,1]
- *   y = 0.5 - ln(tan(π/4 + lat/2)) / 2π  纬度通过 Mercator 投影映射到 [0,1]
- *
- * Mercator [0,1] 空间：
- *   (0, 0) = 地图左上角（180°W, ~85.05°N）
- *   (1, 1) = 地图右下角（180°E, ~85.05°S）
- *
- * 用途：计算数据范围四角的归一化坐标，填入地面矩形 VBO；随后由 MapLibre 的矩阵投影。
- *       之所以不用 maplibregl.MercatorCoordinate.fromLngLat()，是为了避免对 maplibre
- *       库内部 API 的依赖，保持纯数学实现。
- */
+// 经度 -180~180 映射为 x=0~1，纬度通过对数映射为 y，北方向对应较小的 y。
+// 返回单位世界的地面坐标，不是屏幕像素，也不是原始图片的网格索引。
 function lngLatToMercator(lng: number, lat: number): { x: number; y: number } {
   const x = lng / 360 + 0.5
   const y = 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat / 2) * (Math.PI / 180))) / (2 * Math.PI)
   return { x, y }
 }
 
-// ============================================================================
-// Main Class — ColorfulMapImage
-// ============================================================================
+// ========== Main Class ==========
 
-/**
- * ColorfulMapImage — MapLibre 自定义图层插件
- *
- * 实现 maplibregl.CustomLayerInterface 接口，把数据经纬度范围转换为 Web Mercator 地面矩形，
- * 再通过 MapLibre 提供的投影矩阵渲染。矩阵包含平移、缩放、旋转和透视信息，因此图层在
- * pitch/bearing 变化时会和底图保持一致；片元着色器继续负责数据解码和颜色映射。
- *
- * 使用方式：
- *   const layer = new ColorfulMapImage({ img, scale, colors, latmin, latmax, lonmin, lonmax, ... })
- *   layer.addTo(map)           // 添加到地图，等价于 map.addLayer(layer, beforeId)
- *   layer.changeImage(url)     // 更新数据图片
- *   layer.changeAll({ ... })   // 批量更新配置
- *   layer.getGridDataByLatLon(lat, lon)  // 查询指定位置的解码数值
- *   layer.destroy()            // 移除图层并清理资源
- *
- * 渲染模式：renderingMode = '2d'
- *   以 2D 叠加层方式渲染到 MapLibre 主画布，不使用深度缓冲。
- *
- * 图层顺序：beforeId 参数
- *   MapLibre 中图层顺序由添加顺序决定，beforeId 指定插入到哪个图层之前。
- *   替代原 hxmap GlImg 中通过 CSS z-index 控制层叠的 index 参数。
- */
+// 选项键类型用于约束 dirty 和 CUT_KEYS；ImageSource 是可上传的 DOM 像素来源。
+type OptionKey = keyof IColorfulMapImageOptions
+type ImageSource = HTMLImageElement | HTMLCanvasElement
+
+// 仅显式列举裁剪字段；其余全部归主图组，包括 colors、beforeId、getGrid。
+// 因此 img 与 colors 同传时，色带不会提前套用到旧图片。
+const CUT_KEYS = new Set<OptionKey>([
+  'cut',
+  'cutUrl',
+  'cutlatmin',
+  'cutlatmax',
+  'cutlonmin',
+  'cutlonmax',
+])
+
+// Both resource groups use the same loading and commit lifecycle.
+// 主图和遮罩共用同一最小状态结构，不维护额外任务队列。
+// dirty 累计字段，最新目标值统一读取 opts；成功提交后清空本轮状态。
+function createResourceGroup() {
+  return {
+    // 请求版本在新加载、回退、移除或销毁时递增，迟到回调必须匹配当前版本。
+    version: 0,
+    // true 时暂停整组提交；加载结束只解除等待锁，生效仍要等 render。
+    loading: false,
+    // 已加载但未上传的来源；提交成功后清空，长期缓存保存在图层字段中。
+    source: null as ImageSource | null,
+    // 解除本次 load/error 监听，不承诺停止网络下载；版本检查另行阻止旧结果回写。
+    cancel: null as (() => void) | null,
+    // 集合对字段去重，让同一帧多个范围或色带修改只进行一次必要更新。
+    dirty: new Set<OptionKey>(),
+  }
+}
+
+type ResourceGroup = ReturnType<typeof createResourceGroup>
+
+// MapLibre custom 图层，onAdd/onRemove/render 由地图生命周期触发。
+// 此注释版导出独立的同名类，业务默认入口仍指向正式版。
 export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
-  // ---- maplibregl.CustomLayerInterface 接口要求 ----
+  // id 表示自身身份；beforeId 仅表示插入目标，移动图层不改变自身 id。
+  // 2d 模式沿用地面叠加逻辑，没有引入高度或新的三维渲染流程。
   id: string
   type: 'custom' = 'custom'
   renderingMode: '2d' = '2d'
 
-  // ---- MapLibre & WebGL 上下文 ----
-  /** MapLibre 地图实例引用（onAdd 时注入） */
+  // 地图提供共享 GL，本类仅管理自己创建的 program、VAO、buffer 和纹理。
+  // vao 保存顶点输入绑定，vbuffer 保存四个地面顶点；三个纹理分别存数据、色带、遮罩。
+  // usesCut 是实际 program 模式，不等同于可能还在等待的 opts.cut。
   private map: maplibregl.Map | null = null
-  /** WebGL2 渲染上下文（onAdd 时注入，每次 render 使用同一 context） */
   private gl: WebGL2RenderingContext | WebGLRenderingContext | null = null
-
-  // ---- WebGL 资源 ----
-  /** 链接好的 Shader Program */
   private program: WebGLProgram | null = null
-  /** Vertex Array Object：封装地理范围矩形的顶点属性绑定 */
   private vao: WebGLVertexArrayObject | null = null
-  /** Vertex Buffer Object：存储数据边界四角的 Web Mercator 坐标 */
   private vbuffer: WebGLBuffer | null = null
-  /** 数据纹理（TEXTURE0）：编码了数据值的 PNG 图片 */
   private dataTexture: WebGLTexture | null = null
-  /** 颜色渐变纹理（TEXTURE1）：Canvas 2D 生成的 1D 颜色查找表 */
   private colorTexture: WebGLTexture | null = null
-  /** 裁剪遮罩纹理（TEXTURE2，可选）：控制哪些区域不渲染 */
   private cutTexture: WebGLTexture | null = null
+  private usesCut = false
 
-  // ---- Uniform 位置缓存 ----
-  // 在 onAdd 时通过 getUniformLocation 获取并缓存，避免每帧查询
-  private u_matrix: WebGLUniformLocation | null = null // MapLibre Mercator → clip-space 投影矩阵
-  private u_worldOffset: WebGLUniformLocation | null = null // 横向世界副本偏移
-  private u_tbound: WebGLUniformLocation | null = null // 数据地理边界
-  private u_scale: WebGLUniformLocation | null = null // 数据解码比例
-  private u_tminOpacity: WebGLUniformLocation | null = null // 低值淡化开关
-  private u_vrange: WebGLUniformLocation | null = null // 颜色值域
-  private u_img: WebGLUniformLocation | null = null // 数据纹理采样器
-  private u_color: WebGLUniformLocation | null = null // 颜色纹理采样器
-  private u_cut: WebGLUniformLocation | null = null // 遮罩纹理采样器（有遮罩时）
-  private u_cutArea: WebGLUniformLocation | null = null // 遮罩地理范围（有遮罩时）
+  // 缓存当前 program 的 uniform location，避免每帧查找。
+  // 更换 program 后必须重新获取，旧 program 的 location 不能继续使用。
+  private u_matrix: WebGLUniformLocation | null = null
+  private u_worldOffset: WebGLUniformLocation | null = null
+  private u_tbound: WebGLUniformLocation | null = null
+  private u_scale: WebGLUniformLocation | null = null
+  private u_tminOpacity: WebGLUniformLocation | null = null
+  private u_vrange: WebGLUniformLocation | null = null
+  private u_img: WebGLUniformLocation | null = null
+  private u_color: WebGLUniformLocation | null = null
+  private u_cut: WebGLUniformLocation | null = null
+  private u_cutArea: WebGLUniformLocation | null = null
 
-  // ---- 用户配置 ----
-  /** 合并默认值后的完整配置 */
+  // Target options may be ahead of the options used for drawing and pixel queries.
+  // opts 接收目标参数；applied 提供已生效参数，两者由 commitOptions 同步。
+  // main 与 mask 分别等待各自资源，一组就绪不会要求另一组也同时就绪。
   private opts: IColorfulMapImageOptions
-
-  // ---- 状态标志 ----
-  /** 图片加载完毕、纹理创建完成 */
-  private ready = false
-  /** 数据纹理中是否有有效数据（图片加载失败时为 false） */
-  private hasData = false
-  /** 是否启用了像素值查询（setGetGrid(true) 后为 true） */
-  private eventable = false
-  /** 是否已调用 destroy() */
+  private applied: IColorfulMapImageOptions
+  private main = createResourceGroup()
+  private mask = createResourceGroup()
+  // 终止标记让后续添加、更新和回调成为无操作；vmin/vmax 与当前色带配套。
   private isDestroyed = false
-
-  // ---- 颜色映射缓存 ----
-  /** 颜色查找表的最小值 */
   private vmin = 0
-  /** 颜色查找表的最大值（实际 max value + 5） */
   private vmax = 0
-
-  // ---- 像素查询用 ----
-  /**
-   * 原始图像数据的 Canvas 副本
-   * 用于 getGridDataByLatLon() 通过 getImageData 解码像素值，
-   * 避免依赖 WebGL readPixels（需要 framebuffer，且 MapLibre 管线中难以注入）。
-   */
+  // rawImageCanvas 供 CPU 查询，保持原始像素方向，不应用 GPU 的 flipy。
+  // imageSource 供翻转时重上传：Image 保留原始输入，Canvas 保留提交时的快照。
+  // projectionMatrix 复用数组，减少每帧临时对象。
   private rawImageCanvas: HTMLCanvasElement | null = null
-  /**
-   * 上传投影矩阵用的 Float32 缓冲。
-   * MapLibre 的矩阵可能以 Float64Array 提供，而 WebGL uniformMatrix4fv 要求 Float32Array；
-   * 每帧复用该对象可避免不断分配临时数组。
-   */
+  private imageSource: ImageSource | null = null
   private projectionMatrix = new Float32Array(16)
 
-  /**
-   * 构造函数
-   *
-   * @param options 图层配置选项，与 hxmap GlImg 构造函数参数完全对应
-   *
-   * 必填项：
-   *   img       — 数据纹理（URL 字符串 / Image / Canvas）
-   *   lonmin/max, latmin/max — 地理范围
-   *   scale     — 数据解码比例 { r, g, b, a }
-   *   colors    — 颜色映射配置 { r[], g[], b[], v[], o[] }
-   *
-   * 可选项：
-   *   beforeId  — 图层插入位置（替代 hxmap 的 index）
-   *   interval  — 经纬度间隔（用于像素查询的坐标 → 像素索引转换）
-   *   grid      — 最近邻采样（数据纹理无插值）
-   *   linear    — 颜色渐变线性度
-   *   flipy     — 垂直翻转纹理
-   *   minOpacity — 低值像素透明淡化
-   *   cut/cutUrl/cutlatmin/cutlatmax/cutlonmin/cutlonmax — 遮罩裁剪
-   *   useCros   — 图片加载时设置 crossOrigin = 'anonymous'
-   */
+  // 只合并默认值并保存配置，不加载图片、不操作 GL，支持添加前 setOption。
+  // copyOptions 隔离 scale/colors 的引用，防止调用方后续原地修改影响已有状态。
   constructor(options: IColorfulMapImageOptions) {
-    // 生成唯一图层 ID：优先使用 beforeId，否则自动生成
-    this.id =
-      options.beforeId ||
-      `colorful-map-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-    // 合并默认值（与 hxmap GlImg 默认参数一致）
+    this.id = `colorful-map-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     this.opts = {
-      linear: 0, // 默认完全线性渐变
-      flipy: 0, // 默认不翻转 Y 轴
-      grid: false, // 默认线性插值（平滑）
-      minOpacity: false, // 默认不淡化低值
-      useCorrect: false, // 兼容参数，暂未实现
-      cut: false, // 默认不启用遮罩
-      useCros: false, // 默认不设置跨域
-      preserveDrawingBuffer: false, // 兼容参数
-      ...options, // 用户配置覆盖默认值
-    }
+      linear: 0,
+      flipy: 0,
+      grid: false,
+      getGrid: false,
+      minOpacity: false,
+      cut: false,
+      useCros: false,
+      ...this.copyOptions(options),
+    } as IColorfulMapImageOptions
+    // 首轮 applied 作为合并和失败回退的配置基线，此时还没有实际纹理。
+    // 绘制与查询另行检查资源，不能仅以初始 applied 存在判断数据就绪。
+    this.applied = { ...this.opts }
   }
 
-  /**
-   * MapLibre 图层生命周期：添加到地图时调用
-   *
-   * 完成所有 WebGL 资源初始化：
-   *   1. 编译 Shader、链接 Program
-   *   2. 获取所有 Uniform 位置并缓存
-   *   3. 根据数据经纬度范围创建 Web Mercator 地面矩形 VAO
-   *   4. 加载数据纹理图片
-   *   5. 生成颜色渐变查找纹理
-   *   6. 加载裁剪遮罩（如果启用）
-   *
-   * @param map MapLibre 地图实例
-   * @param gl  WebGL2 渲染上下文（MapLibre 内部创建）
-   */
+  // 创建最小 GL 基础资源，再通过 setOption 进入和后续更新相同的处理流程。
+  // 初始使用无遮罩 program，遮罩完成后由 applyCut 切换。
+  // 正常移除后重新添加也会从最新 opts 重新加载，不能复用已释放的 GL 资源。
   onAdd(map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+    if (this.isDestroyed) return
     this.map = map
     this.gl = gl
-
-    // 判断是否启用遮罩裁剪（需要 cut=true 且提供了 cutUrl）
-    const useCut = this.opts.cut && this.opts.cutUrl
-
-    // ---- 编译 Shader & 链接 Program ----
-    // 根据 useCut 选择对应的 Fragment Shader 变体
-    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
-    const fs = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      useCut ? FRAGMENT_SHADER_WITH_CUT : FRAGMENT_SHADER_NO_CUT
-    )
-    this.program = createProgram(gl, vs, fs)
-    // Program 链接后 Shader 对象不再需要，立即删除释放显存
-    gl.deleteShader(vs)
-    gl.deleteShader(fs)
-
-    // ---- 缓存所有 Uniform 位置 ----
-    // 提前获取并缓存，避免每帧重复调用 getUniformLocation（减少 CPU 开销）
-    this.u_matrix = gl.getUniformLocation(this.program, 'u_matrix')
-    this.u_worldOffset = gl.getUniformLocation(this.program, 'u_worldOffset')
-    this.u_tbound = gl.getUniformLocation(this.program, 'tbound')
-    this.u_scale = gl.getUniformLocation(this.program, 'scale')
-    this.u_tminOpacity = gl.getUniformLocation(this.program, 'tminOpacity')
-    this.u_vrange = gl.getUniformLocation(this.program, 'vrange')
-    this.u_img = gl.getUniformLocation(this.program, 'u_img')
-    this.u_color = gl.getUniformLocation(this.program, 'u_color')
-    if (useCut) {
-      this.u_cut = gl.getUniformLocation(this.program, 'cutImg')
-      this.u_cutArea = gl.getUniformLocation(this.program, 'cutArea')
-    }
-
-    // ---- 创建数据地理范围矩形 VAO ----
-    // VBO 创建后由 updateGeometry() 根据 lat/lon 边界填入归一化 Mercator 坐标。
-    // 4 个顶点仍按 Triangle Strip 排列：西北 → 西南 → 东北 → 东南。
     this.vbuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    this.updateGeometry()
-
-    // VAO 封装了顶点属性绑定：position 属性 → a_position location
     this.vao = (gl as WebGL2RenderingContext).createVertexArray()
-    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
-    // updateGeometry() 在 VAO 创建前绑定了 VBO；这里显式重绑，避免依赖外部 GL 状态。
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
-    const posLoc = gl.getAttribLocation(this.program, 'a_position')
-    gl.enableVertexAttribArray(posLoc)
-    // stride=0, offset=0：顶点数据紧密排列 (x,y) (x,y) ...
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
-    ;(gl as WebGL2RenderingContext).bindVertexArray(null) // 解绑 VAO，防止后续意外修改
-
-    // ---- 加载资源 ----
-    // 数据纹理加载是异步的（图片需要网络请求），加载完成后设置 this.ready = true
-    this.loadImage(this.opts.img)
-    // 颜色渐变纹理是同步的（Canvas 2D 立即生成）
-    this.updateColorRamp()
-
-    if (useCut) {
-      this.loadCutImage(this.opts.cutUrl!)
-    }
+    this.updateProgram(false)
+    // Initialization is a full option update through the same resource pipeline.
+    this.setOption(this.opts)
   }
 
-  /**
-   * MapLibre 图层生命周期：从地图移除时调用
-   *
-   * 清理所有 WebGL 资源（Program / VAO / VBO / 纹理），防止显存泄漏。
-   * 将所有引用置 null 确保 GC 可以回收。
-   *
-   * @param _map 未使用
-   * @param gl   WebGL2 渲染上下文
-   */
+  // 先使两组旧请求失效，再删除本图层的 GL 资源和 CPU 缓存。
+  // 不设置 isDestroyed，所以正常 removeLayer 后仍可以重新添加。
+  // 保留 opts 中最新目标值，包括移除时尚未完成的更新，供重新添加初始化。
   onRemove(_map: maplibregl.Map, gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+    this.resetGroup(this.main)
+    this.resetGroup(this.mask)
     if (this.program) gl.deleteProgram(this.program)
     if (this.vao) (gl as WebGL2RenderingContext).deleteVertexArray(this.vao)
     if (this.vbuffer) gl.deleteBuffer(this.vbuffer)
     if (this.dataTexture) gl.deleteTexture(this.dataTexture)
     if (this.colorTexture) gl.deleteTexture(this.colorTexture)
     if (this.cutTexture) gl.deleteTexture(this.cutTexture)
-
-    // 清空所有引用
     this.map = null
     this.gl = null
     this.program = null
@@ -710,103 +425,64 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.dataTexture = null
     this.colorTexture = null
     this.cutTexture = null
-    this.ready = false
+    // 清空查询缓存与上传来源，避免移除后查询继续返回已卸载的数据。
+    this.rawImageCanvas = null
+    this.imageSource = null
+    this.usesCut = false
   }
 
-  /**
-   * MapLibre 每帧渲染回调
-   *
-   * 在 MapLibre 渲染管线中，自定义图层的 render() 在每个动画帧被调用。
-   * 此方法完成：
-   *   1. 上传 MapLibre 当前帧的 Web Mercator 投影矩阵
-   *   2. 传入地理边界、解码比例、颜色值域等 uniform
-   *   3. 绑定 3 张纹理（数据 / 颜色 / 遮罩）
-   *   4. 按 renderWorldCopies 设置绘制当前世界及相邻世界的数据矩形
-   *
-   * MapLibre 默认 blend 模式为 (ONE, ONE_MINUS_SRC_ALPHA)，期望预乘 alpha。
-   * Fragment Shader 中已做预乘（outColor.rgb *= outColor.a），无需覆盖 blend。
-   *
-   * @param gl      WebGL2 渲染上下文
-   * @param options MapLibre 当前帧的相机及投影数据
-   */
+  // 每帧先 commitOptions，再检查必需纹理，首次就绪的资源才能在这一帧建立。
+  // 先检查 gl 身份与销毁状态，避免旧上下文操作重新添加后的资源。
+  // 提交后统一读取 applied，绘制过程中不引用等待中的目标配置。
   render(
     gl: WebGL2RenderingContext | WebGLRenderingContext,
     options: maplibregl.CustomRenderMethodInput
   ): void {
-    // 未就绪（图片未加载完毕）或已销毁时跳过渲染
-    if (!this.program || !this.ready) return
+    if (this.isDestroyed || gl !== this.gl) return
+    this.commitOptions()
+    if (!this.program || !this.dataTexture || !this.colorTexture) return
 
     const map = this.map!
-    // ---- 绑定 Program & VAO ----
+    // 本帧范围、解码、透明度、遮罩配置都来自同一份已生效状态。
+    const opts = this.applied
     gl.useProgram(this.program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
-
-    // ---- 设置 Uniform ----
-
-    // defaultProjectionData.mainMatrix 接受 [0,1] Web Mercator 世界坐标，输出 clip-space。
-    // 它已经包含当前 pitch、bearing、zoom、center 和透视参数，是倾斜渲染正确的关键。
-    // 复制到复用的 Float32Array 后再上传，兼容 MapLibre 内部提供的 64 位矩阵。
+    // 使用地图相机矩阵将 Mercator 地面矩形变换到裁剪空间。
+    // 无需自行计算屏幕覆盖矩形或另外推算地图平移和缩放。
     this.projectionMatrix.set(options.defaultProjectionData.mainMatrix)
     gl.uniformMatrix4fv(this.u_matrix, false, this.projectionMatrix)
-
-    // u_tbound: 数据地理边界 (latmin, latmax, lonmin, lonmax)
-    //   Shader 中用于判断像素是否在数据范围内，以及计算纹理 UV
-    gl.uniform4f(
-      this.u_tbound,
-      this.opts.latmin,
-      this.opts.latmax,
-      this.opts.lonmin,
-      this.opts.lonmax
-    )
-
-    // u_scale: 数据解码比例 (r, g, b, a)
-    //   Shader 中 value = R/r + G/g + B/b + A/a
-    //   通常设为 (1,1,1,1) 直接求和，或根据编码方式调节各通道权重
-    gl.uniform4f(
-      this.u_scale,
-      this.opts.scale.r,
-      this.opts.scale.g,
-      this.opts.scale.b,
-      this.opts.scale.a
-    )
-
-    // GLSL bool uniform 应通过 uniform1i 传递 0/1。
-    gl.uniform1i(this.u_tminOpacity, this.opts.minOpacity ? 1 : 0)
-
-    // u_vrange: 颜色映射的值域 [vmin, vmax]
-    //   由 generateColorRamp() 计算，vmax = 最后台阶值 + 5
+    // tbound 与几何同步；scale 负责 RGBA 解码，vrange 负责归一化色带取样。
+    // 只改 scale/minOpacity 时无需重新上传图片，提交后直接更新 uniform。
+    gl.uniform4f(this.u_tbound, opts.latmin, opts.latmax, opts.lonmin, opts.lonmax)
+    gl.uniform4f(this.u_scale, opts.scale.r, opts.scale.g, opts.scale.b, opts.scale.a)
+    gl.uniform1i(this.u_tminOpacity, opts.minOpacity ? 1 : 0)
     gl.uniform2f(this.u_vrange, this.vmin, this.vmax)
 
-    // ---- 绑定纹理 ----
-
-    // TEXTURE0: 数据纹理（编码了数据值的 PNG）
+    // 每帧重新绑定纹理，避免共享上下文中其他图层的状态影响本次绘制。
+    // uniform1i 接收槽编号 0/1/2，而不是 TEXTURE0 等 GL 枚举常量。
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-    gl.uniform1i(this.u_img, 0) // sampler2D u_img → 纹理单元 0
-
-    // TEXTURE1: 颜色渐变查找纹理（Canvas 生成的渐变）
+    gl.uniform1i(this.u_img, 0)
     gl.activeTexture(gl.TEXTURE1)
     gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
-    gl.uniform1i(this.u_color, 1) // sampler2D u_color → 纹理单元 1
-
-    // TEXTURE2: 裁剪遮罩纹理（可选）
-    if (this.opts.cut && this.cutTexture && this.u_cut && this.u_cutArea) {
+    gl.uniform1i(this.u_color, 1)
+    // 依照实际 Shader 模式启用遮罩，不能让尚未加载的 opts.cut 提前生效。
+    // 遮罩纹理和 cutArea 必须来自同一已提交裁剪状态。
+    if (this.usesCut) {
       gl.activeTexture(gl.TEXTURE2)
       gl.bindTexture(gl.TEXTURE_2D, this.cutTexture)
       gl.uniform1i(this.u_cut, 2)
       gl.uniform4f(
         this.u_cutArea,
-        this.opts.cutlatmin!,
-        this.opts.cutlatmax!,
-        this.opts.cutlonmin!,
-        this.opts.cutlonmax!
+        opts.cutlatmin!,
+        opts.cutlatmax!,
+        opts.cutlonmin!,
+        opts.cutlonmax!
       )
     }
 
-    // ---- 绘制当前世界及横向副本 ----
-    // 经度每增加 360°，Mercator X 增加 1。先根据中心经度找出相机所在的世界编号，
-    // 开启 renderWorldCopies 时再绘制左右相邻世界，确保跨越 ±180° 平移时图层连续。
-    // 片元 varying 始终使用未偏移的 a_position，所以所有副本采样相同的数据纹理。
+    // 根据地图中心经度确定世界编号；开启世界副本时绘制中心及相邻两个世界。
+    // 关闭副本时只绘制原始世界；重复部分只改 u_worldOffset，不再上传几何。
     const centerWorld = Math.floor((map.getCenter().lng + 180) / 360)
     const worldOffsets = map.getRenderWorldCopies()
       ? [centerWorld - 1, centerWorld, centerWorld + 1]
@@ -817,325 +493,370 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     }
   }
 
-  // ========================================================================
-  // Public API — 图层操作
-  // ========================================================================
-
-  /**
-   * 将图层添加到地图
-   *
-   * 等价于 map.addLayer(this, beforeId)，支持链式调用。
-   *
-   * @param map      MapLibre 地图实例
-   * @param beforeId 插入到哪个图层之前（可选，未指定时使用构造参数中的 beforeId）
-   * @returns this，支持链式调用
-   */
+  // 将可选插入位置保存到统一选项，并立即调用地图 addLayer。
+  // 自身 id 独立生成，避免 beforeId 指向现有图层时发生身份冲突。
   addTo(map: maplibregl.Map, beforeId?: string): this {
-    map.addLayer(this, beforeId || this.opts.beforeId)
+    if (this.isDestroyed) return this
+    if (beforeId !== undefined) this.setOption({ beforeId })
+    map.addLayer(this, this.opts.beforeId)
     return this
   }
 
   /**
-   * 更新数据纹理图片
-   *
-   * 支持三种输入类型：
-   *   - string:       图片 URL，异步加载后上传到 GPU
-   *   - HTMLImageElement: 已加载的 Image 对象
-   *   - HTMLCanvasElement: Canvas 对象（可用于动态生成数据纹理）
-   *
-   * @param img 新的图片源
+   * Shallow option update. Main-image and mask options each wait for their own
+   * pending resource, then commit together at the start of a map render.
+   * Explicit img/cutUrl submissions reload even when the value is unchanged.
    */
-  changeImage(img: string | HTMLImageElement | HTMLCanvasElement): void {
-    this.opts.img = img
-    this.loadImage(img) // 触发重新加载 → handleImageLoaded → 更新 dataTexture
-  }
-
-  /**
-   * 批量更新图层配置
-   *
-   * 可以同时更新 scale、colors、img（url）、minOpacity。
-   * 如果只传 img 不传其他，等价于 changeImage()。
-   *
-   * 注意：此方法不更新地理边界（latmin/latmax/lonmin/lonmax），
-   *       需要更新边界时请使用 changeImageArea()。
-   *
-   * @param options 部分配置更新（只传需要改的字段）
-   */
-  changeAll(options: Partial<IColorfulMapImageOptions>): void {
-    const gl = this.gl
-    if (!gl || !this.program) return
-
-    gl.useProgram(this.program)
-
-    // minOpacity: 先更新 JS 状态，GPU 端在每帧 render() 中读取，无需额外操作
-    if ('minOpacity' in options) {
-      this.opts.minOpacity = options.minOpacity
+  // 唯一参数更新入口，返回 this；默认先保存目标状态，再安排下一帧提交。
+  // 浅合并：遗漏/undefined 保留，false/0 生效，scale/colors 完整替换。
+  // 显式 img/cutUrl 即使值相同也重新准备资源，支持相同 URL 或已修改的 Canvas 刷新。
+  setOption(options: Partial<IColorfulMapImageOptions>): this {
+    if (this.isDestroyed) return this
+    // 先合并全部目标值再启动加载，img 与 useCros 同传时使用本次新的跨域配置。
+    const patch = this.copyOptions(options)
+    this.opts = { ...this.opts, ...patch }
+    // 只累计本次实际提供的字段，等待期间继续追加，不直接修改 applied。
+    for (const key of Object.keys(patch) as OptionKey[]) {
+      ;(CUT_KEYS.has(key) ? this.mask : this.main).dirty.add(key)
     }
-
-    // scale: 更新 JS 状态 + 立即设置 GPU uniform（无需等下帧）
-    if (options.scale) {
-      this.opts.scale = options.scale
-      gl.uniform4f(
-        this.u_scale!,
-        options.scale.r,
-        options.scale.g,
-        options.scale.b,
-        options.scale.a
-      )
-    }
-
-    // colors: 重新生成颜色渐变纹理并上传 GPU
-    if (options.colors) {
-      this.opts.colors = options.colors
-      this.updateColorRamp()
-    }
-
-    // img (url): 等价于 changeImage，异步加载新图片
-    if (options.img !== undefined) {
-      this.changeImage(options.img)
-    } else {
-      this.requestRepaint() // 没有图片更新时仍需触发重绘（颜色可能变了）
-    }
-  }
-
-  /**
-   * 更新数据图片、地理范围及附属选项
-   *
-   * 这是最完整的更新方法，一次性完成：
-   *   - 地理边界更新（latmin/max, lonmin/max）
-   *   - 图片 URL 更新
-   *   - 可选：flipy、interval、grid、colors
-   *
-   * 如果图层尚未就绪（图片未加载），通过 requestAnimationFrame 延迟重试。
-   *
-   * @param url     新的数据图片 URL
-   * @param latmin  数据南边界
-   * @param latmax  数据北边界
-   * @param lonmin  数据西边界
-   * @param lonmax  数据东边界
-   * @param extra   可选的额外更新（flipy, interval, grid, colors）
-   */
-  changeImageArea(
-    url: string,
-    latmin: number,
-    latmax: number,
-    lonmin: number,
-    lonmax: number,
-    extra?: Partial<IColorfulMapImageOptions>
-  ): void {
-    // 图片尚未加载完成时，等待下一帧重试
-    if (!this.ready) {
-      requestAnimationFrame(() => this.changeImageArea(url, latmin, latmax, lonmin, lonmax, extra))
-      return
-    }
-
-    // 更新地理边界
-    this.opts.latmin = latmin
-    this.opts.latmax = latmax
-    this.opts.lonmin = lonmin
-    this.opts.lonmax = lonmax
-    // 边界同时决定 VBO 中地面矩形的位置；只更新 tbound 会导致纹理与几何范围不一致。
-    this.updateGeometry()
-
-    // 更新附加选项
-    if (extra?.flipy !== undefined) this.opts.flipy = extra.flipy
-    if (extra?.interval !== undefined) this.opts.interval = extra.interval
-
-    const gl = this.gl!
-    gl.useProgram(this.program!)
-
-    // grid 切换：更改数据纹理的采样方式
-    if (extra?.grid !== undefined) {
-      this.opts.grid = extra.grid
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-      if (extra.grid) {
-        // 最近邻采样：不插值，适合网格数据的精确取值
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-      } else {
-        // 线性采样：双线性插值，画面更平滑
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    // 添加前只保存目标值；onAdd 后由完整配置启动相同加载流程。
+    // 普通字段不重新加载图片；useCros 单独更新影响后续请求，遮罩始终 anonymous。
+    if (this.gl) {
+      if (patch.img !== undefined) {
+        this.loadResource(this.main, patch.img, !!this.opts.useCros)
+      }
+      if (patch.cutUrl !== undefined) {
+        this.loadResource(this.mask, patch.cutUrl, true)
       }
     }
-
-    if (extra?.colors) {
-      this.opts.colors = extra.colors
-      this.updateColorRamp()
-    }
-
-    this.changeImage(url)
-  }
-
-  /**
-   * 更新颜色映射配置
-   *
-   * @param colors 新的颜色范围配置 { r[], g[], b[], v[], o[] }
-   */
-  changeColors(colors: IColorRange): void {
-    this.opts.colors = colors
-    this.updateColorRamp()
-  }
-
-  /**
-   * 更新颜色渐变线性度
-   *
-   * linear = 0：完全线性渐变
-   * linear > 0：颜色台阶之间的过渡更陡峭（向低值偏移）
-   *
-   * @param n 新的线性度值
-   */
-  changeLinear(n: number): void {
-    this.opts.linear = n
-    this.updateColorRamp()
-  }
-
-  /**
-   * 切换数据纹理的采样方式
-   *
-   * grid = false（默认）：LINEAR 双线性插值 → 渲染平滑
-   * grid = true：NEAREST 最近邻采样 → 每个数据格点边缘清晰
-   *
-   * 直接通过 gl.texParameteri 修改当前绑定纹理的采样参数，无需重建纹理。
-   *
-   * @param enabled true=最近邻, false=双线性
-   */
-  changeGrid(enabled: boolean): void {
-    if (this.opts.grid === enabled) return
-    this.opts.grid = enabled
-
-    const gl = this.gl
-    if (!gl) return
-
-    // 绑定数据纹理，直接修改其采样参数
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-    if (enabled) {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    } else {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    }
     this.requestRepaint()
+    return this
   }
 
-  /**
-   * 启用/禁用像素值查询
-   *
-   * 启用后，可通过 getGridDataByLatLon() 查询指定经纬度的解码数值。
-   * 如果图层尚未就绪，通过 requestAnimationFrame 延迟重试。
-   *
-   * 实现方式：通过 Canvas 2D getImageData 读取原始图片像素，
-   * 再用 scale 解码为数据值。不依赖 WebGL framebuffer。
-   *
-   * @param enabled true=启用查询, false=禁用
-   */
-  setGetGrid(enabled: boolean): void {
-    if (!this.ready) {
-      requestAnimationFrame(() => this.setGetGrid(enabled))
-      return
-    }
-    this.eventable = enabled
-  }
-
-  /**
-   * 查询指定经纬度的解码数据值
-   *
-   * 前提条件：
-   *   1. setGetGrid(true) 已调用（eventable = true）
-   *   2. 图片已成功加载（rawImageCanvas 存在）
-   *   3. 构造参数中提供了 interval（经纬度间隔）
-   *
-   * 坐标 → 像素索引公式：
-   *   x = Math.round((lon - lonmin) / interval)
-   *   y = Math.round((lat - latmin) / interval)
-   *
-   * 解码公式（与 Shader 一致）：
-   *   value = pixel.R/scale.r + pixel.G/scale.g + pixel.B/scale.b + pixel.A/scale.a
-   *
-   * @param lat 纬度
-   * @param lon 经度
-   * @returns { data, lat, lon } 或 null（条件不满足时）
-   */
+  // 与绘制共用 applied，避免旧图片搭配新范围、新间隔或新 scale。
+  // 查询不触发提交；未启用 getGrid、无图片或缺少 interval 时返回 null。
   getGridDataByLatLon(lat: number, lon: number): IGridDataResult | null {
-    if (!this.eventable || !this.rawImageCanvas) return null
-
-    const { interval, latmin, latmax, lonmin, lonmax, scale } = this.opts
+    if (!this.applied.getGrid || !this.rawImageCanvas) return null
+    const { interval, latmin, latmax, lonmin, lonmax, scale } = this.applied
     if (!interval) {
       console.warn('启用获取数值，需要传入经纬度间隔')
       return null
     }
-
-    // 超出数据地理范围 → 返回 data=null
     if (lat < latmin || lat > latmax || lon < lonmin || lon > lonmax) {
       return { data: null, lat, lon }
     }
-
-    // 经纬度 → 数据纹理像素索引（与 hxmap J() 函数逻辑一致）
+    // 按统一经纬度间隔换算像素索引，沿用原有四舍五入和原始图片方向。
+    // 不按图片宽高反推间隔，也不应用 GPU 翻转、线性采样、色带或裁剪。
     const x = Math.round((lon - lonmin) / interval)
     const y = Math.round((lat - latmin) / interval)
-
     const ctx = this.rawImageCanvas.getContext('2d')
     if (!ctx) return { data: null, lat, lon }
-
     try {
-      // 读取单个像素的 RGBA 值
+      // 读取一个 RGBA 像素，按与 Shader 相同的除法协议解码。
+      // Canvas 跨域读取限制等异常在 catch 中转换为 data:null。
       const pixel = ctx.getImageData(x, y, 1, 1).data
-      // 解码数据值（与 Shader 中解码公式完全一致）
       return {
         data: pixel[0] / scale.r + pixel[1] / scale.g + pixel[2] / scale.b + pixel[3] / scale.a,
         lat,
         lon,
       }
     } catch {
-      // getImageData 越界等情况
       return { data: null, lat, lon }
     }
   }
 
-  /**
-   * 销毁图层
-   *
-   * 调用 map.removeLayer(id) 从地图中移除本图层。
-   * MapLibre 会触发 onRemove 回调清理 WebGL 资源。
-   * 幂等操作：重复调用无副作用。
-   */
+  // 幂等终止：先禁止后续操作并使两组请求失效，再让地图移除图层。
+  // GL 释放由地图调用 onRemove 执行；添加前销毁也会禁止之后的 addTo。
   destroy(): void {
     if (this.isDestroyed) return
     this.isDestroyed = true
-    if (this.map) {
-      this.map.removeLayer(this.id)
+    this.resetGroup(this.main)
+    this.resetGroup(this.mask)
+    if (this.map) this.map.removeLayer(this.id)
+  }
+
+  // 按 undefined 过滤，不能用真假判断，否则会丢弃 false/0。
+  // 复制 scale、colors 及数组只用于隔离引用，仍然是整体替换，不做深层合并。
+  // Image/Canvas 保留 DOM 引用；Canvas 像素快照在资源提交阶段生成。
+  private copyOptions(options: Partial<IColorfulMapImageOptions>) {
+    const patch = Object.fromEntries(
+      Object.entries(options).filter(([, value]) => value !== undefined)
+    ) as Partial<IColorfulMapImageOptions>
+    if (patch.scale) patch.scale = { ...patch.scale }
+    if (patch.colors) {
+      const { r, g, b, v, o } = patch.colors
+      patch.colors = { r: [...r], g: [...g], b: [...b], v: [...v], o: [...o] }
+    }
+    return patch
+  }
+
+  // 统一清理：递增版本、解除监听、清空来源、加载标记和待提交字段。
+  // 即使旧事件已排队，递增版本也会阻止它回写新一轮状态。
+  private resetGroup(group: ResourceGroup): void {
+    group.version++
+    group.cancel?.()
+    group.cancel = null
+    group.source = null
+    group.loading = false
+    group.dirty.clear()
+  }
+
+  // 失败时只回退本组 dirty 字段，不覆盖另一组的目标值或待加载请求。
+  // 保留之前可用纹理；首次主图失败没有可用资源，render 将跳过绘制。
+  private discardGroup(group: ResourceGroup, error: unknown): void {
+    // Roll back only this group's target fields; the other group stays independent.
+    const restored = { ...this.opts }
+    for (const key of group.dirty) {
+      Object.assign(restored, { [key]: this.applied[key] })
+    }
+    this.opts = restored
+    this.resetGroup(group)
+    console.warn(group === this.main ? '数据图片更新失败' : '裁剪更新失败', error)
+    this.requestRepaint()
+  }
+
+  // 主图/遮罩共用资源准备函数，支持 URL、Image 和 Canvas。
+  // 新请求替换监听与 source，但保留 dirty，继承同组已累计的其他目标参数。
+  // 回调只标记就绪并请求重绘，不在渲染之外直接操作共享 GL。
+  private loadResource(
+    group: ResourceGroup,
+    source: IColorfulMapImageOptions['img'],
+    crossOrigin: boolean
+  ): void {
+    group.cancel?.()
+    group.cancel = null
+    group.source = null
+    group.loading = true
+    // 闭包捕获本次版本，后续加载、回退或移除会递增当前版本。
+    // 还必须检查上下文存在，正常移除未 destroy 的旧请求也不能继续操作。
+    const version = ++group.version
+    const isCurrent = () => !this.isDestroyed && !!this.gl && group.version === version
+    // 成功只解除等待锁并暂存 source；像素上传和参数生效仍在下一次 render。
+    // 因此加载结束与 render 之间的新 setOption 仍可合并到这次提交。
+    const succeed = (image: ImageSource) => {
+      if (!isCurrent()) return
+      group.cancel?.()
+      group.cancel = null
+      group.source = image
+      group.loading = false
+      this.requestRepaint()
+    }
+    // 只有当前请求失败才能回退，旧请求的迟到错误不会撤销新目标。
+    const fail = () => {
+      if (isCurrent()) this.discardGroup(group, new Error('图片无法加载'))
+    }
+
+    // Canvas 已有像素，无需网络等待，暂存来源后安排统一提交。
+    if (source instanceof HTMLCanvasElement) {
+      succeed(source)
+      return
+    }
+    // An empty cutUrl clears the cached mask without starting a request.
+    // 空 cutUrl 是清除遮罩操作，下一帧删除缓存并切换 Shader，不启动图片请求。
+    // undefined 被忽略，不能用于清除；空 img 则继续走普通加载逻辑。
+    if (source === '' && group === this.mask) {
+      group.loading = false
+      return
+    }
+    // URL 使用内部 Image，外部 Image 沿用自己的 src/跨域配置。
+    // complete 可能也代表失败，需要结合 naturalWidth 验证，不只检查 complete。
+    const image = typeof source === 'string' ? new Image() : source
+    const loaded = () => (image.naturalWidth > 0 ? succeed(image) : fail())
+    if (typeof source !== 'string' && image.complete) {
+      loaded()
+      return
+    }
+    // 监听不会覆盖调用方的 onload/onerror，成功、失败或替换时解除本次监听。
+    // 先添加监听和设置 crossOrigin，再赋 src，避免错过加载结果或跨域配置。
+    image.addEventListener('load', loaded)
+    image.addEventListener('error', fail)
+    group.cancel = () => {
+      image.removeEventListener('load', loaded)
+      image.removeEventListener('error', fail)
+    }
+    if (typeof source === 'string') {
+      if (crossOrigin) image.crossOrigin = 'anonymous'
+      image.src = source
     }
   }
 
-  // ========================================================================
-  // Private Methods — 内部实现
-  // ========================================================================
+  // 分别处理两个组：loading 时跳过，dirty 为空时无需更新。
+  // 从 applied 构造 next，只覆盖本组字段，防止提前带入另一组未就绪的目标值。
+  // 两组独立提交，不要求两张图片同时就绪。
+  private commitOptions(): void {
+    for (const group of [this.main, this.mask]) {
+      if (group.loading || group.dirty.size === 0) continue
+      const next = { ...this.applied }
+      for (const key of group.dirty) Object.assign(next, { [key]: this.opts[key] })
+      try {
+        if (group === this.main) this.applyMain(next, group)
+        else this.applyCut(next, group)
+        // 资源应用成功后才发布配置，并清除本轮 source/dirty。
+        // 之后绘制与 CPU 查询同时看到新状态。
+        this.applied = next
+        group.source = null
+        group.dirty.clear()
+      } catch (error) {
+        this.discardGroup(group, error)
+      }
+    }
+  }
 
-  /**
-   * 根据当前经纬度边界创建地面矩形顶点
-   *
-   * 经纬度不能直接参与 MapLibre 的矩阵运算，需要先转换为归一化 Web Mercator：
-   *   x = lon / 360 + 0.5
-   *   y = 0.5 - ln(tan(π/4 + lat/2)) / (2π)
-   *
-   * 顶点按 Triangle Strip 排列：
-   *   西北(northWest) ───── 东北
-   *          │            / │
-   *          │  两个三角形  │
-   *          │ /            │
-   *   西南 ──────────── 东南(southEast)
-   *
-   * changeImageArea() 更新边界时会再次调用本方法，因此图像范围可以动态变化。
-   * VBO 使用 STATIC_DRAW 是因为边界相对每帧相机变化频率很低；相机变化只更新矩阵。
-   */
-  private updateGeometry(): void {
-    if (!this.gl || !this.vbuffer) return
+  // 初始化和后续主图更新共用此方法，按 dirty 决定哪些资源需要处理。
+  // 候选 Canvas、来源、纹理与色带先放局部变量，准备失败不立即覆盖旧缓存。
+  // 只改范围更新几何；只改解码、透明度、间隔和查询开关不上传主图。
+  private applyMain(next: IColorfulMapImageOptions, group: ResourceGroup): void {
+    const gl = this.gl!
+    const dirty = group.dirty
+    let canvas = this.rawImageCanvas
+    let source = this.imageSource
+    let dataTexture: WebGLTexture | null = null
+    let colorTexture: WebGLTexture | null = null
+    let ramp: ReturnType<typeof generateColorRamp> | null = null
+    try {
+      // 创建 CPU 查询副本；Image 使用 naturalWidth/Height，防止 CSS/显示尺寸改变网格。
+      // Canvas 使用自身宽高，在正式纹理提交的同一帧建立快照。
+      if (group.source) {
+        canvas = document.createElement('canvas')
+        canvas.width =
+          group.source instanceof HTMLImageElement ? group.source.naturalWidth : group.source.width
+        canvas.height =
+          group.source instanceof HTMLImageElement
+            ? group.source.naturalHeight
+            : group.source.height
+        canvas.getContext('2d')!.drawImage(group.source, 0, 0)
+        // Upload Images directly to preserve encoded RGBA channels. Canvas inputs
+        // use the snapshot so later caller mutations do not change cached data.
+        source = group.source instanceof HTMLImageElement ? group.source : canvas
+      }
+      // 新来源、flipy 变化或无旧纹理时才创建数据纹理；翻转复用缓存，不重复下载。
+      // 上传时同时设置最新 grid，避免新图片与已提交采样方式不一致。
+      if (source && (group.source || dirty.has('flipy') || !this.dataTexture)) {
+        dataTexture = createTexture(gl, source, 0, !!next.grid, next.flipy === 1)
+      }
+      // 无色带或 colors/linear 有更新才生成一次色带，两个字段同批更新也只生成一次。
+      // 仅更新图片时可沿用当前色带。
+      if (!this.colorTexture || dirty.has('colors') || dirty.has('linear')) {
+        ramp = generateColorRamp(next.colors, next.linear)
+        colorTexture = createTexture(gl, ramp.canvas, 1, false, false)
+      }
+      // 图层顺序也属于主图组，和 img 同传时一并等待。
+      // 使用稳定的自身 id 调用 moveLayer，同一 beforeId 不重复移动。
+      if (dirty.has('beforeId') && next.beforeId !== this.applied.beforeId) {
+        this.map!.moveLayer(this.id, next.beforeId)
+      }
+      // 首次建立主图必须上传几何，即使本次只修改 img。
+      // 覆盖首次加载失败、dirty 已清空后，仅替换图片恢复的场景。
+      if (
+        !this.dataTexture ||
+        ['latmin', 'latmax', 'lonmin', 'lonmax'].some((key) => dirty.has(key as OptionKey))
+      ) {
+        this.updateGeometry(next)
+      }
+    } catch (error) {
+      if (dataTexture) gl.deleteTexture(dataTexture)
+      if (colorTexture) gl.deleteTexture(colorTexture)
+      throw error
+    }
+    // 候选纹理准备完成后才删除并替换旧纹理。
+    // 只改 grid 时复用当前纹理，仅设置过滤器，无需 texImage2D。
+    if (dataTexture) {
+      if (this.dataTexture) gl.deleteTexture(this.dataTexture)
+      this.dataTexture = dataTexture
+    } else if (this.dataTexture && dirty.has('grid')) {
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
+      const filter = next.grid ? gl.NEAREST : gl.LINEAR
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
+    }
+    // 色带纹理与对应数值范围一同更新，保证数据到颜色的映射一致。
+    if (colorTexture && ramp) {
+      if (this.colorTexture) gl.deleteTexture(this.colorTexture)
+      this.colorTexture = colorTexture
+      this.vmin = ramp.vmin
+      this.vmax = ramp.vmax
+    }
+    // 资源准备成功后发布查询缓存和重上传来源。
+    this.rawImageCanvas = canvas
+    this.imageSource = source
+  }
 
-    const northWest = lngLatToMercator(this.opts.lonmin, this.opts.latmax)
-    const southEast = lngLatToMercator(this.opts.lonmax, this.opts.latmin)
+  // 新遮罩来源上传一次；没有新来源时复用缓存。
+  // 实际启用需 cut、非空 URL 与可用纹理三者同时成立。
+  // 仅 cut:false 可直接切换；与 cutUrl 同传时由加载锁保证整组等待。
+  private applyCut(next: IColorfulMapImageOptions, group: ResourceGroup): void {
+    const gl = this.gl!
+    const texture = group.source ? createTexture(gl, group.source, 2, false, true) : null
+    // 显式清空 URL 才释放缓存；cut:false 保留纹理，便于稍后立即开启。
+    const clear = group.dirty.has('cutUrl') && !next.cutUrl
+    try {
+      // 先准备对应 program，若编译失败则释放候选遮罩并保留旧 program/纹理。
+      // 模式不变时 updateProgram 复用现有 program。
+      this.updateProgram(!!(next.cut && next.cutUrl && (texture || (!clear && this.cutTexture))))
+    } catch (error) {
+      if (texture) gl.deleteTexture(texture)
+      throw error
+    }
+    if (texture || clear) {
+      if (this.cutTexture) gl.deleteTexture(this.cutTexture)
+      this.cutTexture = texture
+    }
+  }
+
+  // 初始化和裁剪切换共享 program 创建流程。
+  // 先编译/链接新的对象，finally 删除临时 Shader，成功后再替换旧 program。
+  private updateProgram(useCut: boolean): void {
+    if (this.program && this.usesCut === useCut) return
+    const gl = this.gl!
+    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
+    let fs: WebGLShader | null = null
+    let program: WebGLProgram
+    try {
+      fs = createShader(
+        gl,
+        gl.FRAGMENT_SHADER,
+        useCut ? FRAGMENT_SHADER_WITH_CUT : FRAGMENT_SHADER_NO_CUT
+      )
+      program = createProgram(gl, vs, fs)
+    } finally {
+      gl.deleteShader(vs)
+      if (fs) gl.deleteShader(fs)
+    }
+    // 新链接成功后替换 program，并重新获取全部 uniform location。
+    // usesCut 记录实际模式，不能依赖尚未提交的 opts.cut。
+    if (this.program) gl.deleteProgram(this.program)
+    this.program = program
+    this.usesCut = useCut
+    this.u_matrix = gl.getUniformLocation(program, 'u_matrix')
+    this.u_worldOffset = gl.getUniformLocation(program, 'u_worldOffset')
+    this.u_tbound = gl.getUniformLocation(program, 'tbound')
+    this.u_scale = gl.getUniformLocation(program, 'scale')
+    this.u_tminOpacity = gl.getUniformLocation(program, 'tminOpacity')
+    this.u_vrange = gl.getUniformLocation(program, 'vrange')
+    this.u_img = gl.getUniformLocation(program, 'u_img')
+    this.u_color = gl.getUniformLocation(program, 'u_color')
+    this.u_cut = gl.getUniformLocation(program, 'cutImg')
+    this.u_cutArea = gl.getUniformLocation(program, 'cutArea')
+    // Attribute locations can change when switching the mask shader.
+    ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
+    // 不同 program 的 attribute location 可能不同，因此需重新配置 VAO。
+    // 每顶点两个 FLOAT、紧密排列，仍复用原 vbuffer。
+    // 括号表达式前的分号用于避免无分号风格下与上一句意外拼接。
+    const posLoc = gl.getAttribLocation(program, 'a_position')
+    gl.enableVertexAttribArray(posLoc)
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
+    ;(gl as WebGL2RenderingContext).bindVertexArray(null)
+  }
+
+  // 根据待提交 next 参数生成单位 Mercator 地面矩形，不读等待中的 opts。
+  // 顶点为西北、西南、东北、东南，TRIANGLE_STRIP 用四点组成两个三角形。
+  // 只有首次主图准备或范围变化才更新 buffer。
+  private updateGeometry(opts: IColorfulMapImageOptions): void {
+    const gl = this.gl!
+    const northWest = lngLatToMercator(opts.lonmin, opts.latmax)
+    const southEast = lngLatToMercator(opts.lonmax, opts.latmin)
     const vertices = new Float32Array([
       northWest.x,
       northWest.y,
@@ -1146,205 +867,13 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
       southEast.x,
       southEast.y,
     ])
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbuffer)
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW)
-    this.requestRepaint()
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
   }
 
-  /**
-   * 加载数据纹理图片
-   *
-   * 处理三种输入类型：
-   *   - string: 创建 Image 异步加载
-   *   - HTMLCanvasElement: 直接使用
-   *   - HTMLImageElement: 可能已加载完成，也可能需要等待 onload
-   *
-   * 加载成功后调用 handleImageLoaded()：
-   *   1. 创建 Canvas 副本（用于 getGridDataByLatLon 查询）
-   *   2. 创建/更新 WebGL 纹理
-   *   3. 设置 ready = true
-   *
-   * 加载失败时创建 1×1 占位 Canvas，避免渲染报错。
-   *
-   * @param img 图片源
-   */
-  private loadImage(img: string | HTMLImageElement | HTMLCanvasElement): void {
-    const gl = this.gl!
-    if (typeof img === 'string') {
-      // 字符串 URL → 创建 Image 异步加载
-      const image = new Image()
-      if (this.opts.useCros) image.crossOrigin = 'anonymous' // 跨域图片需要设置
-      image.onload = () => {
-        if (this.isDestroyed) return // 加载完成时图层可能已被销毁
-        this.handleImageLoaded(gl, image)
-      }
-      image.onerror = () => {
-        if (this.isDestroyed) return
-        console.warn(`图片加载失败: ${img}`)
-        // 创建 1×1 占位 Canvas 防止后续渲染报错
-        const c = document.createElement('canvas')
-        c.width = 1
-        c.height = 1
-        this.rawImageCanvas = c
-        this.ready = true
-        this.hasData = false // 标记无有效数据
-        this.requestRepaint()
-      }
-      image.src = img
-    } else if (img instanceof HTMLCanvasElement) {
-      // Canvas → 直接使用
-      this.handleImageLoaded(gl, img)
-    } else {
-      // HTMLImageElement → 可能已加载，也可能未加载
-      if (img.complete && img.naturalWidth > 0) {
-        // 已加载完成（缓存命中或 <img> 标签已显示）
-        this.handleImageLoaded(gl, img)
-      } else {
-        // 等待加载完成
-        img.onload = () => {
-          if (this.isDestroyed) return
-          this.handleImageLoaded(gl, img as HTMLImageElement)
-        }
-      }
-    }
-  }
-
-  /**
-   * 图片加载成功后的处理
-   *
-   * 1. 创建 Canvas 副本 → rawImageCanvas
-   *    用于 getGridDataByLatLon() 通过 getImageData 读取像素值。
-   *    注意：如果图片是跨域加载且未设置 CORS，drawImage → getImageData 会报安全错误。
-   *    可通过设置构造参数 useCros=true 让 Image 以 crossOrigin="anonymous" 加载。
-   *
-   * 2. 创建/更新 WebGL 数据纹理（TEXTURE0）
-   *    首次加载时创建新纹理，后续更新时通过 texImage2D 替换纹理内容。
-   *    flipy: 控制 UNPACK_FLIP_Y_WEBGL（垂直翻转图像数据）
-   *    grid:  控制 NEAREST/LINEAR 采样方式
-   *
-   * 3. 标记 ready=true 并触发重绘
-   *
-   * @param gl  WebGL2 上下文
-   * @param img 已加载的 Image 或 Canvas
-   */
-  private handleImageLoaded(
-    gl: WebGL2RenderingContext | WebGLRenderingContext,
-    img: HTMLImageElement | HTMLCanvasElement
-  ): void {
-    // ---- 创建 Canvas 副本用于像素查询 ----
-    const canvas = document.createElement('canvas')
-    canvas.width = img.width
-    canvas.height = img.height
-    canvas.getContext('2d')!.drawImage(img, 0, 0)
-    this.rawImageCanvas = canvas
-
-    // ---- 创建/更新 WebGL 纹理 ----
-    if (!this.dataTexture) {
-      // 首次创建纹理
-      this.dataTexture = createTexture(
-        gl,
-        img,
-        0, // TEXTURE0
-        this.opts.grid!, // 是否最近邻采样
-        this.opts.flipy === 1 // 是否翻转 Y 轴
-      )
-    } else {
-      // 更新已有纹理内容（保留原纹理对象，只替换数据）
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.opts.flipy === 1 ? 1 : 0)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
-    }
-
-    this.ready = true // 标记就绪，render() 开始绘制
-    this.hasData = true // 标记有有效数据
-    this.requestRepaint()
-  }
-
-  /**
-   * 加载裁剪遮罩图片
-   *
-   * 遮罩是一个灰度图，在 Shader 中采样其 R 通道：
-   *   若 R > 0.5 → 该像素被遮罩覆盖 → discard 不渲染
-   *   若 R ≤ 0.5 → 正常渲染
-   *
-   * 遮罩纹理位于 TEXTURE2，设置 flipY=true（遮罩图片需要 Y 轴翻转以匹配屏幕坐标）。
-   *
-   * @param url 遮罩图片 URL
-   */
-  private loadCutImage(url: string): void {
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => {
-      if (this.isDestroyed || !this.gl || !this.program) return
-      const gl = this.gl
-      gl.useProgram(this.program)
-      this.cutTexture = createTexture(gl, image, 2, false, true)
-      // 设置 cutImg 采样器指向纹理单元 2
-      if (this.u_cut) gl.uniform1i(this.u_cut, 2)
-      // 设置遮罩地理范围
-      if (this.u_cutArea) {
-        gl.uniform4f(
-          this.u_cutArea,
-          this.opts.cutlatmin!,
-          this.opts.cutlatmax!,
-          this.opts.cutlonmin!,
-          this.opts.cutlonmax!
-        )
-      }
-      this.requestRepaint()
-    }
-    image.onerror = () => {
-      console.warn('裁剪图片加载失败')
-    }
-    image.src = url
-  }
-
-  /**
-   * 更新颜色渐变纹理
-   *
-   * 调用 generateColorRamp() 生成新的 Canvas 渐变 → 上传到 TEXTURE1。
-   * 同时更新 vmin/vmax 缓存，供 render() 中设置 u_vrange uniform。
-   *
-   * 首次调用时创建新纹理，后续调用时通过 texImage2D 替换内容。
-   */
-  private updateColorRamp(): void {
-    if (!this.gl || !this.program) return
-    const gl = this.gl
-
-    // 生成新的颜色渐变 Canvas
-    const { vmin, vmax, canvas } = generateColorRamp(this.opts.colors, this.opts.linear)
-    this.vmin = vmin
-    this.vmax = vmax
-
-    if (!this.colorTexture) {
-      // 首次创建颜色纹理
-      this.colorTexture = createTexture(gl, canvas, 1, false, false)
-    } else {
-      // 更新已有纹理内容
-      gl.useProgram(this.program)
-      gl.activeTexture(gl.TEXTURE1)
-      gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
-      gl.uniform2f(this.u_vrange, vmin, vmax)
-    }
-    this.requestRepaint()
-  }
-
-  /**
-   * 请求 MapLibre 重绘
-   *
-   * 在以下场景调用：
-   *   - 图片加载完成 → 需要显示新纹理
-   *   - 颜色/scale 等配置变化 → 需要更新渲染效果
-   *   - 纹理内容更新 → 下一帧应用新数据
-   *
-   * triggerRepaint() 请求 MapLibre 在下一个动画帧调用 render()。
-   */
+  // 请求地图安排下一帧，不直接绘制，也不创建轮询 requestAnimationFrame。
+  // 添加前或移除后 map=null，这里成为无操作。
   private requestRepaint(): void {
-    if (this.map) {
-      this.map.triggerRepaint()
-    }
+    this.map?.triggerRepaint()
   }
 }

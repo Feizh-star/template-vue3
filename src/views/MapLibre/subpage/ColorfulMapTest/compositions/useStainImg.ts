@@ -37,14 +37,12 @@ export const defaultOption = {
   flipy: 0 as const,
   grid: false,
   minOpacity: false,
-  useCorrect: false,
   cut: true,
   cutlatmin: 18.15,
   cutlatmax: 53.57,
   cutlonmin: 73.49,
   cutlonmax: 135.1,
   useCros: true,
-  preserveDrawingBuffer: false,
   cutUrl: cutUrl,
 }
 
@@ -77,7 +75,7 @@ export function useStainImg({ mapIns }: IUseStainImgProps) {
     if (!mapIns.value) return
     try {
       if (stainImgLayer.value) {
-        stainImgLayer.value.changeAll({
+        stainImgLayer.value.setOption({
           scale: imgScale,
           minOpacity: false,
           colors: imgColor,
@@ -88,9 +86,9 @@ export function useStainImg({ mapIns }: IUseStainImgProps) {
           img: url,
           scale: imgScale,
           colors: imgColor,
+          getGrid: true,
           ...defaultOption,
         })
-        layer.setGetGrid(true)
         layer.addTo(mapIns.value)
         stainImgLayer.value = layer
       }
