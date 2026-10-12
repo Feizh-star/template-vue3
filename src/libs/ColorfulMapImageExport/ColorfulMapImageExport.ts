@@ -26,14 +26,13 @@ const WEB_MERCATOR_MAX_LAT = 85.0511287798066
 const DEFAULT_EXPORT_WIDTH = 1600
 const DEFAULT_AXIS_COLOR = '#566574'
 const DEFAULT_GRID_COLOR = '#aab6c2'
-const DEFAULT_AXIS_MARGIN: [number, number, number, number] = [10, 10, 56, 56]
+const DEFAULT_EXPORT_MARGIN: [number, number, number, number] = [10, 10, 56, 56]
 const DEFAULT_BOUNDARY_LABEL_FONT = '14px Arial, sans-serif'
 const DEFAULT_BOUNDARY_LABEL_COLOR = '#1f2a36'
 const DEFAULT_COLOR_SCALE_BLOCK_WIDTH = 12
 const DEFAULT_COLOR_SCALE_BLOCK_HEIGHT = 16
 const DEFAULT_COLOR_SCALE_FONT = '12px Arial, sans-serif'
 const DEFAULT_COLOR_SCALE_COLOR = '#1f2a36'
-const DEFAULT_COLOR_SCALE_OFFSET = 16
 const DEFAULT_COLOR_SCALE_LABEL_GAP = 8
 
 export const webMercatorProjection: IColorfulMapProjection = {
@@ -53,37 +52,73 @@ export const webMercatorProjection: IColorfulMapProjection = {
   },
 }
 
-export function getColorfulMapExportSize(
-  options: Pick<
-    IColorfulMapImageExportOptions,
-    'lonmin' | 'lonmax' | 'latmin' | 'latmax' | 'outputBounds' | 'axes' | 'projection'
-  > & {
-    colors?: IColorRange
-    colorScale?: IColorfulMapColorScaleOptions
-  }
-): IColorfulMapExportSize {
+type ExportLayoutOptions = Pick<
+  IColorfulMapImageExportOptions,
+  'lonmin' | 'lonmax' | 'latmin' | 'latmax' | 'outputBounds' | 'axes' | 'projection' | 'margin'
+> & {
+  colors?: IColorRange
+  colorScale?: IColorfulMapColorScaleOptions
+}
+
+export function getColorfulMapExportSize(options: ExportLayoutOptions): IColorfulMapExportSize {
+  const { width, height, aspectRatio } = resolveExportLayout(options)
+  return { width, height, aspectRatio }
+}
+
+function resolveExportLayout(options: ExportLayoutOptions) {
   const projection = options.projection || webMercatorProjection
   const outputBounds = getOutputBounds(options)
-  const bounds = getProjectedBounds(
+  const projectedBounds = getProjectedBounds(
     projection,
     outputBounds.lonmin,
     outputBounds.lonmax,
     outputBounds.latmin,
     outputBounds.latmax
   )
-  const projectedWidth = Math.max(Math.abs(bounds.maxX - bounds.minX), Number.EPSILON)
-  const projectedHeight = Math.max(Math.abs(bounds.maxY - bounds.minY), Number.EPSILON)
+  const projectedWidth = Math.max(
+    Math.abs(projectedBounds.maxX - projectedBounds.minX),
+    Number.EPSILON
+  )
+  const projectedHeight = Math.max(
+    Math.abs(projectedBounds.maxY - projectedBounds.minY),
+    Number.EPSILON
+  )
   const aspectRatio = projectedWidth / projectedHeight
-
   const axes = normalizeAxes(options.axes)
-  const [topMargin, rightMargin, bottomMargin, leftMargin] = getEffectiveMargins(options)
   const plotWidth = Math.max(1, Math.round(finitePositive(axes.width) || DEFAULT_EXPORT_WIDTH))
   const plotHeight = Math.max(1, Math.round(plotWidth / aspectRatio))
+  const colorScale = resolveColorScale(options, plotWidth)
+
+  // Content uses bottom-left coordinates, with positive y pointing upward.
+  const [x, y] = colorScale?.config.position || [0, 0]
+  const minX = Math.floor(Math.min(0, colorScale ? x : 0))
+  const minY = Math.floor(Math.min(0, colorScale ? y : 0))
+  const maxX = Math.ceil(Math.max(plotWidth, colorScale ? x + colorScale.width : 0))
+  const maxY = Math.ceil(Math.max(plotHeight, colorScale ? y + colorScale.height : 0))
+  const [top, right, bottom, left] = expandMargin(options.margin ?? DEFAULT_EXPORT_MARGIN).map(
+    (value) => Math.round(finiteNonNegative(value, 0))
+  )
+  const plotLeft = left - minX
+  const plotTop = top + maxY - plotHeight
+  const plot: PlotRect = {
+    left: plotLeft,
+    top: plotTop,
+    width: plotWidth,
+    height: plotHeight,
+    right: plotLeft + plotWidth,
+    bottom: plotTop + plotHeight,
+  }
 
   return {
-    width: Math.max(1, Math.round(plotWidth + leftMargin + rightMargin)),
-    height: Math.max(1, Math.round(plotHeight + topMargin + bottomMargin)),
+    width: maxX - minX + left + right,
+    height: maxY - minY + top + bottom,
     aspectRatio,
+    projection,
+    outputBounds,
+    projectedBounds,
+    axes,
+    plot,
+    colorScale,
   }
 }
 
@@ -93,9 +128,8 @@ export async function renderColorfulMapImage(
   throwIfAborted(options.signal)
 
   const format = normalizeFormat(options.format)
-  const size = getColorfulMapExportSize(options)
-  const projection = options.projection || webMercatorProjection
-  const axes = normalizeAxes(options.axes)
+  const size = resolveExportLayout(options)
+  const { projection, axes, plot, outputBounds, projectedBounds, colorScale } = size
   const canvas = createOutputCanvas(size.width, size.height, options.preferOffscreenCanvas)
   const ctx = get2dContext(canvas)
 
@@ -108,15 +142,6 @@ export async function renderColorfulMapImage(
     ctx.clearRect(0, 0, size.width, size.height)
   }
 
-  const plot = fitPlotRect(size.width, size.height, getEffectiveMargins(options))
-  const outputBounds = getOutputBounds(options)
-  const projectedBounds = getProjectedBounds(
-    projection,
-    outputBounds.lonmin,
-    outputBounds.lonmax,
-    outputBounds.latmin,
-    outputBounds.latmax
-  )
   const source = await readImageData(options.image, options.signal)
   const cut = options.cut ? await readCutTexture(options.cut, options.signal) : null
 
@@ -144,7 +169,7 @@ export async function renderColorfulMapImage(
     )
   }
 
-  drawColorScale(ctx, options, plot)
+  drawColorScale(ctx, options.colors, colorScale, plot)
 
   return {
     canvas,
@@ -408,15 +433,16 @@ function readFeatureCenter(feature: Feature<Geometry | null>): Position | null {
 
 function drawColorScale(
   ctx: CanvasRenderingContext2D,
-  options: { colors?: IColorRange; colorScale?: IColorfulMapColorScaleOptions },
+  colors: IColorRange,
+  scale: ResolvedColorScale | null,
   plot: PlotRect
 ): void {
-  const scale = resolveColorScale(options)
-  const colors = options.colors
-  if (!scale || !colors) return
+  if (!scale) return
 
   const { config, labels, count } = scale
-  const blockX = plot.right + config.offset
+  const originX = plot.left + config.position[0]
+  const originY = plot.bottom - config.position[1]
+  const blockX = originX + scale.blockLeft
   const labelX = blockX + config.blockWidth + config.labelGap
 
   ctx.save()
@@ -425,7 +451,7 @@ function drawColorScale(
   ctx.textBaseline = 'middle'
 
   for (let i = 0; i < count; i += 1) {
-    const bottomY = plot.bottom - i * config.blockHeight
+    const bottomY = originY - scale.blockBottom - i * config.blockHeight
     const [r, g, b, a] = colorAt(colors, i)
     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`
     ctx.fillRect(blockX, bottomY - config.blockHeight, config.blockWidth, config.blockHeight)
@@ -435,6 +461,12 @@ function drawColorScale(
       ctx.fillStyle = config.color
       ctx.fillText(text, labelX, bottomY)
     }
+  }
+
+  if (config.endLabel) {
+    const topY = originY - scale.blockBottom - count * config.blockHeight
+    ctx.fillStyle = config.color
+    ctx.fillText(config.endLabel, labelX, topY)
   }
 
   ctx.restore()
@@ -1005,7 +1037,6 @@ function normalizeAxes(input?: IColorfulMapAxesOptions): Required<IColorfulMapAx
     labelFont: input?.labelFont || '14px Arial, sans-serif',
     labelColor: input?.labelColor || DEFAULT_AXIS_COLOR,
     labelPadding: input?.labelPadding || 6,
-    margin: input?.margin ?? DEFAULT_AXIS_MARGIN,
     showGrid: input?.showGrid ?? false,
     gridColor: input?.gridColor || DEFAULT_GRID_COLOR,
     gridLineWidth: input?.gridLineWidth || 1,
@@ -1029,32 +1060,37 @@ interface ResolvedColorScale {
   config: Required<IColorfulMapColorScaleOptions>
   count: number
   labels: (string | null)[]
-  totalWidth: number
-  requiredMargin: number
+  width: number
+  height: number
+  blockLeft: number
+  blockBottom: number
 }
 
 function normalizeColorScale(
-  input?: IColorfulMapColorScaleOptions
+  input: IColorfulMapColorScaleOptions | undefined,
+  plotWidth: number
 ): Required<IColorfulMapColorScaleOptions> | null {
   if (!input || !(input.enabled ?? true)) return null
+  const [x, y] = input.position || [plotWidth + 10, 10]
   return {
     enabled: true,
     blockWidth: finitePositive(input.blockWidth) || DEFAULT_COLOR_SCALE_BLOCK_WIDTH,
     blockHeight: finitePositive(input.blockHeight) || DEFAULT_COLOR_SCALE_BLOCK_HEIGHT,
-    offset: finiteNonNegative(input.offset, DEFAULT_COLOR_SCALE_OFFSET),
+    position: [Number.isFinite(x) ? x : plotWidth + 10, Number.isFinite(y) ? y : 10],
     labelGap: finiteNonNegative(input.labelGap, DEFAULT_COLOR_SCALE_LABEL_GAP),
-    values: input.values ?? [],
+    labels: input.labels ?? [],
     showFirstLabel: input.showFirstLabel ?? true,
+    endLabel: input.endLabel ?? '',
     font: input.font || DEFAULT_COLOR_SCALE_FONT,
     color: input.color || DEFAULT_COLOR_SCALE_COLOR,
   }
 }
 
-function resolveColorScale(options: {
-  colors?: IColorRange
-  colorScale?: IColorfulMapColorScaleOptions
-}): ResolvedColorScale | null {
-  const config = normalizeColorScale(options.colorScale)
+function resolveColorScale(
+  options: { colors?: IColorRange; colorScale?: IColorfulMapColorScaleOptions },
+  plotWidth: number
+): ResolvedColorScale | null {
+  const config = normalizeColorScale(options.colorScale, plotWidth)
   const colors = options.colors
   if (!config || !colors) return null
 
@@ -1063,37 +1099,75 @@ function resolveColorScale(options: {
 
   const measure = createTextMeasurer(config.font)
   const labels: (string | null)[] = []
-  let maxLabelWidth = 0
+  const labelX = config.blockWidth + config.labelGap
+  let minX = 0
+  let maxX = config.blockWidth
+  let minY = 0
+  let maxY = count * config.blockHeight
   for (let i = 0; i < count; i += 1) {
+    const override = config.labels[i]
+    const value = Number.isFinite(override) ? override : colors.v[i]
+    const text = formatColorScaleValue(value)
+    const metrics = measure(text)
     if (i === 0 && !config.showFirstLabel) {
       labels.push(null)
       continue
     }
-    const override = config.values[i]
-    const value = Number.isFinite(override) ? override : colors.v[i]
-    const text = formatColorScaleValue(value)
     labels.push(text)
-    maxLabelWidth = Math.max(maxLabelWidth, measure(text))
+    minX = Math.min(minX, labelX - metrics.left)
+    maxX = Math.max(maxX, labelX + metrics.right)
+    minY = Math.min(minY, i * config.blockHeight - metrics.descent)
+    maxY = Math.max(maxY, i * config.blockHeight + metrics.ascent)
   }
 
-  const totalWidth = config.blockWidth + config.labelGap + maxLabelWidth
+  if (config.endLabel) {
+    const metrics = measure(config.endLabel)
+    const topY = count * config.blockHeight
+    minX = Math.min(minX, labelX - metrics.left)
+    maxX = Math.max(maxX, labelX + metrics.right)
+    minY = Math.min(minY, topY - metrics.descent)
+    maxY = Math.max(maxY, topY + metrics.ascent)
+  }
   return {
     config,
     count,
     labels,
-    totalWidth,
-    requiredMargin: config.offset + totalWidth,
+    width: maxX - minX,
+    height: maxY - minY,
+    blockLeft: -minX,
+    blockBottom: -minY,
   }
 }
 
-function createTextMeasurer(font: string): (text: string) => number {
+interface MeasuredText {
+  left: number
+  right: number
+  ascent: number
+  descent: number
+}
+
+function createTextMeasurer(font: string): (text: string) => MeasuredText {
+  const halfHeight = parseFontSize(font) / 2
+  let ctx: CanvasRenderingContext2D | null = null
   try {
-    const ctx = get2dContext(createOutputCanvas(1, 1, false), true)
+    ctx = get2dContext(createOutputCanvas(1, 1, false), true)
     ctx.font = font
-    return (text) => ctx.measureText(text).width
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
   } catch {
-    const size = parseFontSize(font)
-    return (text) => text.length * size * 0.6
+    // Sizing can also run in runtimes without a 2D canvas implementation.
+  }
+  return (text) => {
+    const metrics = ctx?.measureText(text)
+    return {
+      left: metrics?.actualBoundingBoxLeft ?? 0,
+      right: Math.max(
+        metrics?.width ?? text.length * halfHeight * 1.2,
+        metrics?.actualBoundingBoxRight ?? 0
+      ),
+      ascent: metrics?.actualBoundingBoxAscent ?? halfHeight,
+      descent: metrics?.actualBoundingBoxDescent ?? halfHeight,
+    }
   }
 }
 
@@ -1106,45 +1180,11 @@ function formatColorScaleValue(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)))
 }
 
-function fitPlotRect(
-  width: number,
-  height: number,
-  margins: [number, number, number, number]
-): PlotRect {
-  const [topMargin, rightMargin, bottomMargin, leftMargin] = margins
-  const plotWidth = Math.max(1, width - leftMargin - rightMargin)
-  const plotHeight = Math.max(1, height - topMargin - bottomMargin)
-  return {
-    left: leftMargin,
-    top: topMargin,
-    width: plotWidth,
-    height: plotHeight,
-    right: leftMargin + plotWidth,
-    bottom: topMargin + plotHeight,
-  }
-}
-
 function expandMargin(margin: ColorfulMapMargin): [number, number, number, number] {
   if (typeof margin === 'number') return [margin, margin, margin, margin]
   if (margin.length === 2) return [margin[0], margin[1], margin[0], margin[1]]
   if (margin.length === 4) return margin
   return [0, 0, 0, 0]
-}
-
-function getEffectiveMargins(
-  options: Pick<IColorfulMapImageExportOptions, 'axes'> & {
-    colors?: IColorRange
-    colorScale?: IColorfulMapColorScaleOptions
-  }
-): [number, number, number, number] {
-  const axes = normalizeAxes(options.axes)
-  const base: [number, number, number, number] = axes.enabled
-    ? expandMargin(axes.margin)
-    : [0, 0, 0, 0]
-  const [top, right, bottom, left] = base
-  const scale = resolveColorScale(options)
-  const rightMargin = scale ? right + scale.requiredMargin : right
-  return [top, rightMargin, bottom, left]
 }
 
 function getProjectedBounds(

@@ -23,7 +23,8 @@ const options: IColorfulMapImageExportOptions = {
   },
   scale: imgScale,
   colors: imgColor,
-  colorScale: { enabled: true, blockWidth: 12, blockHeight: 16, offset: 16, labelGap: 8 },
+  colorScale: { enabled: true, blockWidth: 12, blockHeight: 16, position: [2410, 10], labelGap: 8 },
+  margin: [10, 12, 56, 64],
   linear: 1,
   flipy: 0,
   format: 'png',
@@ -46,7 +47,6 @@ const options: IColorfulMapImageExportOptions = {
     width: 2400,
     lonStep: 10,
     latStep: 5,
-    margin: [10, 12, 56, 64],
   },
 }
 
@@ -64,30 +64,44 @@ Vite emits the Worker entry and its renderer dependencies as a separate JavaScri
 `lonmin/lonmax/latmin/latmax` fields continue to describe the data texture itself. Pixels in
 the output extent outside the data texture remain transparent in PNG or use the JPG background.
 `axes.width` is the coordinate plot width in pixels. The plot height is calculated from the
-projected `outputBounds` aspect ratio, then the axis margins are added to produce the final image
-size. PNG keeps the outside of the cut transparent; JPG uses a white background by default.
+projected `outputBounds` aspect ratio. PNG keeps the outside of the cut transparent; JPG uses a
+white background by default.
 
-`axes.margin` accepts the CSS shorthand forms `number`, `[vertical, horizontal]`, or
-`[top, right, bottom, left]`. When omitted, the renderer keeps its default axis layout margins.
+The plot rectangle and the measured color scale rectangle form a union bounding box (`content`).
+Only the plot rectangle counts toward content, not axis tick marks or longitude/latitude labels.
+The image size is `content width + left margin + right margin` by
+`content height + top margin + bottom margin`. Moving the scale never stretches the plot.
+
+Top-level `margin` accepts the CSS shorthand forms `number`, `[vertical, horizontal]`, or
+`[top, right, bottom, left]`, defaulting to `[10, 10, 56, 56]`. It lies outside content and applies
+whether axes are enabled or disabled. Margins are rounded to non-negative integer pixels.
+Use `margin: 0` for no outer whitespace. Tick marks and coordinate labels may extend into the
+margin and can be clipped if it is too small. Migrate older `axes.margin` to top-level `margin`.
 
 A boundary layer can also draw region names: set `label` to render each feature's
 `properties.name` at `properties.center`, horizontally and vertically centered on that point.
 `label.enabled` defaults to `true` when the option object is present, so omit `label` to skip names.
 
-`colorScale` draws a vertical color scale in the right margin, outside the coordinate plot: one
-swatch per entry of `colors` (`blockWidth` default 12px, `blockHeight` default 16px), lowest value
-at the bottom, its stack bottom aligned with the plot bottom and its left edge `offset` px to the
-right of the plot (default 16). Each value label is vertically centered on its swatch's bottom edge
-and sits `labelGap` px to the right of the swatch (default 8); set `showFirstLabel: false` to hide
-the lowest value label. Labels default to `colors.v`; pass `values` to display a different value
-axis per swatch (useful when the coloring pipeline offsets the `v` component), falling back to
-`colors.v[i]` for any index without a finite value.
-`font` and `color` are configurable. The renderer measures the label text and reserves a band of
-`16 + blockWidth + 8 + widest label` to the right of the plot; this band is added to `axes.margin`,
-so `margin[1]` stays exactly as configured and remains as blank space to the right of the scale.
-The exported width becomes `left margin + axes.width + color scale band + right margin`.
-`colorScale.enabled` defaults to `true` when the object is present. Because the scale is anchored at
-the plot bottom and grows upward, it clips if its height exceeds the plot.
+`colorScale` draws one swatch per entry of `colors` (`blockWidth` default 12px, `blockHeight`
+default 16px), lowest value at the bottom. `position: [x, y]` places the bottom-left corner of the
+entire measured scale relative to the plot's bottom-left corner, in pixels, with x pointing right
+and y pointing up. The default is `[plot width + 10, 10]`. Negative coordinates and placement
+inside the plot are supported; the scale is always drawn last, above all other layers.
+The old `offset` option is replaced by `position`.
+
+Each value label is vertically centered on its swatch's bottom edge and sits `labelGap` px to the
+right of the swatch (default 8); set `showFirstLabel: false` to hide the lowest value label.
+Labels default to `colors.v`; pass `labels` to display the unshifted values when the coloring
+pipeline offsets `v`, falling back to `colors.v[i]` for any index without a finite value.
+`font` and `color` are configurable. `colorScale.enabled` defaults to `true` when the object is
+present. Set `endLabel` to a string such as `'1000 mm'` to draw an additional label centered
+vertically on the highest swatch's top edge. It uses the same `labelGap`, `font`, and `color` as
+the other labels and is independent of `showFirstLabel`. Both swatches and visible text,
+including `endLabel`, are included in the measured width and height. When `endLabel` is omitted
+or empty, no top label is drawn and no fixed extra height is reserved; only actual text overflow
+is included. The bottom includes any visible first label's overflow.
+Thus `position` anchors the scale's measured bounds, not just the bottom swatch. Content expands
+in every direction as needed, including when the scale is taller than the plot.
 
 The renderer batches each boundary style into one Canvas path. It can run on an
 `OffscreenCanvas` by setting `preferOffscreenCanvas: true`, so the same function can be called

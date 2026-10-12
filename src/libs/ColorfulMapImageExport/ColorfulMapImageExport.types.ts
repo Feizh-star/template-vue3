@@ -86,7 +86,7 @@ export interface IColorfulMapBoundaryLayer {
 
 export type ColorfulMapMargin = number | [number, number] | [number, number, number, number]
 
-/** Vertical color scale drawn in the right margin, outside the coordinate plot. */
+/** Vertical color scale positioned relative to the coordinate plot's bottom-left corner. */
 export interface IColorfulMapColorScaleOptions {
   /** Defaults to true when this option object is provided. */
   enabled?: boolean
@@ -94,17 +94,22 @@ export interface IColorfulMapColorScaleOptions {
   blockWidth?: number
   /** Swatch height in pixels. Defaults to 16. */
   blockHeight?: number
-  /** Gap in pixels between the plot and the swatches. Defaults to 16. */
-  offset?: number
+  /**
+   * Bottom-left corner of the measured scale relative to the plot's bottom-left corner.
+   * Pixels, x to the right and y upward. Defaults to [plot width + 10, 10].
+   */
+  position?: [number, number]
   /** Gap in pixels between a swatch and its label. Defaults to 8. */
   labelGap?: number
   /**
    * Displayed value per swatch. Falls back to `colors.v[i]` per index when omitted.
    * Use this when the value axis used for coloring has been offset from `colors.v`.
    */
-  values?: number[]
+  labels?: number[]
   /** Draw the lowest value label. Defaults to true. */
   showFirstLabel?: boolean
+  /** Optional text centered vertically on the top edge of the highest swatch. */
+  endLabel?: string
   font?: string
   color?: string
 }
@@ -133,7 +138,6 @@ export interface IColorfulMapAxesOptions {
   labelFont?: string
   labelColor?: string
   labelPadding?: number
-  margin?: ColorfulMapMargin
   showGrid?: boolean
   gridColor?: string
   gridLineWidth?: number
@@ -171,6 +175,8 @@ export interface IColorfulMapImageExportOptions {
   boundaries?: IColorfulMapBoundaryLayer[]
   cut?: IColorfulMapCutTexture
   axes?: IColorfulMapAxesOptions
+  /** Image margin outside the plot/color scale content bounds. Defaults to [10, 10, 56, 56]. */
+  margin?: ColorfulMapMargin
   background?: string
   /** Prefer OffscreenCanvas when running in a worker or when explicitly requested. */
   preferOffscreenCanvas?: boolean
