@@ -13,11 +13,24 @@ void main() {
     mercatorPosition = a_position;
 }`
 
+// Shared by both fragment shaders so clipping cannot change the opacity curve.
+const MIN_OPACITY_GLSL = `
+float minimumOpacity(float value, float minValue) {
+    float edge0 = minValue * 0.5;
+    float edge1 = minValue * 2.0;
+    if (edge0 == edge1) {
+        return step(edge0, value);
+    }
+    return smoothstep(min(edge0, edge1), max(edge0, edge1), value);
+}`
+
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
 #define useCut true
 precision highp float;
+
+${MIN_OPACITY_GLSL}
 
 vec2 mercatorToLatlng(vec2 mercator) {
     float x = (mercator.x - 0.5) * 360.0;
@@ -53,10 +66,7 @@ void main() {
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
     if (tminOpacity) {
-        float minv = vrange.x * 0.5;
-        float maxv = vrange.x * 2.0;
-        float o = smoothstep(minv, maxv, value);
-        outColor.a = outColor.a * o;
+        outColor.a *= minimumOpacity(value, vrange.x);
     }
     outColor.rgb *= outColor.a;
 }`
@@ -65,6 +75,8 @@ const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
 precision highp float;
+
+${MIN_OPACITY_GLSL}
 
 vec2 mercatorToLatlng(vec2 mercator) {
     float x = (mercator.x - 0.5) * 360.0;
@@ -96,10 +108,7 @@ void main() {
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
     if (tminOpacity) {
-        float o = (value - vrange.x * 0.8) / 0.5 / vrange.x;
-        o = max(o, 0.0);
-        o = min(o, 1.0);
-        outColor.a = outColor.a * o;
+        outColor.a *= minimumOpacity(value, vrange.x);
     }
     outColor.rgb *= outColor.a;
 }`
@@ -236,6 +245,14 @@ function createResourceGroup() {
 
 type ResourceGroup = ReturnType<typeof createResourceGroup>
 
+type DrawState = {
+  options: IColorfulMapImageOptions
+  program: WebGLProgram
+  dataTexture: WebGLTexture
+  colorTexture: WebGLTexture
+  cutTexture: WebGLTexture | null
+}
+
 export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
   id: string
   type: 'custom' = 'custom'
@@ -327,12 +344,12 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     options: maplibregl.CustomRenderMethodInput
   ): void {
     if (this.isDestroyed || gl !== this.gl) return
-    this.commitOptions()
-    if (!this.program || !this.dataTexture || !this.colorTexture) return
+    const state = this.prepareDrawState()
+    if (!state) return
 
     const map = this.map!
-    const opts = this.applied
-    gl.useProgram(this.program)
+    const { options: opts, program, dataTexture, colorTexture, cutTexture } = state
+    gl.useProgram(program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
     this.projectionMatrix.set(options.defaultProjectionData.mainMatrix)
     gl.uniformMatrix4fv(this.u_matrix, false, this.projectionMatrix)
@@ -342,14 +359,14 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     gl.uniform2f(this.u_vrange, this.vmin, this.vmax)
 
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
+    gl.bindTexture(gl.TEXTURE_2D, dataTexture)
     gl.uniform1i(this.u_img, 0)
     gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture)
     gl.uniform1i(this.u_color, 1)
-    if (this.usesCut) {
+    if (cutTexture) {
       gl.activeTexture(gl.TEXTURE2)
-      gl.bindTexture(gl.TEXTURE_2D, this.cutTexture)
+      gl.bindTexture(gl.TEXTURE_2D, cutTexture)
       gl.uniform1i(this.u_cut, 2)
       gl.uniform4f(
         this.u_cutArea,
@@ -515,6 +532,27 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     if (typeof source === 'string') {
       if (crossOrigin) image.crossOrigin = 'anonymous'
       image.src = source
+    }
+  }
+
+  // The commit boundary resolves pending requests into a complete drawable snapshot.
+  // render consumes this snapshot without interpreting target options or resource readiness.
+  private prepareDrawState(): DrawState | null {
+    this.commitOptions()
+    if (!this.program || !this.dataTexture || !this.colorTexture) return null
+
+    // A committed cut remains required until its replacement/disable commits.
+    // Otherwise an enabling request must wait instead of exposing an uncut frame.
+    const cutRequirement = this.applied.cut && this.applied.cutUrl ? this.applied : this.opts
+    const cutTexture = this.usesCut ? this.cutTexture : null
+    if (cutRequirement.cut && cutRequirement.cutUrl && !cutTexture) return null
+
+    return {
+      options: this.applied,
+      program: this.program,
+      dataTexture: this.dataTexture,
+      colorTexture: this.colorTexture,
+      cutTexture,
     }
   }
 

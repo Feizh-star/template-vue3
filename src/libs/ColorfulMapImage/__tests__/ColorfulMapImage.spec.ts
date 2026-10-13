@@ -232,6 +232,29 @@ describe('ColorfulMapImage unified options', () => {
     expect(gl.texParameteri).toHaveBeenCalledWith(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   })
 
+  it('keeps the same opacity function and alpha calculation when toggling cut', () => {
+    const { layer, frame, gl } = setup({ minOpacity: true, cut: true, cutUrl: '/mask.png' })
+    load(images[0])
+    frame()
+    layer.setOption({ cut: false })
+    frame()
+
+    const fragments = gl.shaderSource.mock.calls
+      .map(([, source]) => String(source))
+      .filter((source) => source.includes('out vec4 outColor;'))
+    expect(fragments).toHaveLength(3)
+    const opacity = fragments.map((source) => ({
+      helper: source.match(/float minimumOpacity\([\s\S]*?\n\}/)?.[0],
+      alpha: source.match(/if \(tminOpacity\) \{([\s\S]*?)\}/)?.[1],
+    }))
+    expect(opacity[0].helper).toBeDefined()
+    expect(opacity[0].alpha).toContain('minimumOpacity(')
+    expect(opacity[1]).toEqual(opacity[0])
+    expect(opacity[2]).toEqual(opacity[0])
+    expect(gl.uniform1i).toHaveBeenLastCalledWith('u_color', 1)
+    expect(gl.uniform1i).toHaveBeenCalledWith('tminOpacity', 1)
+  })
+
   it('waits for img before committing ALL main fields, including colors and grid', () => {
     const { layer, frame, uniform, gl, uploads, bound } = setup()
     frame()
@@ -341,6 +364,133 @@ describe('ColorfulMapImage unified options', () => {
     load(images[2])
     frame()
     expect(uniform('cutArea')).toEqual([3, 8, 0, 10])
+  })
+
+  it.each(['main', 'mask'])(
+    'waits for both textures when %s loads first with cut enabled',
+    (first) => {
+      const { frame, gl, uniform, map } = setup({
+        img: '/data.png',
+        cut: true,
+        cutUrl: '/mask.png',
+        cutlatmin: 0,
+        cutlatmax: 10,
+        cutlonmin: 0,
+        cutlonmax: 10,
+      })
+      load(images[first === 'main' ? 0 : 1])
+      frame()
+      frame()
+      expect(gl.drawArrays).not.toHaveBeenCalled()
+      const repaintCount = map.triggerRepaint.mock.calls.length
+      load(images[first === 'main' ? 1 : 0])
+      expect(map.triggerRepaint.mock.calls.length).toBeGreaterThan(repaintCount)
+      frame()
+      expect(gl.drawArrays).toHaveBeenCalledOnce()
+      expect(gl.uniform1i).toHaveBeenCalledWith('cutImg', 2)
+      expect(uniform('cutArea')).toEqual([0, 10, 0, 10])
+    }
+  )
+
+  it('pauses uncut drawing while enabling cut, even with a disabled cached mask', () => {
+    const { layer, frame, gl, bound } = setup({ cut: false, cutUrl: '/cached.png' })
+    load(images[0])
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledOnce()
+    gl.drawArrays.mockClear()
+    layer.setOption({
+      cut: true,
+      cutUrl: '/new.png',
+      cutlatmin: 0,
+      cutlatmax: 10,
+      cutlonmin: 0,
+      cutlonmax: 10,
+    })
+    frame()
+    expect(gl.drawArrays).not.toHaveBeenCalled()
+    load(images[1])
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledOnce()
+    expect(bound.get(2)).toBeTruthy()
+    expect(gl.uniform1i).toHaveBeenCalledWith('cutImg', 2)
+  })
+
+  it.each(['load', 'shader'])(
+    'resumes the previous uncut frame when enabling cut fails during %s preparation',
+    (failure) => {
+      const { layer, frame, gl } = setup({ cut: false, cutUrl: '/cached.png' })
+      load(images[0])
+      frame()
+      gl.drawArrays.mockClear()
+      gl.uniform1i.mockClear()
+      layer.setOption({ cut: true, cutUrl: '/new.png' })
+      frame()
+      expect(gl.drawArrays).not.toHaveBeenCalled()
+
+      if (failure === 'load') images[1].dispatchEvent(new Event('error'))
+      else {
+        load(images[1])
+        gl.getShaderParameter.mockReturnValueOnce(false)
+      }
+      frame()
+      expect(gl.drawArrays).toHaveBeenCalledOnce()
+      expect(gl.uniform1i).not.toHaveBeenCalledWith('cutImg', 2)
+      expect(layer.getGridDataByLatLon(1, 1)?.data).toBe(8)
+    }
+  )
+
+  it('keeps a committed cut requirement while a disabling replacement is pending', () => {
+    const { layer, frame, gl } = setup({ cut: true, cutUrl: '/bad.png' })
+    images[0].dispatchEvent(new Event('error'))
+    frame()
+    layer.setOption({ cut: false, cutUrl: '/replacement.png' })
+    frame()
+    expect(gl.drawArrays).not.toHaveBeenCalled()
+    load(images[1])
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledOnce()
+    expect(gl.uniform1i).not.toHaveBeenCalledWith('cutImg', 2)
+  })
+
+  it('keeps initial cut hidden after mask failure and recovers when retried or disabled', () => {
+    const { layer, frame, gl } = setup({ cut: true, cutUrl: '/bad.png' })
+    images[0].dispatchEvent(new Event('error'))
+    frame()
+    expect(gl.drawArrays).not.toHaveBeenCalled()
+    layer.setOption({ cutUrl: '/retry.png' })
+    frame()
+    expect(gl.drawArrays).not.toHaveBeenCalled()
+    load(images[1])
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledOnce()
+    layer.setOption({ cut: false })
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledTimes(2)
+    expect(gl.createProgram).toHaveBeenCalledTimes(3)
+  })
+
+  it('continues clipped drawing with an active mask while a replacement is loading', () => {
+    const { layer, frame, gl, bound, uniform } = setup({
+      cut: true,
+      cutUrl: '/old.png',
+      cutlatmin: 0,
+      cutlatmax: 10,
+      cutlonmin: 0,
+      cutlonmax: 10,
+    })
+    load(images[0])
+    frame()
+    const oldTexture = bound.get(2)
+    layer.setOption({ cutUrl: '/new.png', cutlatmin: 2, img: canvas(32) })
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledTimes(2)
+    expect(bound.get(2)).toBe(oldTexture)
+    expect(uniform('cutArea')).toEqual([0, 10, 0, 10])
+    load(images[1])
+    frame()
+    expect(gl.drawArrays).toHaveBeenCalledTimes(3)
+    expect(bound.get(2)).not.toBe(oldTexture)
+    expect(uniform('cutArea')).toEqual([2, 10, 0, 10])
   })
 
   it('waits for cutUrl even when disabling cut, then toggles using the cached mask', () => {

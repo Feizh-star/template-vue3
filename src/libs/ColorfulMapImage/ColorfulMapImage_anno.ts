@@ -52,6 +52,19 @@ void main() {
     mercatorPosition = a_position;
 }`
 
+// Shared by both fragment shaders so clipping cannot change the opacity curve.
+// 共用低值透明度函数：正数下限沿用裁剪版 smoothstep，负数下限按升序排列边界。
+// 两边界相等时退化为阶跃阈值，避免零下限下 smoothstep 的未定义行为。
+const MIN_OPACITY_GLSL = `
+float minimumOpacity(float value, float minValue) {
+    float edge0 = minValue * 0.5;
+    float edge1 = minValue * 2.0;
+    if (edge0 == edge1) {
+        return step(edge0, value);
+    }
+    return smoothstep(min(edge0, edge1), max(edge0, edge1), value);
+}`
+
 // 遮罩版片元着色器：Mercator 反变换得到 vec2(纬度, 经度)。
 // 纬度通过 atan(exp(y)) 反算；经度通过单位世界坐标线性反算。
 // cutArea=[南纬,北纬,西经,东经]，将地理位置归一化为遮罩 UV。
@@ -59,13 +72,15 @@ void main() {
 // tbound 同样按 [latmin,latmax,lonmin,lonmax] 排列，计算主图 UV。
 // texture 的 RGBA 在 0~1，乘 255 后逐通道除以 scale 得到数据值。
 // vrange=[vmin,vmax] 将值映射到色带横坐标，纵坐标固定为 0.5。
-// minOpacity 使用 smoothstep 淡化低值 alpha，最终输出预乘 alpha 的 RGB。
+// minOpacity 使用共用函数淡化低值 alpha，最终输出预乘 alpha 的 RGB。
 // 主图范围由地面矩形约束；遮罩 UV 越界时 CLAMP_TO_EDGE 沿用边缘值。
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
 #define useCut true
 precision highp float;
+
+${MIN_OPACITY_GLSL}
 
 vec2 mercatorToLatlng(vec2 mercator) {
     float x = (mercator.x - 0.5) * 360.0;
@@ -101,22 +116,20 @@ void main() {
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
     if (tminOpacity) {
-        float minv = vrange.x * 0.5;
-        float maxv = vrange.x * 2.0;
-        float o = smoothstep(minv, maxv, value);
-        outColor.a = outColor.a * o;
+        outColor.a *= minimumOpacity(value, vrange.x);
     }
     outColor.rgb *= outColor.a;
 }`
 
 // 无遮罩版本省去遮罩取样，并显式检查经纬度是否位于 tbound 内。
 // 范围外直接 discard；范围内按相同 RGBA / scale 协议解码并查询色带。
-// 低值透明度沿用原实现的线性计算与限幅，和遮罩版本的 smoothstep 不同。
-// 更新流程仅切换这两种已有 Shader，不修改其既有数值行为。
+// 低值透明度与遮罩版本共用同一函数，切换裁剪不会改变遮罩内片元的透明度。
 const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232
 precision highp float;
+
+${MIN_OPACITY_GLSL}
 
 vec2 mercatorToLatlng(vec2 mercator) {
     float x = (mercator.x - 0.5) * 360.0;
@@ -148,10 +161,7 @@ void main() {
     float vin = (value - vrange.x) / (vrange.y - vrange.x);
     outColor = texture(u_color, vec2(vin, 0.5));
     if (tminOpacity) {
-        float o = (value - vrange.x * 0.8) / 0.5 / vrange.x;
-        o = max(o, 0.0);
-        o = min(o, 1.0);
-        outColor.a = outColor.a * o;
+        outColor.a *= minimumOpacity(value, vrange.x);
     }
     outColor.rgb *= outColor.a;
 }`
@@ -319,6 +329,15 @@ function createResourceGroup() {
 
 type ResourceGroup = ReturnType<typeof createResourceGroup>
 
+// 本帧可绘制快照：参数与资源在提交边界统一确定；null 遮罩表示本帧无遮罩。
+type DrawState = {
+  options: IColorfulMapImageOptions
+  program: WebGLProgram
+  dataTexture: WebGLTexture
+  colorTexture: WebGLTexture
+  cutTexture: WebGLTexture | null
+}
+
 // MapLibre custom 图层，onAdd/onRemove/render 由地图生命周期触发。
 // 此注释版导出独立的同名类，业务默认入口仍指向正式版。
 export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
@@ -431,21 +450,21 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     this.usesCut = false
   }
 
-  // 每帧先 commitOptions，再检查必需纹理，首次就绪的资源才能在这一帧建立。
+  // 每帧先 prepareDrawState，由提交边界判断本帧资源是否满足绘制要求。
   // 先检查 gl 身份与销毁状态，避免旧上下文操作重新添加后的资源。
-  // 提交后统一读取 applied，绘制过程中不引用等待中的目标配置。
+  // render 只消费快照，不解释目标配置、加载状态或实际 Shader 模式。
   render(
     gl: WebGL2RenderingContext | WebGLRenderingContext,
     options: maplibregl.CustomRenderMethodInput
   ): void {
     if (this.isDestroyed || gl !== this.gl) return
-    this.commitOptions()
-    if (!this.program || !this.dataTexture || !this.colorTexture) return
+    const state = this.prepareDrawState()
+    if (!state) return
 
     const map = this.map!
     // 本帧范围、解码、透明度、遮罩配置都来自同一份已生效状态。
-    const opts = this.applied
-    gl.useProgram(this.program)
+    const { options: opts, program, dataTexture, colorTexture, cutTexture } = state
+    gl.useProgram(program)
     ;(gl as WebGL2RenderingContext).bindVertexArray(this.vao)
     // 使用地图相机矩阵将 Mercator 地面矩形变换到裁剪空间。
     // 无需自行计算屏幕覆盖矩形或另外推算地图平移和缩放。
@@ -461,16 +480,16 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     // 每帧重新绑定纹理，避免共享上下文中其他图层的状态影响本次绘制。
     // uniform1i 接收槽编号 0/1/2，而不是 TEXTURE0 等 GL 枚举常量。
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTexture)
+    gl.bindTexture(gl.TEXTURE_2D, dataTexture)
     gl.uniform1i(this.u_img, 0)
     gl.activeTexture(gl.TEXTURE1)
-    gl.bindTexture(gl.TEXTURE_2D, this.colorTexture)
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture)
     gl.uniform1i(this.u_color, 1)
-    // 依照实际 Shader 模式启用遮罩，不能让尚未加载的 opts.cut 提前生效。
-    // 遮罩纹理和 cutArea 必须来自同一已提交裁剪状态。
-    if (this.usesCut) {
+    // 快照已将实际 Shader 模式映射为本帧遮罩；缓存但未启用的遮罩不会带入绘制。
+    // 遮罩纹理和 cutArea 来自同一已提交裁剪状态。
+    if (cutTexture) {
       gl.activeTexture(gl.TEXTURE2)
-      gl.bindTexture(gl.TEXTURE_2D, this.cutTexture)
+      gl.bindTexture(gl.TEXTURE_2D, cutTexture)
       gl.uniform1i(this.u_cut, 2)
       gl.uniform4f(
         this.u_cutArea,
@@ -677,6 +696,30 @@ export class ColorfulMapImage implements maplibregl.CustomLayerInterface {
     if (typeof source === 'string') {
       if (crossOrigin) image.crossOrigin = 'anonymous'
       image.src = source
+    }
+  }
+
+  // The commit boundary resolves pending requests into a complete drawable snapshot.
+  // render consumes this snapshot without interpreting target options or resource readiness.
+  // 统一提交后发布本帧快照，资源不足返回 null；不维护额外的跨回调绘制状态。
+  private prepareDrawState(): DrawState | null {
+    this.commitOptions()
+    if (!this.program || !this.dataTexture || !this.colorTexture) return null
+
+    // A committed cut remains required until its replacement/disable commits.
+    // Otherwise an enabling request must wait instead of exposing an uncut frame.
+    // 优先满足已生效裁剪，避免等待中的关闭请求绕过它；否则满足最新目标的开启要求。
+    const cutRequirement = this.applied.cut && this.applied.cutUrl ? this.applied : this.opts
+    // 只有裁剪 program 使用的纹理才是可绘制遮罩；禁用时缓存的纹理不代表就绪。
+    const cutTexture = this.usesCut ? this.cutTexture : null
+    if (cutRequirement.cut && cutRequirement.cutUrl && !cutTexture) return null
+
+    return {
+      options: this.applied,
+      program: this.program,
+      dataTexture: this.dataTexture,
+      colorTexture: this.colorTexture,
+      cutTexture,
     }
   }
 
