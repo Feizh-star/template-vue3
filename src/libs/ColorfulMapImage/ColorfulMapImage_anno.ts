@@ -215,7 +215,13 @@ function createTexture(
   useNearest: boolean,
   flipY: boolean
 ): WebGLTexture {
-  const texture = gl.createTexture()!
+  // The context is shared with MapLibre; earlier errors must not be attributed to this upload.
+  for (let error = gl.getError(); error !== gl.NO_ERROR; error = gl.getError()) {
+    if (error === gl.CONTEXT_LOST_WEBGL) throw new Error('WebGL context is lost')
+    console.warn(`Pre-existing WebGL error before texture upload: 0x${error.toString(16)}`)
+  }
+  const texture = gl.createTexture()
+  if (!texture) throw new Error('Unable to create WebGL texture')
   try {
     gl.activeTexture(gl.TEXTURE0 + textureUnit)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY ? 1 : 0)
@@ -234,6 +240,13 @@ function createTexture(
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    const error = gl.getError()
+    if (error !== gl.NO_ERROR) {
+      const url = source instanceof HTMLImageElement ? source.currentSrc || source.src : 'canvas'
+      throw new Error(
+        `Texture upload failed: unit=${textureUnit}, GL=0x${error.toString(16)}, source=${url}`
+      )
+    }
     return texture
   } catch (error) {
     // 若上传因为跨域限制等抛出异常，释放新纹理后继续上抛，避免失败路径泄漏。

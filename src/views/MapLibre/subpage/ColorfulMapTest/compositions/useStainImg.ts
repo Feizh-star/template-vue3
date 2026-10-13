@@ -1,7 +1,9 @@
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { Ref } from 'vue'
 import type maplibregl from 'maplibre-gl'
-import { ColorfulMapImage } from '@/libs/ColorfulMapImage'
+import { debounce } from '@/utils/tools'
+import { useStainImageCache } from '@/compositions/maplibre-gl/core/useStainImageCache/useStainImageCache'
+import { useGlStainImg } from '@/compositions/maplibre-gl/core/useGlStainImg'
 import type { IColorRange, IScaleProps } from '@/libs/ColorfulMapImage/types'
 import cutUrl from '../../SelfMap/assets/100000.png'
 
@@ -47,62 +49,65 @@ export const defaultOption = {
 }
 
 export function useStainImg({ mapIns }: IUseStainImgProps) {
-  const stainImgLayer = ref<ColorfulMapImage | null>(null)
-
-  onBeforeUnmount(() => {
-    if (stainImgLayer.value) {
-      stainImgLayer.value.destroy()
-      stainImgLayer.value = null
-    }
-  })
-
   const selectedTime = ref('')
-  watch(selectedTime, () => {
-    drawStainImg(getUrl(selectedTime.value))
+  const timelineList = ref<string[]>([])
+  const cacheTimeList = computed(() => {
+    const dates = timelineList.value
+    const index = dates.indexOf(selectedTime.value)
+    if (index < 0) return [selectedTime.value, ...dates.slice(0, 2)].filter(Boolean)
+    return [...dates, ...dates.slice(0, 3)].slice(index, index + 3)
+  })
+  const { getCurrentUrlWithCache, loading } = useStainImageCache(cacheTimeList, getStainImageUrl, {
+    cacheDelay: 800,
+  })
+  const { drawGlStainImg, removeGlStainImg } = useGlStainImg({ mapIns })
+
+  let requestVersion = 0
+  const debounceAction = debounce(async (version: number) => {
+    if (version !== requestVersion || !mapIns.value || !selectedTime.value) return
+    const time = selectedTime.value
+    try {
+      const img = await getCurrentUrlWithCache(time)
+      if (version !== requestVersion) return
+      drawGlStainImg({
+        ...defaultOption,
+        scale: imgScale,
+        colors: imgColor,
+        getGrid: true,
+        img,
+      })
+    } catch (error) {
+      if (version !== requestVersion) return
+      removeGlStainImg()
+      console.error(error)
+    }
+  }, 60)
+
+  watch(
+    [mapIns, selectedTime],
+    () => {
+      const version = ++requestVersion
+      if (!mapIns.value || !selectedTime.value) return
+      debounceAction(version)
+    },
+    { immediate: true, flush: 'sync' }
+  )
+  onBeforeUnmount(() => {
+    requestVersion++
+    removeGlStainImg()
   })
   onMounted(() => {
     selectedTime.value = '202605171000'
   })
 
-  // 当 map 就绪时触发首次绘制（此时 selectedTime 已赋值）
-  watch(mapIns, (newMap, oldMap) => {
-    if (newMap && !oldMap && selectedTime.value) {
-      drawStainImg(getUrl(selectedTime.value))
-    }
-  })
-
-  function drawStainImg(url: string) {
-    if (!mapIns.value) return
-    try {
-      if (stainImgLayer.value) {
-        stainImgLayer.value.setOption({
-          scale: imgScale,
-          minOpacity: false,
-          colors: imgColor,
-          img: url,
-        })
-      } else {
-        const layer = new ColorfulMapImage({
-          img: url,
-          scale: imgScale,
-          colors: imgColor,
-          getGrid: true,
-          ...defaultOption,
-        })
-        layer.addTo(mapIns.value)
-        stainImgLayer.value = layer
-      }
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  function getUrl(time: string) {
-    return getStainImageUrl(time)
+  function tlChange(_selected: string, timeList: { date: string }[]) {
+    timelineList.value = timeList.map((item) => item.date)
   }
 
   return {
     selectedTime,
+    tlChange,
+    loading,
   }
 }
 

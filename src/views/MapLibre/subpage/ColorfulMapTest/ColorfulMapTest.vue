@@ -72,7 +72,7 @@ onMounted(() => {
   })
 })
 
-const { selectedTime } = useStainImg({ mapIns })
+const { selectedTime, tlChange } = useStainImg({ mapIns })
 
 async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportOptions> {
   const responses = await Promise.all([
@@ -217,6 +217,7 @@ async function exportColorfulMap(mode: 'main' | 'worker') {
         :play-interval="100"
         :label-interval="2"
         :time-formatter="'YYYYMMDDHHmm'"
+        @timeline-change="tlChange"
       />
     </div>
   </div>
