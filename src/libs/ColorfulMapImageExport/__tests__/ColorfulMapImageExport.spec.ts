@@ -61,10 +61,7 @@ afterEach(() => {
 describe('ColorfulMapImage export sizing', () => {
   it('derives the plot height from axes.width and the projected aspect ratio', () => {
     const result = getColorfulMapExportSize({
-      lonmin: 72,
-      lonmax: 136,
-      latmin: 17,
-      latmax: 55,
+      imageData: { lonmin: 72, lonmax: 136, latmin: 17, latmax: 55 },
       margin: 0,
       axes: { enabled: false, width: 1200 },
       projection: webMercatorProjection,
@@ -82,10 +79,7 @@ describe('ColorfulMapImage export sizing', () => {
       inverse: (x: number, y: number) => ({ lon: x, lat: -y }),
     }
     const result = getColorfulMapExportSize({
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 10,
-      latmax: 20,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 10, latmax: 20 },
       margin: 0,
       axes: { enabled: false, width: 1000 },
       projection: equirectangular,
@@ -98,10 +92,7 @@ describe('ColorfulMapImage export sizing', () => {
 
   it('uses outputBounds for image sizing while keeping the data extent separate', () => {
     const result = getColorfulMapExportSize({
-      lonmin: 10,
-      lonmax: 20,
-      latmin: 10,
-      latmax: 20,
+      imageData: { lonmin: 10, lonmax: 20, latmin: 10, latmax: 20 },
       outputBounds: { lonmin: 0, lonmax: 30, latmin: 0, latmax: 60 },
       margin: 0,
       axes: { enabled: false, width: 900 },
@@ -118,10 +109,7 @@ describe('ColorfulMapImage export sizing', () => {
 
   it('adds CSS-style image margins around the coordinate plot', () => {
     const result = getColorfulMapExportSize({
-      lonmin: 10,
-      lonmax: 20,
-      latmin: 10,
-      latmax: 20,
+      imageData: { lonmin: 10, lonmax: 20, latmin: 10, latmax: 20 },
       outputBounds: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       margin: [10, 20, 30, 40],
       axes: { width: 900 },
@@ -141,10 +129,7 @@ describe('ColorfulMapImage export sizing', () => {
     { margin: [10, 20] as [number, number], width: 940, height: 470 },
   ])('expands $margin around the plot', ({ margin, width, height }) => {
     const result = getColorfulMapExportSize({
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 0,
-      latmax: 10,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       margin,
       axes: { width: 900 },
       projection: {
@@ -160,10 +145,7 @@ describe('ColorfulMapImage export sizing', () => {
 
   it('keeps the default plot width and image margins', () => {
     const result = getColorfulMapExportSize({
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 0,
-      latmax: 10,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       projection: {
         id: 'EPSG:4326',
         forward: (lon: number, lat: number) => ({ x: lon, y: -lat }),
@@ -177,10 +159,7 @@ describe('ColorfulMapImage export sizing', () => {
 
   it('expands content to fit an enabled color scale', () => {
     const base = {
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 0,
-      latmax: 10,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       axes: { width: 1000 },
       projection: {
         id: 'EPSG:4326',
@@ -209,10 +188,7 @@ describe('ColorfulMapImage export sizing', () => {
   it('does not mutate image margin and is stable across repeated calls', () => {
     const margin: [number, number, number, number] = [10, 20, 30, 40]
     const options = {
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 0,
-      latmax: 10,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       margin,
       axes: { width: 1000 },
       colors: {
@@ -243,10 +219,7 @@ describe('ColorfulMapImage export sizing', () => {
 
   it('uses colorScale.values for the label text instead of colors.v', () => {
     const base = {
-      lonmin: 0,
-      lonmax: 20,
-      latmin: 0,
-      latmax: 10,
+      imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
       axes: { width: 1000 },
       colors: {
         r: [0, 128, 255],
@@ -274,10 +247,7 @@ describe('ColorfulMapImage export sizing', () => {
 })
 
 const layoutOptions = {
-  lonmin: 0,
-  lonmax: 20,
-  latmin: 0,
-  latmax: 10,
+  imageData: { lonmin: 0, lonmax: 20, latmin: 0, latmax: 10 },
   margin: 0,
   axes: { width: 100 },
   colors: { r: [0, 128, 255], g: [0, 128, 255], b: [0, 128, 255], v: [0, 5, 10], o: [1, 1, 1] },
@@ -360,7 +330,11 @@ describe('plot and color scale content bounds', () => {
 
   it('only extends the top bounds when an end label is present', () => {
     const colors = { r: [0], g: [0], b: [0], v: [0], o: [1] }
-    const options = { ...layoutOptions, latmax: 0.2, colors }
+    const options = {
+      ...layoutOptions,
+      imageData: { ...layoutOptions.imageData, latmax: 0.2 },
+      colors,
+    }
     const hiddenFirst = getColorfulMapExportSize({
       ...options,
       colorScale: { position: [0, 0], showFirstLabel: false },
@@ -404,7 +378,7 @@ describe('plot and color scale content bounds', () => {
     expect(size.height).toBe(50)
     const extended = getColorfulMapExportSize({
       ...layoutOptions,
-      latmax: 0.2,
+      imageData: { ...layoutOptions.imageData, latmax: 0.2 },
       colorScale: { position: [0, 0], blockHeight: 2, font: '40px sans-serif' },
     })
     expect(extended.height).toBe(4 + 20 + 20)
@@ -437,7 +411,10 @@ describe('content rendering', () => {
     vi.stubGlobal('ImageData', TestImageData)
     return {
       ...layoutOptions,
-      image: new TestImageData(new Uint8ClampedArray([0, 0, 0, 255]), 1, 1) as ImageData,
+      imageData: {
+        ...layoutOptions.imageData,
+        image: new TestImageData(new Uint8ClampedArray([0, 0, 0, 255]), 1, 1) as ImageData,
+      },
       scale: { r: 1, g: 0, b: 0, a: 0 },
       margin: [3, 7, 11, 13],
       colorScale: {},

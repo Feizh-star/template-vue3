@@ -13,6 +13,7 @@ import type {
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
   IColorfulMapGeoBounds,
+  IColorfulMapImageData,
   IColorfulMapImageExportOptions,
   IColorfulMapProjection,
   IColorfulMapOffscreenCanvas,
@@ -52,13 +53,21 @@ export const webMercatorProjection: IColorfulMapProjection = {
   },
 }
 
+type ExportLayoutImageData = IColorfulMapGeoBounds & { image?: ColorfulMapImageSource }
+
 type ExportLayoutOptions = Pick<
   IColorfulMapImageExportOptions,
-  'lonmin' | 'lonmax' | 'latmin' | 'latmax' | 'outputBounds' | 'axes' | 'projection' | 'margin'
+  'axes' | 'projection' | 'margin'
 > & {
   colors?: IColorRange
   colorScale?: IColorfulMapColorScaleOptions
-}
+} & (
+    | { imageData: ExportLayoutImageData; outputBounds?: IColorfulMapGeoBounds }
+    | {
+        imageData?: ExportLayoutImageData | ExportLayoutImageData[]
+        outputBounds: IColorfulMapGeoBounds
+      }
+  )
 
 export function getColorfulMapExportSize(options: ExportLayoutOptions): IColorfulMapExportSize {
   const { width, height, aspectRatio } = resolveExportLayout(options)
@@ -142,11 +151,20 @@ export async function renderColorfulMapImage(
     ctx.clearRect(0, 0, size.width, size.height)
   }
 
-  const source = await readImageData(options.image, options.signal)
+  const imageData = Array.isArray(options.imageData) ? options.imageData : [options.imageData]
+  const sources: DataTexture[] = []
+  for (const texture of imageData) {
+    sources.push({
+      image: await readImageData(texture.image, options.signal),
+      extent: texture,
+      lonRange: texture.lonmax - texture.lonmin,
+      latRange: texture.latmax - texture.latmin,
+    })
+  }
   const cut = options.cut ? await readCutTexture(options.cut, options.signal) : null
 
   drawTexture(ctx, {
-    source,
+    sources,
     cut,
     options,
     projection,
@@ -231,8 +249,15 @@ function canvasToBlob(
   )
 }
 
+interface DataTexture {
+  image: ImageData
+  extent: IColorfulMapGeoBounds
+  lonRange: number
+  latRange: number
+}
+
 interface TextureRenderContext {
-  source: ImageData
+  sources: DataTexture[]
   cut: ImageDataWithExtent | null
   options: IColorfulMapImageExportOptions
   projection: IColorfulMapProjection
@@ -261,24 +286,20 @@ interface PlotRect {
   bottom: number
 }
 
-function getOutputBounds(
-  options: Pick<
-    IColorfulMapImageExportOptions,
-    'lonmin' | 'lonmax' | 'latmin' | 'latmax' | 'outputBounds'
-  >
-): IColorfulMapGeoBounds {
-  return (
-    options.outputBounds || {
-      lonmin: options.lonmin,
-      lonmax: options.lonmax,
-      latmin: options.latmin,
-      latmax: options.latmax,
-    }
-  )
+function getOutputBounds(options: {
+  imageData?: IColorfulMapGeoBounds | IColorfulMapGeoBounds[]
+  outputBounds?: IColorfulMapGeoBounds
+}): IColorfulMapGeoBounds {
+  if (options.outputBounds) return options.outputBounds
+  if (Array.isArray(options.imageData)) {
+    throw new Error('outputBounds is required when imageData is an array.')
+  }
+  if (!options.imageData) throw new Error('imageData or outputBounds is required.')
+  return options.imageData
 }
 
 function drawTexture(ctx: CanvasRenderingContext2D, params: TextureRenderContext): void {
-  const { source, cut, options, projection, projectedBounds, plot } = params
+  const { sources, cut, options, projection, projectedBounds, plot } = params
   const isJpg = normalizeFormat(options.format) === 'jpg'
   const background = parseColor(options.background || '#ffffff')
   const output = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)
@@ -287,8 +308,6 @@ function drawTexture(ctx: CanvasRenderingContext2D, params: TextureRenderContext
   const linear = clamp(options.linear ?? 0, 0, 1)
   const flipY = Boolean(options.flipy)
   const useNearest = Boolean(options.grid)
-  const lonRange = options.lonmax - options.lonmin
-  const latRange = options.latmax - options.latmin
 
   for (let py = plot.top; py < plot.bottom; py += 1) {
     const projectedY =
@@ -300,20 +319,31 @@ function drawTexture(ctx: CanvasRenderingContext2D, params: TextureRenderContext
         projectedBounds.minX +
         ((px - plot.left + 0.5) / plot.width) * (projectedBounds.maxX - projectedBounds.minX)
       const geo = projection.inverse(projectedX, projectedY)
-      const lonRatio = lonRange === 0 ? 0 : (geo.lon - options.lonmin) / lonRange
-      const latRatio = latRange === 0 ? 0 : (geo.lat - options.latmin) / latRange
-      if (lonRatio < 0 || lonRatio > 1 || latRatio < 0 || latRatio > 1) continue
-
       if (cut && shouldDiscardByCut(cut, geo.lon, geo.lat)) continue
 
-      const textureX = clamp(lonRatio, 0, 1) * (source.width - 1)
-      const textureY =
-        (flipY ? 1 - clamp(latRatio, 0, 1) : clamp(latRatio, 0, 1)) * (source.height - 1)
-      const rgba = sampleImageData(source, textureX, textureY, useNearest)
-      const value = decodeValue(rgba, options.scale)
-      const color = colorForValue(value, options.colors, linear)
-      let alpha = color[3]
-      if (options.minOpacity) alpha *= minimumOpacity(value, options.colors, options.minOpacityMode)
+      let color: [number, number, number, number] | null = null
+      // Later textures take precedence unless minimum opacity discards the sample.
+      for (let index = sources.length - 1; index >= 0; index -= 1) {
+        const { image, extent, lonRange, latRange } = sources[index]
+        const lonRatio = lonRange === 0 ? 0 : (geo.lon - extent.lonmin) / lonRange
+        const latRatio = latRange === 0 ? 0 : (geo.lat - extent.latmin) / latRange
+        if (lonRatio < 0 || lonRatio > 1 || latRatio < 0 || latRatio > 1) continue
+
+        const textureX = clamp(lonRatio, 0, 1) * (image.width - 1)
+        const textureY =
+          (flipY ? 1 - clamp(latRatio, 0, 1) : clamp(latRatio, 0, 1)) * (image.height - 1)
+        const rgba = sampleImageData(image, textureX, textureY, useNearest)
+        const value = decodeValue(rgba, options.scale)
+        const candidate = colorForValue(value, options.colors, linear)
+        if (options.minOpacity) {
+          candidate[3] *= minimumOpacity(value, options.colors, options.minOpacityMode)
+          if (candidate[3] === 0) continue
+        }
+        color = candidate
+        break
+      }
+      if (!color) continue
+      const alpha = color[3]
 
       const offset = (py * outputWidth + px) * 4
       if (isJpg) {
@@ -1384,6 +1414,7 @@ export type {
   IColorfulMapColorScaleOptions,
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
+  IColorfulMapImageData,
   IColorfulMapImageExportOptions,
   IColorfulMapProjection,
   IColorfulMapOffscreenCanvas,

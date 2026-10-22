@@ -10,11 +10,13 @@ import {
 } from '@/libs/ColorfulMapImageExport'
 
 const options: IColorfulMapImageExportOptions = {
-  image: dataTextureUrl,
-  lonmin: 72,
-  lonmax: 136,
-  latmin: 17,
-  latmax: 55,
+  imageData: {
+    image: dataTextureUrl,
+    lonmin: 72,
+    lonmax: 136,
+    latmin: 17,
+    latmax: 55,
+  },
   outputBounds: {
     lonmin: 70,
     lonmax: 140,
@@ -60,9 +62,37 @@ texture URLs, `ImageData`, and transferable `ImageBitmap` sources; custom projec
 `AbortSignal` cannot be posted to the Worker. The Worker uses the default Web Mercator projection.
 Vite emits the Worker entry and its renderer dependencies as a separate JavaScript asset.
 
+`imageData` accepts one `{ image, lonmin, lonmax, latmin, latmax }` object or an array of them.
+For a single object, omitting `outputBounds` exports that texture's extent, as before. Move the
+previous top-level `image/lonmin/lonmax/latmin/latmax` fields into `imageData` when migrating.
+
+For an array, `outputBounds` is required, even for an empty or one-item array. Each output pixel
+is projected back to longitude/latitude and sampled using the matching texture's independent
+extent. Later entries take precedence where extents overlap; encoded values are not blended
+between textures. When `minOpacity: true`, samples with zero final opacity are skipped so an
+earlier texture can supply the pixel instead. Partially transparent samples retain later-entry
+precedence; if no sample remains, the pixel keeps the PNG transparency or JPG background.
+`scale`, `colors`, `flipy`, `grid`, opacity options, and `cut` apply to all textures.
+An empty array renders only the background, boundaries, axes, and optional color scale.
+
+```ts
+const blob = await exportColorfulMapImage({
+  imageData: [
+    { image: westTextureUrl, lonmin: 70, lonmax: 100, latmin: 15, latmax: 55 },
+    { image: eastTextureUrl, lonmin: 100, lonmax: 140, latmin: 15, latmax: 55 },
+  ],
+  outputBounds: { lonmin: 70, lonmax: 140, latmin: 15, latmax: 58 },
+  scale: imgScale,
+  colors: imgColor,
+  axes: { width: 2400 },
+})
+```
+
 `outputBounds` controls the exported image extent, axis range, and aspect ratio. The four
-`lonmin/lonmax/latmin/latmax` fields continue to describe the data texture itself. Pixels in
-the output extent outside the data texture remain transparent in PNG or use the JPG background.
+`lonmin/lonmax/latmin/latmax` fields on each `imageData` entry describe that data texture itself.
+Pixels not covered by any texture remain transparent in PNG or use the JPG background.
+`getColorfulMapExportSize` accepts the same extent configuration (without loading images),
+or just `outputBounds` plus layout options when no texture configuration is needed.
 `axes.width` is the coordinate plot width in pixels. The plot height is calculated from the
 projected `outputBounds` aspect ratio. PNG keeps the outside of the cut transparent; JPG uses a
 white background by default.

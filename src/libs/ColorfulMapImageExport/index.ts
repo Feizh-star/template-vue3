@@ -20,6 +20,7 @@ export type {
   IColorfulMapCutTexture,
   IColorfulMapExportSize,
   IColorfulMapGeoBounds,
+  IColorfulMapImageData,
   IColorfulMapImageExportOptions,
   IColorfulMapOffscreenCanvas,
   IColorfulMapProjection,

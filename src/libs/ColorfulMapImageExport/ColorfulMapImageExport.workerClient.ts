@@ -30,8 +30,11 @@ export function exportColorfulMapImageInWorker(
       reject(new Error('Failed to read colorful map worker response.'))
     }
     const transfers = new Set<Transferable>()
-    if (typeof ImageBitmap !== 'undefined' && options.image instanceof ImageBitmap) {
-      transfers.add(options.image)
+    const imageData = Array.isArray(options.imageData) ? options.imageData : [options.imageData]
+    for (const { image } of imageData) {
+      if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) {
+        transfers.add(image)
+      }
     }
     if (typeof ImageBitmap !== 'undefined' && options.cut?.image instanceof ImageBitmap) {
       transfers.add(options.cut.image)

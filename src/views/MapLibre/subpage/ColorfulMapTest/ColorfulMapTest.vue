@@ -88,11 +88,13 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
     responses.map((response) => response.json())
   )
   return {
-    image: getStainImageUrl(time),
-    lonmin: defaultOption.lonmin,
-    lonmax: defaultOption.lonmax,
-    latmin: defaultOption.latmin,
-    latmax: defaultOption.latmax,
+    imageData: {
+      image: getStainImageUrl(time),
+      lonmin: defaultOption.lonmin,
+      lonmax: defaultOption.lonmax,
+      latmin: defaultOption.latmin,
+      latmax: defaultOption.latmax,
+    },
     // outputBounds: {
     //   lonmin: 45,
     //   lonmax: 140,

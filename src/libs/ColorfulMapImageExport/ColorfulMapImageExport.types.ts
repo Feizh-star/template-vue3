@@ -154,13 +154,15 @@ export type ColorfulMapImageSource =
 
 export type ColorfulMapWorkerImageSource = string | ImageBitmap | ImageData
 
-export interface IColorfulMapImageExportOptions {
+export interface IColorfulMapImageData extends IColorfulMapGeoBounds {
   image: ColorfulMapImageSource
-  lonmin: number
-  lonmax: number
-  latmin: number
-  latmax: number
-  outputBounds?: IColorfulMapGeoBounds
+}
+
+type ColorfulMapImageInput<T extends IColorfulMapGeoBounds> =
+  | { imageData: T; outputBounds?: IColorfulMapGeoBounds }
+  | { imageData: T | T[]; outputBounds: IColorfulMapGeoBounds }
+
+interface IColorfulMapImageExportCommonOptions {
   scale: IScaleProps
   colors: IColorRange
   colorScale?: IColorfulMapColorScaleOptions
@@ -183,14 +185,19 @@ export interface IColorfulMapImageExportOptions {
   signal?: AbortSignal
 }
 
+export type IColorfulMapImageExportOptions = IColorfulMapImageExportCommonOptions &
+  ColorfulMapImageInput<IColorfulMapImageData>
+
 /** Worker messages contain only structured-cloneable data and image sources. */
 export type IColorfulMapWorkerExportOptions = Omit<
-  IColorfulMapImageExportOptions,
-  'image' | 'cut' | 'projection' | 'preferOffscreenCanvas' | 'signal'
-> & {
-  image: ColorfulMapWorkerImageSource
-  cut?: Omit<IColorfulMapCutTexture, 'image'> & { image: ColorfulMapWorkerImageSource }
-}
+  IColorfulMapImageExportCommonOptions,
+  'cut' | 'projection' | 'preferOffscreenCanvas' | 'signal'
+> &
+  ColorfulMapImageInput<
+    Omit<IColorfulMapImageData, 'image'> & { image: ColorfulMapWorkerImageSource }
+  > & {
+    cut?: Omit<IColorfulMapCutTexture, 'image'> & { image: ColorfulMapWorkerImageSource }
+  }
 
 export type ColorfulMapWorkerResponse =
   | { ok: true; blob: Blob }
