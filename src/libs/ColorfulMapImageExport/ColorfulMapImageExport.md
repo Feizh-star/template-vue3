@@ -72,8 +72,18 @@ extent. Later entries take precedence where extents overlap; encoded values are 
 between textures. When `minOpacity: true`, samples with zero final opacity are skipped so an
 earlier texture can supply the pixel instead. Partially transparent samples retain later-entry
 precedence; if no sample remains, the pixel keeps the PNG transparency or JPG background.
-`scale`, `colors`, `flipy`, `grid`, opacity options, and `cut` apply to all textures.
+`scale`, `colors`, `flipy`, `grid`, `minOpacity`, and `cut` apply to all textures.
 An empty array renders only the background, boundaries, axes, and optional color scale.
+
+`minOpacity` defaults to `false`. When enabled, decoded sample values strictly below
+`colors.v[0]` are fully transparent. Values equal to or above that minimum retain the opacity
+from the color ramp (`colors.o`); there is no additional fade near the threshold. This matches
+`ColorfulMapImage` with or without clipping and applies to both main-thread and Worker exports.
+When disabled, values below the minimum use the first color's configured opacity as usual.
+The old `minOpacityMode` option has been removed; delete it from existing configurations.
+For overlapping textures, a skipped low-value sample can reveal an earlier texture rather
+than leave a transparent pixel; PNG transparency or the JPG background remains only when
+no eligible sample is found.
 
 ```ts
 const blob = await exportColorfulMapImage({

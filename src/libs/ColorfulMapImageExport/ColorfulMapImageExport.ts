@@ -336,7 +336,7 @@ function drawTexture(ctx: CanvasRenderingContext2D, params: TextureRenderContext
         const value = decodeValue(rgba, options.scale)
         const candidate = colorForValue(value, options.colors, linear)
         if (options.minOpacity) {
-          candidate[3] *= minimumOpacity(value, options.colors, options.minOpacityMode)
+          candidate[3] *= minimumOpacity(value, options.colors)
           if (candidate[3] === 0) continue
         }
         color = candidate
@@ -1045,14 +1045,8 @@ function lerpColor(
   ]
 }
 
-function minimumOpacity(
-  value: number,
-  colors: IColorRange,
-  mode: 'smooth' | 'linear' = 'smooth'
-): number {
-  const minValue = colors.v[0] || 0
-  if (mode === 'linear') return clamp((value - minValue * 0.8) / Math.max(minValue * 0.5, 1), 0, 1)
-  return smoothstep(minValue * 0.5, minValue * 2, value)
+function minimumOpacity(value: number, colors: IColorRange): number {
+  return value < colors.v[0] ? 0 : 1
 }
 
 function normalizeAxes(input?: IColorfulMapAxesOptions): Required<IColorfulMapAxesOptions> {
@@ -1380,11 +1374,6 @@ function clamp(value: number, min: number, max: number): number {
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
-}
-
-function smoothstep(edge0: number, edge1: number, value: number): number {
-  const t = clamp((value - edge0) / (edge1 - edge0 || 1), 0, 1)
-  return t * t * (3 - 2 * t)
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

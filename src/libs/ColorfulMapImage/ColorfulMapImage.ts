@@ -13,15 +13,10 @@ void main() {
     mercatorPosition = a_position;
 }`
 
-// Shared by both fragment shaders so clipping cannot change the opacity curve.
+// Shared by both fragment shaders so clipping cannot change the minimum-value cutoff.
 const MIN_OPACITY_GLSL = `
 float minimumOpacity(float value, float minValue) {
-    float edge0 = minValue * 0.5;
-    float edge1 = minValue * 2.0;
-    if (edge0 == edge1) {
-        return step(edge0, value);
-    }
-    return smoothstep(min(edge0, edge1), max(edge0, edge1), value);
+    return step(minValue, value);
 }`
 
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es

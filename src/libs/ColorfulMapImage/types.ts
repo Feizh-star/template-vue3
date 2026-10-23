@@ -28,6 +28,7 @@ export interface IColorfulMapImageOptions {
   getGrid?: boolean
   linear?: number
   flipy?: 0 | 1
+  /** Make values below colors.v[0] transparent; preserve configured opacity at or above it. Defaults to false. */
   minOpacity?: boolean
   cut?: boolean
   cutUrl?: string

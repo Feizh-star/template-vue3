@@ -52,17 +52,12 @@ void main() {
     mercatorPosition = a_position;
 }`
 
-// Shared by both fragment shaders so clipping cannot change the opacity curve.
-// 共用低值透明度函数：正数下限沿用裁剪版 smoothstep，负数下限按升序排列边界。
-// 两边界相等时退化为阶跃阈值，避免零下限下 smoothstep 的未定义行为。
+// Shared by both fragment shaders so clipping cannot change the minimum-value cutoff.
+// 共用最小值阈值函数：低于色带最小值时返回 0，等于或高于最小值时返回 1。
+// 正数、零和负数下限使用相同规则，不再对阈值附近的数值渐隐。
 const MIN_OPACITY_GLSL = `
 float minimumOpacity(float value, float minValue) {
-    float edge0 = minValue * 0.5;
-    float edge1 = minValue * 2.0;
-    if (edge0 == edge1) {
-        return step(edge0, value);
-    }
-    return smoothstep(min(edge0, edge1), max(edge0, edge1), value);
+    return step(minValue, value);
 }`
 
 // 遮罩版片元着色器：Mercator 反变换得到 vec2(纬度, 经度)。
@@ -72,7 +67,7 @@ float minimumOpacity(float value, float minValue) {
 // tbound 同样按 [latmin,latmax,lonmin,lonmax] 排列，计算主图 UV。
 // texture 的 RGBA 在 0~1，乘 255 后逐通道除以 scale 得到数据值。
 // vrange=[vmin,vmax] 将值映射到色带横坐标，纵坐标固定为 0.5。
-// minOpacity 使用共用函数淡化低值 alpha，最终输出预乘 alpha 的 RGB。
+// minOpacity 将低于色带最小值的 alpha 置零，其余保留色带 alpha，最终输出预乘 alpha 的 RGB。
 // 主图范围由地面矩形约束；遮罩 UV 越界时 CLAMP_TO_EDGE 沿用边缘值。
 const FRAGMENT_SHADER_WITH_CUT = `#version 300 es
 #define PI 3.141592653589793238
@@ -123,7 +118,7 @@ void main() {
 
 // 无遮罩版本省去遮罩取样，并显式检查经纬度是否位于 tbound 内。
 // 范围外直接 discard；范围内按相同 RGBA / scale 协议解码并查询色带。
-// 低值透明度与遮罩版本共用同一函数，切换裁剪不会改变遮罩内片元的透明度。
+// 最小值透明阈值与遮罩版本共用同一函数，切换裁剪不会改变遮罩内片元的透明度。
 const FRAGMENT_SHADER_NO_CUT = `#version 300 es
 #define PI 3.141592653589793238
 #define PID 57.29577951308232

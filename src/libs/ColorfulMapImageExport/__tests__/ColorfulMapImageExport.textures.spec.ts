@@ -180,18 +180,17 @@ describe('independent texture extents', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it.each(['smooth', 'linear'] as const)('preserves minimum opacity mode: %s', async (mode) => {
+  it('makes below-minimum values transparent for both single and multiple textures', async () => {
     const imageData = texture(bounds, [5])
     const options = {
       ...common,
       colors: { ...common.colors, v: [10, 255] },
       minOpacity: true,
-      minOpacityMode: mode,
     }
     const single = await render({ ...options, imageData })
     const multiple = await render({ ...options, imageData: [imageData], outputBounds: bounds })
     expect(multiple.pixels).toEqual(single.pixels)
-    expect(multiple.pixels[0][0][3]).toBeLessThan(255)
+    expect(multiple.pixels[0][0]).toEqual(transparent)
   })
 
   it('gives later textures precedence in overlapping regions without blending values', async () => {
@@ -203,12 +202,11 @@ describe('independent texture extents', () => {
     expect(pixels[0]).toEqual([blue, blue, red, red])
   })
 
-  describe.each(['smooth', 'linear'] as const)('minimum opacity fallback (%s)', (mode) => {
+  describe('minimum opacity fallback', () => {
     const opacityOptions = {
       ...common,
       colors: { ...common.colors, v: [10, 255] },
       minOpacity: true,
-      minOpacityMode: mode,
       background: '#204060',
     }
 
@@ -251,19 +249,23 @@ describe('independent texture extents', () => {
     )
 
     it.each(['png', 'jpg'] as const)(
-      'retains later-texture precedence for partially transparent samples in %s',
+      'retains configured opacity and later-texture precedence at the minimum in %s',
       async (format) => {
         const later = texture(bounds, [10])
-        const single = await render({ ...opacityOptions, imageData: later, format })
-        const multiple = await render({
+        const options = {
           ...opacityOptions,
+          colors: { ...opacityOptions.colors, o: [0.5, 0.5] },
+          format,
+        }
+        const single = await render({ ...options, imageData: later })
+        const multiple = await render({
+          ...options,
           imageData: [texture(bounds, [255]), later],
           outputBounds: bounds,
-          format,
         })
         expect(multiple.pixels).toEqual(single.pixels)
         if (format === 'png') {
-          expect(multiple.pixels[0][0]).toEqual([0, 0, 255, mode === 'smooth' ? 66 : 102])
+          expect(multiple.pixels[0][0]).toEqual([0, 0, 255, 128])
         }
       }
     )

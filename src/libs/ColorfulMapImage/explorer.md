@@ -125,7 +125,7 @@ grid 单独修改时仅更新 NEAREST/LINEAR 采样方式。
 | linear                                  | 0         | 色带过渡参数                                              |
 | grid                                    | false     | true 使用 NEAREST，false 使用 LINEAR                      |
 | flipy                                   | 0         | 上传主图纹理时是否垂直翻转                                |
-| minOpacity                              | false     | 低值透明度处理                                            |
+| minOpacity                              | false     | true 时低于 colors.v[0] 的数值完全透明                    |
 | getGrid                                 | false     | 启用原始像素查询                                          |
 | interval                                | undefined | 查询时使用的经纬度网格间隔                                |
 | beforeId                                | undefined | 插入目标图层；更新时通过 moveLayer 调整，自身 id 保持稳定 |
@@ -133,6 +133,12 @@ grid 单独修改时仅更新 NEAREST/LINEAR 采样方式。
 | cut                                     | false     | 启用裁剪；需要可用遮罩和完整裁剪范围                      |
 | cutUrl                                  | undefined | 遮罩图片 URL，始终使用 anonymous 跨域模式                 |
 | cutlatmin/cutlatmax/cutlonmin/cutlonmax | undefined | 遮罩地理范围                                              |
+
+minOpacity 默认为 false。设为 true 时，对采样并解码后的数值进行严格阈值判断：
+低于 colors.v[0] 的数值完全透明；等于或高于最小值时，保留色带 colors.o 决定的透明度，
+不再对最小值附近的数值渐隐。正数、零和负数下限均使用相同规则，裁剪开关不影响该规则。
+设为 false 时，低于色带最小值的数值仍使用首个颜色及其透明度。
+静态导出模块使用相同阈值语义，其旧参数 minOpacityMode 已删除。
 
 useCros 单独修改时保存到配置，影响后续 URL 加载；与 img 同传时影响本次加载。
 服务器仍需提供对应跨域响应头，才能读取原始像素。

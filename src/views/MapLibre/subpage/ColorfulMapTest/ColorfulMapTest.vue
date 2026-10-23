@@ -105,6 +105,7 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
     colors: imgColor,
     linear: defaultOption.linear,
     flipy: defaultOption.flipy,
+    minOpacity: defaultOption.minOpacity,
     format: 'jpg',
     cut: {
       image: cutUrl,

@@ -171,8 +171,8 @@ interface IColorfulMapImageExportCommonOptions {
   flipy?: 0 | 1 | boolean
   grid?: boolean
   linear?: number
+  /** Make values below colors.v[0] transparent; preserve configured opacity at or above it. Defaults to false. */
   minOpacity?: boolean
-  minOpacityMode?: 'smooth' | 'linear'
   projection?: IColorfulMapProjection
   boundaries?: IColorfulMapBoundaryLayer[]
   cut?: IColorfulMapCutTexture
