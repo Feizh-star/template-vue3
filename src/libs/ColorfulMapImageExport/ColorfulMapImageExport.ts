@@ -159,14 +159,23 @@ export async function renderColorfulMapImage(
 
   const imageData = Array.isArray(options.imageData) ? options.imageData : [options.imageData]
   const sources: DataTexture[] = []
+  let loadError: unknown
   for (const texture of imageData) {
-    sources.push({
-      image: await readImageData(texture.image, options.signal),
-      extent: texture,
-      lonRange: texture.lonmax - texture.lonmin,
-      latRange: texture.latmax - texture.latmin,
-    })
+    try {
+      sources.push({
+        image: await readImageData(texture.image, options.signal),
+        extent: texture,
+        lonRange: texture.lonmax - texture.lonmin,
+        latRange: texture.latmax - texture.latmin,
+      })
+    } catch (error) {
+      throwIfAborted(options.signal)
+      if ((error as { name?: unknown } | null)?.name === 'AbortError') throw error
+      loadError = error
+    }
   }
+  throwIfAborted(options.signal)
+  if (imageData.length && !sources.length) throw loadError
   const cut = options.cut ? await readCutTexture(options.cut, options.signal) : null
 
   drawTexture(ctx, {

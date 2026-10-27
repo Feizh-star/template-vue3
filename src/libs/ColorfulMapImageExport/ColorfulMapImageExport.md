@@ -75,6 +75,14 @@ precedence; if no sample remains, the pixel keeps the PNG transparency or JPG ba
 `scale`, `colors`, `flipy`, `grid`, `minOpacity`, and `cut` apply to all textures.
 An empty array renders only the background, boundaries, axes, and optional color scale.
 
+Textures that fail to load or decode are ignored when at least one data texture succeeds.
+Successful textures retain their original array order and overlap priority. Missing coverage
+keeps PNG transparency or the JPG background; `outputBounds` and output size do not change.
+If every supplied data texture fails, the export rejects with the last texture loading error.
+A failed single texture also rejects. Cancellation still aborts the export, and a failure to
+load the global `cut` texture remains fatal rather than silently disabling clipping.
+These rules apply to both main-thread and Worker exports.
+
 `minOpacity` defaults to `false`. When enabled, decoded sample values strictly below
 `colors.v[0]` are fully transparent. Values equal to or above that minimum retain the opacity
 from the color ramp (`colors.o`); there is no additional fade near the threshold. This matches

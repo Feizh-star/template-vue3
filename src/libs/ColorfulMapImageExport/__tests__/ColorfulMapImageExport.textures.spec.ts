@@ -345,6 +345,144 @@ describe('independent texture extents', () => {
     ])
   })
 
+  describe('texture loading failures', () => {
+    const failedTexture = { ...bounds, image: '/missing.png' }
+
+    it.each(['png', 'jpg'] as const)(
+      'ignores failed textures and preserves successful texture order in %s',
+      async (format) => {
+        const fetchSpy = vi
+          .spyOn(globalThis, 'fetch')
+          .mockRejectedValue(new TypeError('Network error'))
+        const { pixels } = await render({
+          ...common,
+          imageData: [
+            failedTexture,
+            texture(bounds, [0]),
+            failedTexture,
+            texture({ ...bounds, lonmin: 2 }, [255]),
+            failedTexture,
+          ],
+          outputBounds: bounds,
+          format,
+        })
+        expect(pixels).toEqual([
+          [blue, blue, red, red],
+          [blue, blue, red, red],
+        ])
+        expect(fetchSpy).toHaveBeenCalledTimes(3)
+      }
+    )
+
+    it.each(['png', 'jpg'] as const)(
+      'keeps the background where a failed texture leaves a gap in %s',
+      async (format) => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+        } as Response)
+        const { pixels } = await render({
+          ...common,
+          imageData: [texture({ ...bounds, lonmax: 2 }, [255]), failedTexture],
+          outputBounds: bounds,
+          format,
+          background: '#204060',
+        })
+        const background = format === 'png' ? transparent : [32, 64, 96, 255]
+        expect(pixels).toEqual([
+          [red, red, background, background],
+          [red, red, background, background],
+        ])
+      }
+    )
+
+    it('ignores image decoding failures when another texture succeeds', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(0),
+        headers: new Headers(),
+      } as Response)
+      const decode = vi.fn().mockRejectedValue(new Error('Invalid image data'))
+      vi.stubGlobal('createImageBitmap', decode)
+      const { pixels } = await render({
+        ...common,
+        imageData: [texture(bounds, [255]), failedTexture],
+        outputBounds: bounds,
+      })
+      expect(pixels[0]).toEqual([red, red, red, red])
+      expect(decode).toHaveBeenCalledOnce()
+    })
+
+    it('rejects when all textures fail after attempting every texture', async () => {
+      const error = new Error('Failed to load texture')
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(error)
+      await expect(
+        renderColorfulMapImage({
+          ...common,
+          imageData: [failedTexture, { ...failedTexture, image: '/other-missing.png' }],
+          outputBounds: bounds,
+        })
+      ).rejects.toBe(error)
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+    })
+
+    it.each([false, true])('preserves failure for a single texture, array: %s', async (array) => {
+      const error = new Error('Texture unavailable')
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(error)
+      await expect(
+        renderColorfulMapImage({
+          ...common,
+          imageData: array ? [failedTexture] : failedTexture,
+          outputBounds: bounds,
+        })
+      ).rejects.toBe(error)
+    })
+
+    it('does not ignore cancellation after a successful texture', async () => {
+      const controller = new AbortController()
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        controller.abort()
+        throw new TypeError('Network error')
+      })
+      await expect(
+        renderColorfulMapImage({
+          ...common,
+          imageData: [texture(bounds, [255]), failedTexture, failedTexture],
+          outputBounds: bounds,
+          signal: controller.signal,
+        })
+      ).rejects.toMatchObject({ name: 'AbortError' })
+      expect(fetchSpy).toHaveBeenCalledOnce()
+    })
+
+    it('propagates AbortError rather than treating it as a failed texture', async () => {
+      const error = new DOMException('Aborted', 'AbortError')
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(error)
+      await expect(
+        renderColorfulMapImage({
+          ...common,
+          imageData: [texture(bounds, [255]), failedTexture, failedTexture],
+          outputBounds: bounds,
+        })
+      ).rejects.toBe(error)
+      expect(fetchSpy).toHaveBeenCalledOnce()
+    })
+
+    it('still rejects if the global cut texture fails', async () => {
+      const error = new Error('Cut texture unavailable')
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(error)
+      await expect(
+        renderColorfulMapImage({
+          ...common,
+          imageData: [texture(bounds, [255]), failedTexture],
+          outputBounds: bounds,
+          cut: failedTexture,
+        })
+      ).rejects.toBe(error)
+    })
+  })
+
   it('allows an empty array with outputBounds to produce an empty plot', async () => {
     const { pixels } = await render({ ...common, imageData: [], outputBounds: bounds })
     expect(pixels).toEqual([
