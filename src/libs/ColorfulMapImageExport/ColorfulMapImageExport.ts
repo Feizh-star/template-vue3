@@ -18,6 +18,8 @@ import type {
   IColorfulMapProjection,
   IColorfulMapOffscreenCanvas,
   IColorfulMapRenderResult,
+  IColorfulMapTitleLineOptions,
+  IColorfulMapTitleOptions,
   IGeoPoint,
   IScaleProps,
   IProjectedPoint,
@@ -57,7 +59,7 @@ type ExportLayoutImageData = IColorfulMapGeoBounds & { image?: ColorfulMapImageS
 
 type ExportLayoutOptions = Pick<
   IColorfulMapImageExportOptions,
-  'axes' | 'projection' | 'margin'
+  'axes' | 'projection' | 'margin' | 'title'
 > & {
   colors?: IColorRange
   colorScale?: IColorfulMapColorScaleOptions
@@ -107,8 +109,11 @@ function resolveExportLayout(options: ExportLayoutOptions) {
   const [top, right, bottom, left] = expandMargin(options.margin ?? DEFAULT_EXPORT_MARGIN).map(
     (value) => Math.round(finiteNonNegative(value, 0))
   )
+  const width = maxX - minX + left + right
+  const title = resolveTitle(options.title, width)
+  const titleHeight = title?.height ?? 0
   const plotLeft = left - minX
-  const plotTop = top + maxY - plotHeight
+  const plotTop = titleHeight + top + maxY - plotHeight
   const plot: PlotRect = {
     left: plotLeft,
     top: plotTop,
@@ -119,8 +124,8 @@ function resolveExportLayout(options: ExportLayoutOptions) {
   }
 
   return {
-    width: maxX - minX + left + right,
-    height: maxY - minY + top + bottom,
+    width,
+    height: titleHeight + maxY - minY + top + bottom,
     aspectRatio,
     projection,
     outputBounds,
@@ -128,6 +133,7 @@ function resolveExportLayout(options: ExportLayoutOptions) {
     axes,
     plot,
     colorScale,
+    title,
   }
 }
 
@@ -188,6 +194,7 @@ export async function renderColorfulMapImage(
   }
 
   drawColorScale(ctx, options.colors, colorScale, plot)
+  drawTitle(ctx, size.title)
 
   return {
     canvas,
@@ -1080,6 +1087,73 @@ function normalizeBoundaryLabel(
   }
 }
 
+interface ResolvedTitle {
+  height: number
+  left: number
+  top: number
+  contentWidth: number
+  contentHeight: number
+  lines: { text: string; font: string; color: string; y: number }[]
+}
+
+function resolveTitle(
+  input: IColorfulMapTitleOptions | undefined,
+  width: number
+): ResolvedTitle | null {
+  if (!input) return null
+
+  const [top, right, bottom, left] = expandMargin(input.padding ?? 16).map((value) =>
+    finiteNonNegative(value, 0)
+  )
+  const gap = input.gap !== undefined && Number.isFinite(input.gap) ? Math.max(0, input.gap) : 8
+  const lines: ResolvedTitle['lines'] = []
+  let y = top
+  const appendLine = (
+    line: IColorfulMapTitleLineOptions | undefined,
+    font: string,
+    color: string
+  ) => {
+    const text = line?.text.replace(/[\r\n]+/g, ' ').trim()
+    if (!text) return
+    const resolvedFont = line?.font || font
+    const metrics = createTextMeasurer(resolvedFont)(text)
+    if (lines.length) y += gap
+    lines.push({ text, font: resolvedFont, color: line?.color || color, y: y + metrics.ascent })
+    y += metrics.ascent + metrics.descent
+  }
+
+  appendLine(input.main, 'bold 24px Arial, sans-serif', '#1f2a36')
+  appendLine(input.sub, '16px Arial, sans-serif', '#566574')
+  if (!lines.length) return null
+
+  return {
+    height: Math.ceil(y + bottom),
+    left,
+    top,
+    contentWidth: Math.max(0, width - left - right),
+    contentHeight: y - top,
+    lines,
+  }
+}
+
+function drawTitle(ctx: CanvasRenderingContext2D, title: ResolvedTitle | null): void {
+  if (!title || !title.contentWidth) return
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(title.left, title.top, title.contentWidth, title.contentHeight)
+  ctx.clip()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const x = title.left + title.contentWidth / 2
+  for (const line of title.lines) {
+    ctx.font = line.font
+    ctx.fillStyle = line.color
+    ctx.fillText(line.text, x, line.y)
+  }
+  ctx.restore()
+}
+
 interface ResolvedColorScale {
   config: Required<IColorfulMapColorScaleOptions>
   count: number
@@ -1413,4 +1487,6 @@ export type {
   IColorfulMapProjection,
   IColorfulMapOffscreenCanvas,
   IColorfulMapRenderResult,
+  IColorfulMapTitleLineOptions,
+  IColorfulMapTitleOptions,
 }

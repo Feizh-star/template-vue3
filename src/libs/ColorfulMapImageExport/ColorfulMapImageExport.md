@@ -146,6 +146,47 @@ is included. The bottom includes any visible first label's overflow.
 Thus `position` anchors the scale's measured bounds, not just the bottom swatch. Content expands
 in every direction as needed, including when the scale is taller than the plot.
 
+## Title and subtitle
+
+The optional root `title` adds a separate, full-width border-box above the existing exported
+image, including its original margins. It does not draw a border or change the image width.
+
+```ts
+title: {
+  main: { text: '累计降水量', font: 'bold 24px Arial, sans-serif', color: '#1f2a36' },
+  sub: { text: '2026-10-27 08:00 — 2026-10-28 08:00', font: '16px Arial, sans-serif', color: '#566574' },
+  gap: 8,
+  padding: [16, 24, 16, 24],
+}
+```
+
+`main` and `sub` are optional. Each accepts `text`, a Canvas `font` shorthand (size, family,
+weight, and style), and `color`. The styles above are the defaults. Both lines are horizontally
+centered within the title box's content area, after subtracting left and right padding.
+Each stays on a single line: line breaks become spaces, and overlong text is clipped to the
+content area rather than wrapping or widening the image.
+
+`gap` is the vertical space between the two visible text lines, defaulting to 8px. It is only
+included when both lines are non-empty. `padding` applies to the entire title box, defaults to
+16px, and accepts the same CSS shorthand forms as `margin`: a number, `[vertical, horizontal]`,
+or `[top, right, bottom, left]`. Negative or non-finite padding becomes zero; negative gaps become
+zero and non-finite gaps use the default. Blank or missing lines occupy no space. If neither
+line has text, no title box or padding is added.
+
+Line heights use the measured text's ascent plus descent, with a font-size fallback when Canvas
+text metrics are unavailable. The final title box height is rounded upward to whole pixels:
+
+```text
+title height = ceil(top padding + visible line heights + interline gap + bottom padding)
+final image height = previous image height + title height
+```
+
+The plot, boundaries, axes, and color scale move down by exactly the title height; their sizes,
+relative positions, the original image margins, and the geographic `aspectRatio` remain unchanged.
+`getColorfulMapExportSize` includes this same additional height. Main-thread and Worker exports
+both support this configuration. PNG retains the transparent title background; JPG fills it
+with the same background as the rest of the image.
+
 The renderer batches each boundary style into one Canvas path. It can run on an
 `OffscreenCanvas` by setting `preferOffscreenCanvas: true`, so the same function can be called
 from a dedicated Web Worker when the caller supplies transferable image sources such as an

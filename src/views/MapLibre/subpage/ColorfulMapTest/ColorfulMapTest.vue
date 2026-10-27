@@ -103,6 +103,10 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
     // },
     scale: imgScale,
     colors: imgColor,
+    title: {
+      main: { text: '温度(℃)_WRF 1x1km' },
+      sub: { text: '2026-01-01 08:00' },
+    },
     linear: defaultOption.linear,
     flipy: defaultOption.flipy,
     minOpacity: defaultOption.minOpacity,
@@ -129,7 +133,7 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
         opacity: 0.95,
       },
     ],
-    margin: [64, 32, 64, 64],
+    margin: [0, 32, 64, 64],
     axes: {
       enabled: true,
       width: 1800,

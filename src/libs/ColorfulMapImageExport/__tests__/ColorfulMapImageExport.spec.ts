@@ -4,13 +4,25 @@ import {
   renderColorfulMapImage,
   webMercatorProjection,
 } from '../ColorfulMapImageExport'
-import type { IColorfulMapImageExportOptions } from '../ColorfulMapImageExport.types'
+import type {
+  ColorfulMapMargin,
+  IColorfulMapImageExportOptions,
+  IColorfulMapTitleOptions,
+} from '../ColorfulMapImageExport.types'
 
 const contexts: ReturnType<typeof createContext>[] = []
 
 function createContext(canvas: HTMLCanvasElement) {
+  const textStyles: {
+    text: string
+    font: string
+    color: string
+    align: string
+    baseline: string
+  }[] = []
   return {
     canvas,
+    textStyles,
     font: '12px sans-serif',
     textBaseline: 'middle',
     textAlign: 'left',
@@ -19,7 +31,18 @@ function createContext(canvas: HTMLCanvasElement) {
     restore: vi.fn(),
     clearRect: vi.fn(),
     fillRect: vi.fn<[number, number, number, number], void>(),
-    fillText: vi.fn<[string, number, number], void>(),
+    fillText: vi.fn<[string, number, number], void>(function (
+      this: { font: string; fillStyle: string; textAlign: string; textBaseline: string },
+      text: string
+    ) {
+      textStyles.push({
+        text,
+        font: this.font,
+        color: this.fillStyle,
+        align: this.textAlign,
+        baseline: this.textBaseline,
+      })
+    }),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
@@ -444,6 +467,103 @@ describe('plot and color scale content bounds', () => {
   })
 })
 
+describe('title box sizing', () => {
+  const baseSize = { width: 100, height: 50, aspectRatio: 2 }
+
+  it.each<IColorfulMapTitleOptions | undefined>([
+    undefined,
+    {},
+    { main: { text: '  ' }, sub: { text: '\n' }, padding: 100 },
+  ])('does not add a box for empty title configuration: %j', (title) => {
+    expect(getColorfulMapExportSize({ ...layoutOptions, title })).toEqual(baseSize)
+  })
+
+  it('adds default text heights, padding and a single interline gap', () => {
+    const size = getColorfulMapExportSize({
+      ...layoutOptions,
+      title: { main: { text: '主标题' }, sub: { text: '副标题' } },
+    })
+    expect(size).toEqual({ ...baseSize, height: 50 + 24 + 16 + 8 + 32 })
+  })
+
+  it.each([
+    { main: { text: 'Title' } },
+    { sub: { text: 'Subtitle', font: '24px Arial' } },
+    { main: { text: 'Title' }, sub: { text: '' } },
+  ])('does not reserve gap or a missing line: %j', (lines) => {
+    const size = getColorfulMapExportSize({
+      ...layoutOptions,
+      title: { ...lines, gap: 100, padding: 0 },
+    })
+    expect(size).toEqual({ ...baseSize, height: 74 })
+  })
+
+  it.each<{ padding: ColorfulMapMargin; addedHeight: number }>([
+    { padding: 5, addedHeight: 34 },
+    { padding: [3, 7], addedHeight: 30 },
+    { padding: [2, 4, 6, 8], addedHeight: 32 },
+    { padding: [0.1, 4, 0.2, 8], addedHeight: 25 },
+    { padding: [-1, NaN, Infinity, 8], addedHeight: 24 },
+  ])('adds only vertical padding for $padding', ({ padding, addedHeight }) => {
+    expect(
+      getColorfulMapExportSize({
+        ...layoutOptions,
+        title: { main: { text: 'Title' }, padding },
+      })
+    ).toEqual({ ...baseSize, height: 50 + addedHeight })
+  })
+
+  it.each([
+    { gap: 0, addedHeight: 40 },
+    { gap: 2.5, addedHeight: 43 },
+    { gap: -5, addedHeight: 40 },
+    { gap: NaN, addedHeight: 48 },
+  ])('normalizes a two-line gap of $gap', ({ gap, addedHeight }) => {
+    expect(
+      getColorfulMapExportSize({
+        ...layoutOptions,
+        title: { main: { text: 'Title' }, sub: { text: 'Subtitle' }, gap, padding: 0 },
+      })
+    ).toEqual({ ...baseSize, height: 50 + addedHeight })
+  })
+
+  it('uses actual asymmetric text metrics rather than a fixed font height', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (
+      this: HTMLCanvasElement
+    ) {
+      const ctx = createContext(this)
+      ctx.measureText = () => ({
+        width: 30,
+        actualBoundingBoxLeft: 0,
+        actualBoundingBoxRight: 30,
+        actualBoundingBoxAscent: 17,
+        actualBoundingBoxDescent: 4,
+      })
+      return ctx as unknown as CanvasRenderingContext2D
+    })
+    expect(
+      getColorfulMapExportSize({
+        ...layoutOptions,
+        title: { main: { text: 'Title' }, padding: 0 },
+      }).height
+    ).toBe(50 + 21)
+  })
+
+  it('falls back to font sizes without a canvas and does not widen for long text', () => {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null)
+    const size = getColorfulMapExportSize({
+      ...layoutOptions,
+      title: {
+        main: { text: 'A title much wider than the image', font: 'bold 30px Arial' },
+        sub: { text: 'Subtitle', font: 'italic 18px Arial' },
+        gap: 4,
+        padding: 0,
+      },
+    })
+    expect(size).toEqual({ ...baseSize, height: 50 + 30 + 18 + 4 })
+  })
+})
+
 describe('content rendering', () => {
   function renderOptions(): IColorfulMapImageExportOptions {
     class TestImageData {
@@ -461,6 +581,163 @@ describe('content rendering', () => {
       colorScale: {},
     }
   }
+
+  it.each(['png', 'jpg'] as const)(
+    'adds a centered title box without resizing existing content in %s',
+    async (format) => {
+      const options = renderOptions()
+      options.format = format
+      options.background = '#204060'
+      options.boundaries = [
+        {
+          data: {
+            type: 'LineString',
+            coordinates: [
+              [0, 0],
+              [20, 10],
+            ],
+          },
+        },
+      ]
+      const before = await renderColorfulMapImage(options)
+      const beforeCtx = contexts.find((item) => item.canvas === before.canvas)!
+      options.title = {
+        main: { text: 'Main\nTitle', font: 'bold 20px Arial', color: '#123456' },
+        sub: { text: 'Subtitle', font: 'italic 10px Arial', color: '#654321' },
+        gap: 6,
+        padding: [4, 8, 12, 16],
+      }
+      const size = getColorfulMapExportSize(options)
+      const after = await renderColorfulMapImage(options)
+      const ctx = contexts.find((item) => item.canvas === after.canvas)!
+      const addedHeight = 20 + 10 + 6 + 4 + 12
+      expect(after.width).toBe(before.width)
+      expect(after.height).toBe(before.height + addedHeight)
+      expect(after.aspectRatio).toBe(before.aspectRatio)
+      expect({ width: after.width, height: after.height, aspectRatio: after.aspectRatio }).toEqual(
+        size
+      )
+      for (const method of ['moveTo', 'lineTo'] as const) {
+        expect(ctx[method].mock.calls).toEqual(
+          beforeCtx[method].mock.calls.map(([x, y]) => [x, y + addedHeight])
+        )
+      }
+      const beforeSwatches = beforeCtx.fillRect.mock.calls.slice(format === 'jpg' ? 1 : 0)
+      const afterSwatches = ctx.fillRect.mock.calls.slice(format === 'jpg' ? 1 : 0)
+      expect(afterSwatches).toEqual(
+        beforeSwatches.map(([x, y, w, h]) => [x, y + addedHeight, w, h])
+      )
+      expect(ctx.fillText.mock.calls.slice(0, -2)).toEqual(
+        beforeCtx.fillText.mock.calls.map(([text, x, y]) => [text, x, y + addedHeight])
+      )
+      const centerX = 16 + (after.width - 16 - 8) / 2
+      expect(ctx.fillText.mock.calls.slice(-2)).toEqual([
+        ['Main Title', centerX, 14],
+        ['Subtitle', centerX, 35],
+      ])
+      expect(ctx.textStyles.slice(-2)).toEqual([
+        {
+          text: 'Main Title',
+          font: 'bold 20px Arial',
+          color: '#123456',
+          align: 'center',
+          baseline: 'middle',
+        },
+        {
+          text: 'Subtitle',
+          font: 'italic 10px Arial',
+          color: '#654321',
+          align: 'center',
+          baseline: 'middle',
+        },
+      ])
+      expect(ctx.rect).toHaveBeenLastCalledWith(16, 4, after.width - 24, 36)
+      const pixels = ctx.putImageData.mock.calls[0][0].data as Uint8ClampedArray
+      expect(pixels[(17 * after.width + 13) * 4 + 3]).toBe(0)
+      expect(pixels[((17 + addedHeight) * after.width + 13) * 4 + 3]).toBe(255)
+      if (format === 'jpg') {
+        expect(ctx.fillRect.mock.calls[0]).toEqual([0, 0, after.width, after.height])
+      } else {
+        expect(ctx.clearRect).toHaveBeenCalledWith(0, 0, after.width, after.height)
+      }
+    }
+  )
+
+  it('centers the title over the complete image when the scale extends to the left', async () => {
+    const options = renderOptions()
+    options.colorScale = { position: [-40, -70] }
+    const base = getColorfulMapExportSize(options)
+    options.title = { main: { text: 'Title' }, padding: 0 }
+    const result = await renderColorfulMapImage(options)
+    const ctx = contexts.find((item) => item.canvas === result.canvas)!
+    expect(result.width).toBe(base.width)
+    expect(result.height).toBe(base.height + 24)
+    expect(ctx.fillText.mock.calls.slice(-1)[0]).toEqual(['Title', result.width / 2, 12])
+    expect(ctx.moveTo).toHaveBeenCalledWith(53, 3 + 24)
+  })
+
+  it('reserves the title height but draws no text when horizontal padding consumes the width', async () => {
+    const options = renderOptions()
+    options.title = { main: { text: 'Title' }, padding: [0, 1000] }
+    const base = getColorfulMapExportSize({ ...options, title: undefined })
+    const result = await renderColorfulMapImage(options)
+    const ctx = contexts.find((item) => item.canvas === result.canvas)!
+    expect(result.height).toBe(base.height + 24)
+    expect(ctx.fillText.mock.calls.some(([text]) => text === 'Title')).toBe(false)
+  })
+
+  it('renders the title through OffscreenCanvas with the same measured layout', async () => {
+    class TestOffscreenCanvas {
+      constructor(public width: number, public height: number) {}
+      getContext() {
+        const ctx = createContext(this as unknown as HTMLCanvasElement)
+        contexts.push(ctx)
+        return ctx
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', TestOffscreenCanvas)
+    const options = renderOptions()
+    options.title = { main: { text: 'Title' }, sub: { text: 'Subtitle' }, padding: 0 }
+    options.preferOffscreenCanvas = true
+    const size = getColorfulMapExportSize(options)
+    const result = await renderColorfulMapImage(options)
+    const ctx = contexts.find((item) => item.canvas === result.canvas)!
+    expect(result.canvas).toBeInstanceOf(TestOffscreenCanvas)
+    expect({ width: result.width, height: result.height, aspectRatio: result.aspectRatio }).toEqual(
+      size
+    )
+    expect(ctx.fillText.mock.calls.slice(-2)).toEqual([
+      ['Title', result.width / 2, 12],
+      ['Subtitle', result.width / 2, 40],
+    ])
+  })
+
+  it('uses default main/subtitle fonts and colors with an empty image array', async () => {
+    const options = {
+      ...renderOptions(),
+      imageData: [],
+      outputBounds: layoutOptions.imageData,
+      title: { main: { text: 'Main' }, sub: { text: 'Sub' }, padding: 0 },
+    }
+    const result = await renderColorfulMapImage(options)
+    const ctx = contexts.find((item) => item.canvas === result.canvas)!
+    expect(ctx.textStyles.slice(-2)).toEqual([
+      {
+        text: 'Main',
+        font: 'bold 24px Arial, sans-serif',
+        color: '#1f2a36',
+        align: 'center',
+        baseline: 'middle',
+      },
+      {
+        text: 'Sub',
+        font: '16px Arial, sans-serif',
+        color: '#566574',
+        align: 'center',
+        baseline: 'middle',
+      },
+    ])
+  })
 
   it('uses the same measured layout for size and render and draws the scale last', async () => {
     const options = renderOptions()

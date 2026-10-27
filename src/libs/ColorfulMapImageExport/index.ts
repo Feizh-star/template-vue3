@@ -25,6 +25,8 @@ export type {
   IColorfulMapOffscreenCanvas,
   IColorfulMapProjection,
   IColorfulMapRenderResult,
+  IColorfulMapTitleLineOptions,
+  IColorfulMapTitleOptions,
   IColorfulMapWorkerExportOptions,
   IScaleProps,
 } from './ColorfulMapImageExport.types'

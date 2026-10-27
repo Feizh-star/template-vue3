@@ -54,6 +54,23 @@ describe('ColorfulMapImage worker client', () => {
     expect(MockWorker.instance.terminated).toBe(true)
   })
 
+  it('posts title styles, spacing and padding with the export options', async () => {
+    const titleOptions: IColorfulMapWorkerExportOptions = {
+      ...options,
+      title: {
+        main: { text: 'Main title', font: 'bold 24px Arial', color: '#123456' },
+        sub: { text: 'Subtitle', font: '16px Arial', color: '#654321' },
+        gap: 6,
+        padding: [8, 16, 12, 16],
+      },
+    }
+    MockWorker.response = { ok: true, blob: new Blob() }
+    await exportColorfulMapImageInWorker(titleOptions)
+    expect(MockWorker.instance.postedOptions).toBe(titleOptions)
+    expect(structuredClone(titleOptions)).toEqual(titleOptions)
+    expect(MockWorker.instance.transfers).toEqual([])
+  })
+
   it('posts multiple texture extents without transferring URL sources', async () => {
     const multiOptions: IColorfulMapWorkerExportOptions = {
       ...options,

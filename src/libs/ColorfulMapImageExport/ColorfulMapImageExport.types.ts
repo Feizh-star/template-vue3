@@ -86,6 +86,25 @@ export interface IColorfulMapBoundaryLayer {
 
 export type ColorfulMapMargin = number | [number, number] | [number, number, number, number]
 
+export interface IColorfulMapTitleLineOptions {
+  text: string
+  /** Canvas font shorthand, including size, family, weight and style. */
+  font?: string
+  color?: string
+}
+
+/** A separate full-width title box above the existing image, including its margins. */
+export interface IColorfulMapTitleOptions {
+  /** Main title. Defaults to bold 24px Arial, sans-serif and #1f2a36. */
+  main?: IColorfulMapTitleLineOptions
+  /** Subtitle. Defaults to 16px Arial, sans-serif and #566574. */
+  sub?: IColorfulMapTitleLineOptions
+  /** Vertical gap between non-empty lines in pixels. Defaults to 8. */
+  gap?: number
+  /** CSS shorthand padding for the entire title box. Defaults to 16. */
+  padding?: ColorfulMapMargin
+}
+
 /** Vertical color scale positioned relative to the coordinate plot's bottom-left corner. */
 export interface IColorfulMapColorScaleOptions {
   /** Defaults to true when this option object is provided. */
@@ -168,6 +187,7 @@ interface IColorfulMapImageExportCommonOptions {
   scale: IScaleProps
   colors: IColorRange
   colorScale?: IColorfulMapColorScaleOptions
+  title?: IColorfulMapTitleOptions
   format?: 'png' | 'jpg' | 'jpeg'
   quality?: number
   flipy?: 0 | 1 | boolean
