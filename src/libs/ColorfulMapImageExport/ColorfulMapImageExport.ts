@@ -489,7 +489,7 @@ function drawColorScale(
     const text = labels[i]
     if (text !== null) {
       ctx.fillStyle = config.color
-      ctx.fillText(text, labelX, bottomY)
+      ctx.fillText(text, labelX, bottomY - scale.labelOffset)
     }
   }
 
@@ -1084,6 +1084,7 @@ interface ResolvedColorScale {
   config: Required<IColorfulMapColorScaleOptions>
   count: number
   labels: (string | null)[]
+  labelOffset: number
   width: number
   height: number
   blockLeft: number
@@ -1102,9 +1103,10 @@ function normalizeColorScale(
     blockHeight: finitePositive(input.blockHeight) || DEFAULT_COLOR_SCALE_BLOCK_HEIGHT,
     position: [Number.isFinite(x) ? x : plotWidth + 10, Number.isFinite(y) ? y : 10],
     labelGap: finiteNonNegative(input.labelGap, DEFAULT_COLOR_SCALE_LABEL_GAP),
+    labelAlign: input.labelAlign ?? 'threshold',
     labels: input.labels ?? [],
     showFirstLabel: input.showFirstLabel ?? true,
-    endLabel: input.endLabel ?? '',
+    endLabel: input.labelAlign === 'center' ? '' : input.endLabel ?? '',
     font: input.font || DEFAULT_COLOR_SCALE_FONT,
     color: input.color || DEFAULT_COLOR_SCALE_COLOR,
   }
@@ -1124,14 +1126,15 @@ function resolveColorScale(
   const measure = createTextMeasurer(config.font)
   const labels: (string | null)[] = []
   const labelX = config.blockWidth + config.labelGap
+  const labelOffset = config.labelAlign === 'center' ? config.blockHeight / 2 : 0
   let minX = 0
   let maxX = config.blockWidth
   let minY = 0
   let maxY = count * config.blockHeight
   for (let i = 0; i < count; i += 1) {
     const override = config.labels[i]
-    const value = Number.isFinite(override) ? override : colors.v[i]
-    const text = formatColorScaleValue(value)
+    const value = typeof override === 'number' && Number.isFinite(override) ? override : colors.v[i]
+    const text = typeof override === 'string' ? override : formatColorScaleValue(value)
     const metrics = measure(text)
     if (i === 0 && !config.showFirstLabel) {
       labels.push(null)
@@ -1140,8 +1143,9 @@ function resolveColorScale(
     labels.push(text)
     minX = Math.min(minX, labelX - metrics.left)
     maxX = Math.max(maxX, labelX + metrics.right)
-    minY = Math.min(minY, i * config.blockHeight - metrics.descent)
-    maxY = Math.max(maxY, i * config.blockHeight + metrics.ascent)
+    const labelY = i * config.blockHeight + labelOffset
+    minY = Math.min(minY, labelY - metrics.descent)
+    maxY = Math.max(maxY, labelY + metrics.ascent)
   }
 
   if (config.endLabel) {
@@ -1156,6 +1160,7 @@ function resolveColorScale(
     config,
     count,
     labels,
+    labelOffset,
     width: maxX - minX,
     height: maxY - minY,
     blockLeft: -minX,

@@ -129,14 +129,17 @@ and y pointing up. The default is `[plot width + 10, 10]`. Negative coordinates 
 inside the plot are supported; the scale is always drawn last, above all other layers.
 The old `offset` option is replaced by `position`.
 
-Each value label is vertically centered on its swatch's bottom edge and sits `labelGap` px to the
-right of the swatch (default 8); set `showFirstLabel: false` to hide the lowest value label.
+`labelAlign` controls vertical label alignment: `'threshold'` (default) centers each label on
+its swatch's bottom edge, preserving the original threshold alignment; `'center'` centers it
+vertically within the swatch. Both modes place labels `labelGap` px to the right (default 8).
+Set `showFirstLabel: false` to hide the lowest value label.
 Labels default to `colors.v`; pass `labels` to display the unshifted values when the coloring
 pipeline offsets `v`, falling back to `colors.v[i]` for any index without a finite value.
 `font` and `color` are configurable. `colorScale.enabled` defaults to `true` when the object is
 present. Set `endLabel` to a string such as `'1000 mm'` to draw an additional label centered
 vertically on the highest swatch's top edge. It uses the same `labelGap`, `font`, and `color` as
-the other labels and is independent of `showFirstLabel`. Both swatches and visible text,
+the other labels and is independent of `showFirstLabel`. In `'center'` mode, `endLabel` is ignored:
+it is neither drawn nor included in the measured bounds. Both swatches and visible text,
 including `endLabel`, are included in the measured width and height. When `endLabel` is omitted
 or empty, no top label is drawn and no fixed extra height is reserved; only actual text overflow
 is included. The bottom includes any visible first label's overflow.

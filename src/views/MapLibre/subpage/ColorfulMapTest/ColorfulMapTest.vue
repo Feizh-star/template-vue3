@@ -149,6 +149,7 @@ async function getExportOptions(time: string): Promise<IColorfulMapWorkerExportO
       position: [1730, 30],
       labelGap: 8,
       labels: imgColor.v.map((v) => v * 2),
+      // labelAlign: 'center',
     },
   }
 }

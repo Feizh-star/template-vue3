@@ -101,14 +101,16 @@ export interface IColorfulMapColorScaleOptions {
   position?: [number, number]
   /** Gap in pixels between a swatch and its label. Defaults to 8. */
   labelGap?: number
+  /** Align labels to threshold edges (default) or swatch vertical centers. */
+  labelAlign?: 'threshold' | 'center'
   /**
    * Displayed value per swatch. Falls back to `colors.v[i]` per index when omitted.
    * Use this when the value axis used for coloring has been offset from `colors.v`.
    */
-  labels?: number[]
+  labels?: (number | string)[]
   /** Draw the lowest value label. Defaults to true. */
   showFirstLabel?: boolean
-  /** Optional text centered vertically on the top edge of the highest swatch. */
+  /** Optional text on the top edge of the highest swatch. Ignored when labelAlign is 'center'. */
   endLabel?: string
   font?: string
   color?: string

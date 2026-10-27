@@ -384,6 +384,47 @@ describe('plot and color scale content bounds', () => {
     expect(extended.height).toBe(4 + 20 + 20)
   })
 
+  it('keeps threshold alignment as the default', () => {
+    const implicit = getColorfulMapExportSize({ ...layoutOptions, colorScale: {} })
+    const explicit = getColorfulMapExportSize({
+      ...layoutOptions,
+      colorScale: { labelAlign: 'threshold' },
+    })
+    expect(explicit).toEqual(implicit)
+  })
+
+  it('measures centered labels without reserving threshold-edge overflow', () => {
+    const size = getColorfulMapExportSize({
+      ...layoutOptions,
+      colorScale: { labelAlign: 'center' },
+    })
+    expect(size).toEqual({ width: 142, height: 58, aspectRatio: 2 })
+  })
+
+  it('ignores endLabel in centered scale measurements', () => {
+    const base = { ...layoutOptions, colorScale: { labelAlign: 'center' as const } }
+    expect(
+      getColorfulMapExportSize({
+        ...base,
+        colorScale: { ...base.colorScale, endLabel: 'A very wide end label' },
+      })
+    ).toEqual(getColorfulMapExportSize(base))
+  })
+
+  it('includes centered label overflow above and below short swatches', () => {
+    const size = getColorfulMapExportSize({
+      ...layoutOptions,
+      imageData: { ...layoutOptions.imageData, latmax: 0.2 },
+      colorScale: {
+        position: [0, 0],
+        labelAlign: 'center',
+        blockHeight: 2,
+        font: '40px sans-serif',
+      },
+    })
+    expect(size).toEqual({ width: 100, height: 44, aspectRatio: 100 })
+  })
+
   it('falls back to font-based sizing when a 2D context is unavailable', () => {
     vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null)
     expect(getColorfulMapExportSize({ ...layoutOptions, colorScale: {} })).toEqual({
@@ -457,6 +498,39 @@ describe('content rendering', () => {
     const lastSwatch = ctx.fillRect.mock.calls.slice(-1)[0]
     expect(lastSwatch[1]).toBe(9)
   })
+
+  it.each([true, false])(
+    'centers labels within swatches and ignores endLabel with showFirstLabel: %s',
+    async (showFirstLabel) => {
+      const options = renderOptions()
+      options.colorScale = {
+        labelAlign: 'center',
+        endLabel: 'This end label must be ignored',
+        labels: ['Low', 'Medium', 'High'],
+        showFirstLabel,
+      }
+      const size = getColorfulMapExportSize(options)
+      const result = await renderColorfulMapImage(options)
+      expect({
+        width: result.width,
+        height: result.height,
+        aspectRatio: result.aspectRatio,
+      }).toEqual(size)
+      const ctx = contexts.find((item) => item.canvas === result.canvas)!
+      const texts = ctx.fillText.mock.calls.slice(showFirstLabel ? -3 : -2)
+      const swatches = ctx.fillRect.mock.calls
+      expect(texts.map((call) => call[0])).toEqual(
+        showFirstLabel ? ['Low', 'Medium', 'High'] : ['Medium', 'High']
+      )
+      texts.forEach((call, index) => {
+        const swatch = swatches[index + (showFirstLabel ? 0 : 1)]
+        expect(call[2]).toBe(swatch[1] + swatch[3] / 2)
+      })
+      expect(ctx.fillText.mock.calls.some((call) => call[0] === options.colorScale?.endLabel)).toBe(
+        false
+      )
+    }
+  )
 
   it('translates a negative scale position without shrinking the plot', async () => {
     const options = renderOptions()
