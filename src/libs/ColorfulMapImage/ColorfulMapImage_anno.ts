@@ -32,7 +32,7 @@
  * 实际使用 GLSL ES 3.00 和 VAO，需要 WebGL2 上下文。
  * 参数说明与使用示例见同目录 explorer.md。
  */
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { IColorfulMapImageOptions, IColorRange, IGridDataResult } from './types'
 
 // ========== GLSL Shaders ==========

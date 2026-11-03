@@ -7,7 +7,7 @@ Fragment Shader 按 scale 解码，再使用 colors 生成的色带映射颜色�
 ## 使用方式
 
 ```ts
-import { ColorfulMapImage } from '@/libs/ColorfulMapImage'
+import { ColorfulMapImage } from '@/compositions/maplibre-gl/plugins/ColorfulMapImage'
 
 const layer = new ColorfulMapImage({
   img: '/data/a.png',
@@ -168,8 +168,14 @@ ColorfulMapImage_anno.ts 是正式实现的完整注释副本，保留同样的�
 
 ## 验证
 
-使用独立配置运行图层与导出模块的资源行为测试，避免应用 Vite 插件影响：
+使用项目根目录的 vitest.config.ts 运行单元测试，避免应用 Vite 插件影响：
 
 ```sh
-npx vitest run --config src/libs/ColorfulMapImage/__tests__/vitest.config.ts
+npm run test:unit
+```
+
+仅运行这两个插件的测试：
+
+```sh
+npm run test:unit -- src/compositions/maplibre-gl/plugins/ColorfulMapImage src/compositions/maplibre-gl/plugins/ColorfulMapImageExport
 ```

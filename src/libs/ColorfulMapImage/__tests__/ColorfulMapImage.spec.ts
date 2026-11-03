@@ -47,6 +47,9 @@ function createGL() {
   const bound = new Map<number, unknown>()
   const uploads: { unit: number; source: HTMLCanvasElement | HTMLImageElement }[] = []
   const gl = {
+    NO_ERROR: 0,
+    CONTEXT_LOST_WEBGL: 0x9242,
+    getError: vi.fn(() => 0),
     VERTEX_SHADER: 1,
     FRAGMENT_SHADER: 2,
     COMPILE_STATUS: 3,
